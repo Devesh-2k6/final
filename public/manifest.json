@@ -1,0 +1,17 @@
+{
+  "name": "ExpiryGo",
+  "short_name": "ExpiryGo",
+  "description": "Near-expiry products from local shops at up to 70% off.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48 64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

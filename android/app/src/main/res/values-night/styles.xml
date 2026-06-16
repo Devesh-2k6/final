@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for Dark Mode. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="colorPrimary">#001122</item>
+        <item name="colorPrimaryDark">#000000</item>
+        <item name="colorAccent">#007ACC</item>
+    </style>
+</resources>

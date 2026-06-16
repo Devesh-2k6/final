@@ -1,0 +1,45 @@
+{
+  "name": "freshsave-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 3000 -H 0.0.0.0",
+    "lint": "next lint",
+    "cap:sync": "npx cap sync",
+    "cap:copy": "npx cap copy",
+    "cap:open": "npx cap open android",
+    "build:android": "npm run build && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.0",
+    "@ducanh2912/next-pwa": "^10.2.9",
+    "@vis.gl/react-google-maps": "^1.8.3",
+    "canvas-confetti": "^1.9.4",
+    "date-fns": "^4.1.0",
+    "framer-motion": "12.38.0",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.546.0",
+    "next": "15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
+    "swr": "^2.4.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "15.1.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

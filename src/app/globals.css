@@ -1,0 +1,247 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:not(*));
+
+@theme {
+  --color-primary: #D66B1F; /* Terracotta orange */
+  --color-primary-light: #C25C14; /* Darker terracotta */
+  --color-secondary: #E39B14; /* Golden orange */
+  --color-danger: #DC2626; /* Red 600 */
+  --color-background: #FAF5E7; /* Warm honey cream */
+  --color-surface: #FFFDF9; /* Pure warm off-white */
+  --color-text-primary: #3C2314; /* Dark coffee brown */
+  --color-text-secondary: #7A6659; /* Muted brown-gray */
+
+  --color-emerald-50: #FCF8EC;
+  --color-emerald-100: #F9F2D8;
+  --color-emerald-200: #F3E4B0;
+  --color-emerald-300: #ECC77D;
+  --color-emerald-400: #E5A84D;
+  --color-emerald-500: #D66B1F;
+  --color-emerald-600: #C25C14;
+  --color-emerald-700: #9E450B;
+  --color-emerald-800: #7A3105;
+  --color-emerald-900: #551D01;
+  --color-emerald-950: #300C00;
+
+  --color-green-50: #FCF8EC;
+  --color-green-100: #F9F2D8;
+  --color-green-200: #F3E4B0;
+  --color-green-300: #ECC77D;
+  --color-green-400: #E5A84D;
+  --color-green-500: #D66B1F;
+  --color-green-600: #C25C14;
+  --color-green-700: #9E450B;
+  --color-green-800: #7A3105;
+  --color-green-900: #551D01;
+  --color-green-950: #300C00;
+
+  --font-sans: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: #FAF5E7;
+    --foreground: #3C2314;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background-color: rgba(255, 253, 249, 0.7);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(214, 107, 31, 0.1);
+  }
+  
+  .glass-card {
+    background-color: #FFFDF9;
+    border: 1px solid rgba(214, 107, 31, 0.1);
+    box-shadow: 0 10px 30px -10px rgba(214, 107, 31, 0.06);
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .pulse-glow {
+    animation: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 10px 0px rgba(214, 107, 31, 0.3);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 20px 5px rgba(214, 107, 31, 0.15);
+  }
+}
+
+/* ─── Smart Urgency System Animations ──────────────────────────── */
+
+@keyframes urgencyPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes freshnessBreath {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.4);
+    box-shadow: 0 0 6px 2px currentColor;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes shimmerGlow {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes borderGlowRed {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.25);
+    box-shadow: 0 0 8px -2px rgba(239, 68, 68, 0.15);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 0.45);
+    box-shadow: 0 0 16px -2px rgba(239, 68, 68, 0.25);
+  }
+}
+
+@keyframes borderGlowOrange {
+  0%, 100% {
+    border-color: rgba(249, 115, 22, 0.2);
+    box-shadow: 0 0 6px -2px rgba(249, 115, 22, 0.1);
+  }
+  50% {
+    border-color: rgba(249, 115, 22, 0.35);
+    box-shadow: 0 0 12px -2px rgba(249, 115, 22, 0.18);
+  }
+}
+
+@keyframes priceDropBounce {
+  0% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-3px);
+  }
+  60% {
+    transform: translateY(1px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .animate-urgency-pulse {
+    animation: urgencyPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-freshness-breath {
+    animation: freshnessBreath 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmerGlow 2.5s linear infinite;
+  }
+
+  .animate-border-glow-red {
+    animation: borderGlowRed 2.5s ease-in-out infinite;
+  }
+
+  .animate-border-glow-orange {
+    animation: borderGlowOrange 3s ease-in-out infinite;
+  }
+
+  .animate-price-drop {
+    animation: priceDropBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .animate-draw-checkmark {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: drawCheckmark 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+  }
+
+  .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      rgba(229, 231, 235, 0.6) 25%,
+      rgba(243, 244, 246, 0.9) 50%,
+      rgba(229, 231, 235, 0.6) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmerGlow 1.8s infinite linear;
+  }
+
+  .dark .shimmer-bg,
+  .shimmer-bg[class*="dark:"] {
+    background: linear-gradient(
+      90deg,
+      rgba(55, 65, 81, 0.6) 25%,
+      rgba(75, 85, 99, 0.9) 50%,
+      rgba(55, 65, 81, 0.6) 75%
+    );
+    background-size: 200% 100%;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}
+
+@keyframes drawCheckmark {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+

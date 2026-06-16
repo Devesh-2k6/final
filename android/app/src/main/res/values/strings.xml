@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ExpiryGo</string>
+    <string name="title_activity_main">ExpiryGo</string>
+    <string name="package_name">com.expirygo.app</string>
+    <string name="custom_url_scheme">com.expirygo.app</string>
+</resources>
