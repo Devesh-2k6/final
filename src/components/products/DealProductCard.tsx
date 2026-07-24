@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Pause, Play, Package, Clock, Tag, Heart, TrendingDown, Sparkles, Brain, MessageCircle } from "lucide-react";
+import { MapPin, Pause, Play, Package, Clock, Tag, Heart, TrendingDown, Sparkles, Brain, MessageCircle, ChefHat } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import React from "react";
@@ -42,6 +42,8 @@ export type DealProductCardProps = {
   onReserve?: (id: string) => void;
   onToggleFavorite?: (id: string, isFav: boolean, e: React.MouseEvent) => void;
   onToggleFollow?: (shopId: string, isFollowing: boolean, e: React.MouseEvent) => void;
+  isInRecipeBasket?: boolean;
+  onToggleRecipeBasket?: (id: string, e: React.MouseEvent) => void;
 };
 
 export const DealProductCard = React.memo(function DealProductCardBase({
@@ -75,6 +77,8 @@ export const DealProductCard = React.memo(function DealProductCardBase({
   onReserve,
   onToggleFavorite,
   onToggleFollow,
+  isInRecipeBasket = false,
+  onToggleRecipeBasket,
 }: DealProductCardProps) {
   const isPlaying = playingId === id;
   const [imgSrc, setImgSrc] = React.useState(() => getSafeImageUrl(imageUrl));
@@ -215,6 +219,17 @@ export const DealProductCard = React.memo(function DealProductCardBase({
                     <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
                   </button>
                 )}
+                {onToggleRecipeBasket && (
+                  <button
+                    onClick={(e) => onToggleRecipeBasket(id, e)}
+                    className={`p-1 -m-1 transition ml-2 ${
+                      isInRecipeBasket ? "text-emerald-650 hover:text-emerald-700" : "text-slate-400 hover:text-emerald-500"
+                    }`}
+                    title={isInRecipeBasket ? "Remove from AI Recipe Basket" : "Add to AI Recipe Basket"}
+                  >
+                    <ChefHat size={16} className={isInRecipeBasket ? "fill-emerald-600/20" : ""} />
+                  </button>
+                )}
                 {/* Discount percentage badge */}
                 <motion.span
                   initial={{ opacity: 0, x: 8 }}
@@ -320,9 +335,16 @@ export const DealProductCard = React.memo(function DealProductCardBase({
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.05 + 0.25, type: "spring", stiffness: 350, damping: 18 }}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 whitespace-nowrap"
+                className="flex flex-col items-end gap-1"
               >
-                Save ₹{(originalPrice - currentPrice).toFixed(0)}
+                <div className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                  Save ₹{(originalPrice - currentPrice).toFixed(0)}
+                </div>
+                {forecast.rescueProbability >= 80 && (
+                  <div className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 uppercase tracking-tighter">
+                    <Sparkles size={8} className="animate-pulse" /> AI Choice
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
@@ -533,6 +555,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
     prev.urgencyBadge?.type === next.urgencyBadge?.type &&
     prev.distance === next.distance &&
     prev.description === next.description &&
+    prev.isInRecipeBasket === next.isInRecipeBasket &&
     (prev.playingId === prev.id) === (next.playingId === next.id)
   );
 });

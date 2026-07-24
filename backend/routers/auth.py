@@ -85,17 +85,17 @@ def send_otp(body: OTPSendRequest):
         try:
             logger.info(f"Triggering actual SMS dispatch via Fast2SMS to +91{phone}...")
             url = "https://www.fast2sms.com/dev/bulkV2"
-            headers = {
+            querystring = {
                 "authorization": fast2sms_key.strip(),
-                "Content-Type": "application/x-www-form-urlencoded",
-                "cache-control": "no-cache"
-            }
-            payload = {
-                "variables_values": otp,
-                "route": "otp",
+                "route": "q",
+                "message": f"Your ExpiryGo verification OTP is: {otp}. Valid for 5 minutes.",
+                "language": "english",
                 "numbers": phone
             }
-            res = requests.post(url, data=payload, headers=headers, timeout=10)
+            headers = {
+                'cache-control': "no-cache"
+            }
+            res = requests.get(url, headers=headers, params=querystring, timeout=10)
             logger.info(f"Fast2SMS API Response: {res.status_code} - {res.text}")
         except Exception as e:
             logger.error(f"Failed to dispatch physical SMS via Fast2SMS: {e}")

@@ -18,7 +18,7 @@ This guide walks you through deploying the complete ExpiryGo app online (Vercel 
 2. Create a new repository called `expiry-go`
 3. Initialize it locally:
    ```bash
-   cd d:\mmmm\ExpiryGo
+   cd C:/Users/DEVESH/Downloads/expirygo
    git init
    git add .
    git commit -m "Initial commit: ExpiryGo app ready for deployment"
@@ -57,7 +57,7 @@ This guide walks you through deploying the complete ExpiryGo app online (Vercel 
    DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
    SUPABASE_URL=https://[YOUR_PROJECT].supabase.co
    SUPABASE_ANON_KEY=[YOUR_ANON_KEY]
-   JWT_SECRET_KEY=SUPER_SECRET_KEY_FOR_FRESHSAVE_CHANGE_ME
+   JWT_SECRET_KEY=SUPER_SECRET_KEY_FOR_EXPIRYGO_CHANGE_ME
    ACCESS_TOKEN_EXPIRE_DAYS=7
    ```
 7. Set Python version: 3.11

@@ -1,8 +1,8 @@
 backend/serviceAccountKey.json
 backend/write_key.py
-freshsave.db
-pytest_freshsave.db
-freshsave_local_dev.db
+expirygo.db
+pytest_expirygo.db
+expirygo_local_dev.db
 .env
 .env.local
 node_modules/

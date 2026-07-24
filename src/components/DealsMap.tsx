@@ -7,8 +7,8 @@ import {
 import { 
   MapPin, Navigation, Sliders, Locate, Store, Info, CircleDot, AlertTriangle 
 } from "lucide-react";
-import { Product } from "@/services/products";
-import { Shop } from "@/services/shops";
+import type { ApiProduct as Product, ApiShopSummary as Shop } from "@/types/product";
+
 
 // Helper: Haversine distance formula
 export function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number) {

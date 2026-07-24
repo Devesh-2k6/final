@@ -165,7 +165,7 @@ export default function ShopSetupPage() {
           </motion.div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Shop Created!</h2>
           <p className="text-gray-500 dark:text-gray-400">
-            Welcome to FreshSave, {shopName}. Let&apos;s start saving food.
+            Welcome to ExpiryGo, {shopName}. Let&apos;s start saving food.
           </p>
           <Loader2 size={24} className="animate-spin text-emerald-500 mt-8" />
         </motion.div>

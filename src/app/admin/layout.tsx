@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <Menu size={24} />
           </button>
-          <h2 className="font-semibold text-gray-900 dark:text-white truncate">FreshSave Administration</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-white truncate">ExpiryGo Administration</h2>
         </header>
 
         <main className="flex-1 overflow-y-auto">

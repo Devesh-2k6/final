@@ -26,7 +26,9 @@ import {
   QrCode,
   ShieldCheck,
   CreditCard,
-  Trophy
+  Trophy,
+  ChefHat,
+  Sparkles
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthenticationContext";
@@ -36,7 +38,7 @@ import { getErrorMessage } from "@/api/errors";
 import { useProducts } from "@/hooks/useProducts";
 import { buildDealProductCardProps } from "@/lib/products/map-deal-product";
 import { createOrder } from "@/services/orders";
-import { addFavorite, removeFavorite, getFavorites, getRecommendedProducts, getDeepSearchResults, type ApiRecipeSearchResponse } from "@/services/products";
+import { addFavorite, removeFavorite, getFavorites, getRecommendedProducts, getDeepSearchResults, generateRecipe, type ApiRecipeSearchResponse, type ApiRecipeResponse } from "@/services/products";
 import { getMyFollowing, followShop, unfollowShop } from "@/services/shops";
 import { BottomNav } from "@/components/BottomNav";
 import type { ProductCategory, ApiProduct } from "@/types/product";
@@ -49,7 +51,35 @@ export default function CustomerDealsPage() {
   const router = useRouter();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showGoTop, setShowGoTop] = useState(false);
   const [orderSuccessDetails, setOrderSuccessDetails] = useState<{ name: string; shopName: string; price: number; type: "PICKUP" | "DELIVERY" } | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => setShowGoTop(window.scrollY > 400);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const [recipeBasket, setRecipeBasket] = useState<Set<string>>(new Set());
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+  const [generatedRecipe, setGeneratedRecipe] = useState<ApiRecipeResponse | null>(null);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+
+  const handleToggleRecipeBasket = (productId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRecipeBasket(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -281,6 +311,40 @@ export default function CustomerDealsPage() {
     }
   };
 
+  const handleGenerateRecipe = async () => {
+    if (recipeBasket.size === 0) return;
+    
+    setIsGeneratingRecipe(true);
+    setShowRecipeModal(true);
+    setGeneratedRecipe(null);
+    
+    try {
+      const selectedProducts = Array.from(recipeBasket).map(id => {
+        const found = standardProducts.find(p => p.id === id);
+        if (found) return found;
+        if (isDeepSearchActive && deepSearchData) {
+          const list = deepSearchData.recipe_mode ? deepSearchData.matched_deals : deepSearchData.products;
+          const deepFound = list.find((p: any) => p.id === id);
+          if (deepFound) return deepFound;
+        }
+        return null;
+      }).filter(Boolean);
+      
+      const payload = selectedProducts.map(p => ({
+        name: p!.name,
+        category: p!.category,
+      }));
+      
+      const recipe = await generateRecipe(payload);
+      setGeneratedRecipe(recipe);
+    } catch (err) {
+      alert("Failed to generate recipe: " + getErrorMessage(err));
+      setShowRecipeModal(false);
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
+
   const handleUseLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -314,7 +378,9 @@ export default function CustomerDealsPage() {
   const displayProducts = isAiRecommended
     ? recommendedProducts
     : isSavedFilter
-    ? (isDeepSearchActive && deepSearchData && !deepSearchData.recipe_mode ? deepSearchData.products : standardProducts).filter((p) => favorites.has(p.id))
+    ? (isDeepSearchActive && deepSearchData
+      ? (deepSearchData.recipe_mode ? deepSearchData.matched_deals : deepSearchData.products)
+      : standardProducts).filter((p) => favorites.has(p.id))
     : isDeepSearchActive && deepSearchData
     ? (deepSearchData.recipe_mode ? deepSearchData.matched_deals : deepSearchData.products)
     : standardProducts;
@@ -446,30 +512,99 @@ export default function CustomerDealsPage() {
           </div>
 
           {/* Search bar + Filter button row */}
-          <div className="bg-[#E2F0E7] p-1.5 rounded-full flex gap-1 items-center border border-emerald-100 shadow-[0_4px_20px_rgba(16,185,129,0.06)]">
+          <div className="bg-[#E2F0E7] p-1.5 rounded-full flex gap-1 items-center border border-emerald-100 shadow-[0_4px_20px_rgba(16,185,129,0.06)] relative overflow-hidden">
+            {deepSearchLoading && (
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: "100%" }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                className="absolute bottom-0 left-0 h-0.5 bg-emerald-500 w-1/2 z-10"
+              />
+            )}
             <div className="relative flex-1">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-800/80" />
+              <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${deepSearchLoading ? "text-emerald-500 animate-pulse" : "text-emerald-800/80"}`} />
               <input
                 id="deals-search"
                 type="search"
-                placeholder="Search near-expiry deals…"
+                placeholder={semanticSearch ? "Ask AI for something (e.g. dinner under ₹200)" : "Search near-expiry deals…"}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-sm text-slate-800 placeholder:text-slate-400 border border-emerald-100/50 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all font-semibold"
+                className={`w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-sm text-slate-800 placeholder:text-slate-400 border border-emerald-100/50 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all font-semibold ${semanticSearch ? "ring-2 ring-indigo-500/20" : ""}`}
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 text-xs font-extrabold px-5 py-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+              className={`flex items-center gap-1.5 text-xs font-extrabold px-5 py-2.5 rounded-full transition-all duration-300 cursor-pointer relative ${
                 showFilters || isDeepSearchActive
                   ? "bg-[#15803D] text-white shadow-md shadow-emerald-500/20"
                   : "bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-100"
               }`}
             >
               <SlidersHorizontal size={14} />
-              <span>Filter</span>
+              <span className="hidden sm:inline">Filter</span>
+              {isDeepSearchActive && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border-2 border-white ring-1 ring-red-500/20">
+                  { (maxPrice !== "" ? 1 : 0) + (minDiscount !== "" ? 1 : 0) + (radiusKm !== 50 ? 1 : 0) + (expiryUrgency !== "any" ? 1 : 0) + (semanticSearch ? 1 : 0) + (recipeMode ? 1 : 0) }
+                </span>
+              )}
             </button>
           </div>
+
+          {/* Applied Filters Summary Bar */}
+          <AnimatePresence>
+            {isDeepSearchActive && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex gap-1.5 mt-3 overflow-x-auto pb-1 scrollbar-hide no-scrollbar"
+              >
+                {maxPrice !== "" && (
+                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
+                    Max ₹{maxPrice} <X size={10} className="cursor-pointer" onClick={() => setMaxPrice("")} />
+                  </span>
+                )}
+                {minDiscount !== "" && (
+                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
+                    Min {minDiscount}% Off <X size={10} className="cursor-pointer" onClick={() => setMinDiscount("")} />
+                  </span>
+                )}
+                {radiusKm !== 50 && (
+                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
+                    {radiusKm}km Radius <X size={10} className="cursor-pointer" onClick={() => setRadiusKm(50)} />
+                  </span>
+                )}
+                {expiryUrgency !== "any" && (
+                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
+                    {expiryUrgency} Urgency <X size={10} className="cursor-pointer" onClick={() => setExpiryUrgency("any")} />
+                  </span>
+                )}
+                {semanticSearch && (
+                  <span className="flex-shrink-0 flex items-center gap-1 bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-indigo-200">
+                    Semantic <X size={10} className="cursor-pointer" onClick={() => setSemanticSearch(false)} />
+                  </span>
+                )}
+                {recipeMode && (
+                  <span className="flex-shrink-0 flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-amber-200">
+                    Recipe Mode <X size={10} className="cursor-pointer" onClick={() => setRecipeMode(false)} />
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setMaxPrice("");
+                    setMinDiscount("");
+                    setRadiusKm(50);
+                    setExpiryUrgency("any");
+                    setSemanticSearch(false);
+                    setRecipeMode(false);
+                  }}
+                  className="flex-shrink-0 text-[10px] font-black text-red-500 px-2 py-1"
+                >
+                  Clear All
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Category filter pills */}
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
@@ -712,12 +847,41 @@ export default function CustomerDealsPage() {
           </Link>
           <button
             onClick={handleUseLocation}
-            className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 border border-emerald-500/30 px-3 py-3 rounded-2xl shadow-sm hover:bg-emerald-50 dark:hover:bg-gray-700 transition flex-shrink-0"
+            className={`flex flex-col items-center justify-center border px-3 py-3 rounded-2xl shadow-sm transition flex-shrink-0 ${
+              lat && lng
+                ? "bg-emerald-500 text-white border-emerald-400"
+                : "bg-white dark:bg-gray-800 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-gray-700"
+            }`}
           >
-            <MapPin size={18} className="text-emerald-500 mb-0.5" />
-            <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Nearby</span>
+            <MapPin size={18} className={lat && lng ? "text-white mb-0.5" : "text-emerald-500 mb-0.5"} />
+            <span className={`text-[10px] font-bold ${lat && lng ? "text-white" : "text-gray-700 dark:text-gray-300"}`}>
+              {lat && lng ? "Located" : "Nearby"}
+            </span>
           </button>
         </div>
+
+        {/* Location Required Alert for Radius Filter */}
+        {radiusKm !== 50 && !lat && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3"
+          >
+            <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
+              <MapPin size={18} />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-bold text-amber-900">Location access needed</p>
+              <p className="text-[10px] text-amber-700">Radius filtering requires your location to find nearby deals.</p>
+            </div>
+            <button
+              onClick={handleUseLocation}
+              className="text-xs font-black text-amber-900 bg-amber-200 px-3 py-1.5 rounded-lg"
+            >
+              Enable
+            </button>
+          </motion.div>
+        )}
       </div>
 
       {/* ── Main content ────────────────────────────────────────────── */}
@@ -791,6 +955,16 @@ export default function CustomerDealsPage() {
 
         {displayStatus === "loading" && (
           <div className="space-y-4 mt-4">
+            {isDeepSearchActive && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center justify-center gap-3 py-4 text-emerald-600 dark:text-emerald-400"
+              >
+                <Loader2 size={18} className="animate-spin" />
+                <span className="text-sm font-black uppercase tracking-widest">AI is analyzing nearby inventory...</span>
+              </motion.div>
+            )}
             {[1, 2, 3, 4].map((i) => (
               <DealProductSkeleton key={i} />
             ))}
@@ -827,23 +1001,44 @@ export default function CustomerDealsPage() {
             {isSavedFilter ? (
               <>
                 <Heart size={48} className="mx-auto text-red-500/80 dark:text-red-400 mb-4 fill-red-500/20" />
-                <p className="font-bold text-gray-900 dark:text-white text-base">No saved deals yet.</p>
+                <p className="font-bold text-gray-900 dark:text-white text-base">
+                  {isDeepSearchActive ? "No saved matches." : "No saved deals yet."}
+                </p>
                 <p className="text-sm mt-1 max-w-sm mx-auto text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Tap the ❤️ icon on any deal to save it here for quick access later.
+                  {isDeepSearchActive
+                    ? "None of your favorites match the current deep search filters."
+                    : "Tap the ❤️ icon on any deal to save it here for quick access later."}
                 </p>
                 <button
                   type="button"
-                  onClick={() => setActiveFilter("All")}
+                  onClick={() => {
+                    if (isDeepSearchActive) {
+                      setMaxPrice("");
+                      setMinDiscount("");
+                      setRadiusKm(50);
+                      setExpiryUrgency("any");
+                      setSemanticSearch(false);
+                      setRecipeMode(false);
+                    } else {
+                      setActiveFilter("All");
+                    }
+                  }}
                   className="mt-5 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-md shadow-emerald-500/10 cursor-pointer"
                 >
-                  Explore Active Deals
+                  {isDeepSearchActive ? "Clear Filters" : "Explore Active Deals"}
                 </button>
               </>
             ) : (
               <>
                 <Package size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-                <p className="font-semibold text-gray-900 dark:text-white">No active deals yet.</p>
-                <p className="text-sm mt-1">Shops can add deals from the shopkeeper dashboard.</p>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {isDeepSearchActive ? "No matching deals found." : "No active deals yet."}
+                </p>
+                <p className="text-sm mt-1">
+                  {isDeepSearchActive
+                    ? "Try adjusting your filters or search query."
+                    : "Shops can add deals from the shopkeeper dashboard."}
+                </p>
                 <button
                   type="button"
                   onClick={() => {
@@ -875,6 +1070,8 @@ export default function CustomerDealsPage() {
                 isFollowing={following.has(product.shop_id)}
                 onToggleFavorite={handleToggleFavorite}
                 onToggleFollow={handleToggleFollow}
+                isInRecipeBasket={recipeBasket.has(product.id)}
+                onToggleRecipeBasket={handleToggleRecipeBasket}
               />
             ))}
           </div>
@@ -1149,7 +1346,215 @@ export default function CustomerDealsPage() {
         )}
       </AnimatePresence>
 
+      {/* Floating Recipe Basket Bar */}
+      <AnimatePresence>
+        {recipeBasket.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md bg-emerald-950 text-white rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xl border border-emerald-800"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-800 p-2 rounded-xl text-emerald-350">
+                <ChefHat size={18} />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest leading-none mb-0.5">AI Recipe Basket</p>
+                <p className="text-xs font-bold leading-none">{recipeBasket.size} item{recipeBasket.size !== 1 ? 's' : ''} selected</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRecipeBasket(new Set())}
+                className="text-[10px] font-bold px-3 py-2 bg-emerald-900/60 hover:bg-emerald-900/90 rounded-xl transition cursor-pointer"
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleGenerateRecipe}
+                className="text-[10px] font-bold px-4 py-2 bg-white text-emerald-950 hover:bg-emerald-50 rounded-xl transition shadow-md shadow-emerald-950/20 flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles size={11} className="text-emerald-700" /> Cook with AI
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Recipe Generator Modal */}
+      <AnimatePresence>
+        {showRecipeModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl border border-gray-150 dark:border-gray-800 flex flex-col"
+            >
+              
+              {/* Modal Header */}
+              <div className="p-5 border-b border-gray-150 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-900 z-10">
+                <div className="flex items-center gap-2">
+                  <ChefHat size={20} className="text-emerald-600 dark:text-emerald-450" />
+                  <h2 className="text-base font-black text-gray-900 dark:text-white leading-none">AI Recipe Chef</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRecipeModal(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-400 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto flex-1">
+                {isGeneratingRecipe ? (
+                  /* Loading State */
+                  <div className="py-16 text-center space-y-4 flex flex-col items-center justify-center">
+                    <div className="relative">
+                      <ChefHat size={48} className="text-emerald-600 animate-pulse" />
+                      <Sparkles size={18} className="text-amber-500 absolute -top-1 -right-1 animate-spin" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-gray-900 dark:text-white">AI Chef is cooking...</p>
+                      <p className="text-xs text-gray-400">Designing a zero-waste recipe using your rescued deals</p>
+                    </div>
+                    <div className="w-24 bg-gray-100 dark:bg-gray-800 h-1.5 rounded-full overflow-hidden mt-4 relative">
+                      <div className="absolute top-0 left-0 h-full bg-emerald-600 rounded-full w-12 animate-loading-bar" />
+                    </div>
+                  </div>
+                ) : generatedRecipe ? (
+                  /* Recipe Display State */
+                  <div className="space-y-6 animate-in fade-in duration-300">
+                    
+                    {/* Title and details */}
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-black tracking-tight text-gray-950 dark:text-white leading-tight">
+                        {generatedRecipe.recipe_name}
+                      </h3>
+                      <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+                        {generatedRecipe.description}
+                      </p>
+                      
+                      <div className="flex items-center justify-center gap-3 pt-3 flex-wrap">
+                        <span className="bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                          ⏱️ Prep: {generatedRecipe.prep_time}
+                        </span>
+                        <span className="bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-md text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                          🍳 Cook: {generatedRecipe.cook_time}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          generatedRecipe.difficulty === 'Easy' 
+                            ? 'bg-emerald-50 text-emerald-700' 
+                            : generatedRecipe.difficulty === 'Medium' 
+                            ? 'bg-amber-50 text-amber-700' 
+                            : 'bg-red-50 text-red-750'
+                        }`}>
+                          🔥 Level: {generatedRecipe.difficulty}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Carbon/Waste saved alert */}
+                    <div className="bg-emerald-500/[0.04] dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-4 flex items-start gap-2.5 text-xs text-emerald-800 dark:text-emerald-300 text-left">
+                      <Leaf size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block font-black text-emerald-900 dark:text-emerald-250 uppercase tracking-wider text-[9px] mb-0.5">Rescued Waste Impact</strong>
+                        {generatedRecipe.waste_saved_summary}
+                      </div>
+                    </div>
+
+                    {/* Ingredients section */}
+                    <div className="space-y-2.5 text-left">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Ingredients Checklist</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {generatedRecipe.ingredients.map((ing, i) => (
+                          <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-100/50">
+                            <input type="checkbox" className="rounded text-emerald-600 focus:ring-emerald-500" />
+                            <div className="min-w-0 flex-1 flex flex-col leading-none">
+                              <span className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{ing.name}</span>
+                              <span className="text-[10px] text-gray-400 mt-0.5">{ing.quantity}</span>
+                            </div>
+                            {ing.is_deal && (
+                              <span className="bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase px-1.5 py-0.5 rounded tracking-wider whitespace-nowrap">
+                                Rescued Deal
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Instructions section */}
+                    <div className="space-y-3 text-left">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Cooking Instructions</h4>
+                      <div className="space-y-3">
+                        {generatedRecipe.instructions.map((step, i) => (
+                          <div key={i} className="flex gap-3">
+                            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
+                              {step.step_number}
+                            </div>
+                            <p className="text-xs text-gray-700 dark:text-gray-300 leading-normal pt-0.5 font-medium">
+                              {step.instruction}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setShowRecipeModal(false)}
+                        className="flex-1 py-3.5 rounded-xl border font-bold text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850 transition cursor-pointer"
+                      >
+                        Close Recipe
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRecipeBasket(new Set());
+                          setShowRecipeModal(false);
+                        }}
+                        className="flex-1 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-555 text-white font-bold text-xs shadow-md shadow-emerald-500/10 transition cursor-pointer"
+                      >
+                        Clear Basket & Reset
+                      </button>
+                    </div>
+
+                  </div>
+                ) : (
+                  /* Error/Null State */
+                  <p className="text-center text-sm text-red-500">Failed to load recipe details. Please try again.</p>
+                )}
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <BottomNav />
+
+      {/* Floating Go to Top Button */}
+      <AnimatePresence>
+        {showGoTop && !recipeBasket.size && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.5, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 20 }}
+            onClick={scrollToTop}
+            className="fixed bottom-24 right-4 z-40 bg-white dark:bg-gray-800 text-emerald-600 p-3 rounded-full shadow-2xl border border-emerald-100 dark:border-gray-700 hover:bg-emerald-50 transition-all cursor-pointer"
+            aria-label="Scroll to top"
+          >
+            <ChevronDown size={20} className="rotate-180" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

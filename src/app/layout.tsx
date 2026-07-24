@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { HydrationZapper } from "@/components/HydrationZapper";
+import { AppInitializer } from "@/components/AppInitializer";
 import { AuthenticationProvider } from "@/contexts/AuthenticationContext";
 
 import { LiveDealToast } from "@/components/ui/LiveDealToast";
@@ -33,6 +34,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen bg-[#111111] text-white selection:bg-emerald-500/30 overflow-x-hidden relative`} suppressHydrationWarning>
         <HydrationZapper />
+        <AppInitializer />
         <AuthenticationProvider>
           {children}
           <LiveDealToast />

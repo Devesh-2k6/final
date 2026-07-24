@@ -228,3 +228,39 @@ export async function getDeepSearchResults(params: DeepSearchParams): Promise<Ap
   return apiRequest<ApiDeepSearchResponse>(path);
 }
 
+export type RecipeProductItem = {
+  name: string;
+  category: string;
+  quantity?: number;
+};
+
+export type RecipeIngredientItem = {
+  name: string;
+  is_deal: boolean;
+  quantity: string;
+};
+
+export type RecipeStep = {
+  step_number: number;
+  instruction: string;
+};
+
+export type ApiRecipeResponse = {
+  recipe_name: string;
+  description: string;
+  prep_time: string;
+  cook_time: string;
+  difficulty: string;
+  ingredients: RecipeIngredientItem[];
+  instructions: RecipeStep[];
+  waste_saved_summary: string;
+};
+
+export async function generateRecipe(products: RecipeProductItem[]): Promise<ApiRecipeResponse> {
+  return apiRequest<ApiRecipeResponse>("/products/recipe-generator", {
+    method: "POST",
+    json: { products },
+  });
+}
+
+

@@ -5,7 +5,7 @@ from typing import Optional, List
 
 class Settings(BaseSettings):
     # JWT
-    JWT_SECRET_KEY: str = Field(default="SUPER_SECRET_KEY_FOR_FRESHSAVE_CHANGE_ME")
+    JWT_SECRET_KEY: str = Field(default="SUPER_SECRET_KEY_FOR_EXPIRYGO_CHANGE_ME")
     ACCESS_TOKEN_EXPIRE_DAYS: int = Field(default=7)
     
     # App Settings
@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     # External APIs
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     GEMINI_API_KEY: Optional[str] = Field(default=None)
-    FAST2SMS_API_KEY: Optional[str] = Field(default="xNcSsYAV8oEjIqf7DzWnUeTd0kaZwMB9JvRpGbl3irCuKyOhXtsmLUk5GOVwh0plFjvueZbafP3WS7CM")
+    GOOGLE_MAPS_PLATFORM_KEY: Optional[str] = Field(default=None)
+    FAST2SMS_API_KEY: Optional[str] = Field(default="8fHTV6AL1XChPg9apF6Cp9O2A0PWEygBiJzRnHzA9TN2l0YCsu5o9Yok4pFh")
     REDIS_URL: str = Field(default="redis://localhost:6379")
     
     # SMTP Notification Settings

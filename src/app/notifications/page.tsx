@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, ArrowLeft, Clock, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { getMyNotifications, markAllNotificationsAsRead } from "@/services/notifications";
@@ -11,6 +12,7 @@ import { getErrorMessage } from "@/api/errors";
 import { useAuth } from "@/contexts/AuthenticationContext";
 
 export default function Notifications() {
+  const router = useRouter();
   const [now, setNow] = useState<number | null>(null);
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
@@ -96,12 +98,12 @@ export default function Notifications() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 py-4 dark:text-white flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-700 dark:text-gray-300"
+          <button
+            onClick={() => router.back()}
+            className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-700 dark:text-gray-300 cursor-pointer"
           >
             <ArrowLeft size={20} />
-          </Link>
+          </button>
           <h1 className="text-xl font-bold tracking-tight">Notifications</h1>
         </div>
         {notifications.some((n) => !n.is_read) && (

@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "FreshSave API",
+    "description": "FastAPI backend for FreshSave. Set collection variable `base_url` (e.g. http://127.0.0.1:8000). There is no Bearer auth yet — all routes are open.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "firebase_uid", "value": "postman_demo_uid" },
+    { "key": "shop_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "POST /users/ (register)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firebase_uid\": \"{{firebase_uid}}\",\n  \"email\": \"shopowner@example.com\",\n  \"name\": \"Demo Owner\",\n  \"is_shop_owner\": true\n}"
+            },
+            "url": "{{base_url}}/users/"
+          }
+        },
+        {
+          "name": "GET /users/{firebase_uid}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/users/{{firebase_uid}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Shops",
+      "item": [
+        {
+          "name": "POST /shops/ (create shop for owner)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Corner Fresh Market\",\n  \"address\": \"100 Main Street, City\",\n  \"latitude\": 40.7128,\n  \"longitude\": -74.0060,\n  \"description\": \"Family grocery\"\n}"
+            },
+            "url": "{{base_url}}/shops/?owner_firebase_uid={{firebase_uid}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "GET /products/ (default: hide expired)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/products/?skip=0&limit=100&hide_expired=true"
+          }
+        },
+        {
+          "name": "GET /products/ (include expired)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/products/?hide_expired=false"
+          }
+        },
+        {
+          "name": "POST /products/ (create — set shop_id query)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Organic Milk 1L\",\n  \"original_price\": 5.99,\n  \"discount_price\": 2.49,\n  \"quantity\": 8,\n  \"expiry_date\": \"2030-12-31T18:00:00\",\n  \"front_image_url\": \"https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600\",\n  \"expiry_image_url\": \"https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600\",\n  \"voice_note_url\": null,\n  \"is_active\": true\n}"
+            },
+            "url": "{{base_url}}/products/?shop_id={{shop_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}

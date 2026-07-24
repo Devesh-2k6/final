@@ -190,13 +190,13 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <MagneticButton className="hidden md:block">
-              <Link href="/auth?tab=login" onClick={playPopSound} className="text-sm font-semibold text-emerald-700 px-5 py-2.5 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer">
+            <MagneticButton>
+              <Link href="/auth?tab=login" onClick={playPopSound} className="text-xs md:text-sm font-semibold text-emerald-700 px-3 md:px-5 py-2 md:py-2.5 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer">
                 Sign in
               </Link>
             </MagneticButton>
             <MagneticButton>
-              <Link href="/auth?tab=signup" onClick={playPopSound} className="text-sm font-bold text-white bg-emerald-600 px-5 py-2.5 rounded-xl hover:bg-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-all duration-300 cursor-pointer">
+              <Link href="/auth?tab=signup" onClick={playPopSound} className="text-xs md:text-sm font-bold text-white bg-emerald-600 px-3 md:px-5 py-2 md:py-2.5 rounded-xl hover:bg-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-all duration-300 cursor-pointer">
                 Get started
               </Link>
             </MagneticButton>

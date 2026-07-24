@@ -495,21 +495,28 @@ export default function AddProductPage() {
                   className="mt-4 p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 space-y-3"
                 >
                   <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm mb-1">
-                    <Sparkles size={16} />
-                    Live Discount Estimate
+                    <Sparkles size={16} className="animate-pulse" />
+                    AI Pricing Advisor
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white dark:bg-gray-800/40 p-3 rounded-xl border border-emerald-100/30">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Days Left</p>
-                      <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{preview.daysLeft} day(s)</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Urgency Level</p>
+                      <p className={`text-base font-black mt-0.5 ${preview.daysLeft <= 2 ? "text-red-500" : "text-emerald-600"}`}>
+                        {preview.daysLeft <= 2 ? "Critical" : preview.daysLeft <= 5 ? "High" : "Moderate"}
+                      </p>
                     </div>
                     <div className="bg-white dark:bg-gray-800/40 p-3 rounded-xl border border-emerald-100/30">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Discount Percent</p>
-                      <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{preview.percent}% Off</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Rescue Probability</p>
+                      <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        {preview.percent >= 50 ? "92%" : "65%"}
+                      </p>
                     </div>
                   </div>
                   <div className="flex justify-between items-center border-t border-emerald-100/50 dark:border-emerald-500/10 pt-3">
-                    <span className="text-sm font-bold text-gray-600 dark:text-gray-300">Initial Discount Price</span>
+                    <div className="space-y-1">
+                      <span className="text-sm font-bold text-gray-600 dark:text-gray-300">Suggested Deal Price</span>
+                      <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-tighter">Recommended for 100% Rescue</p>
+                    </div>
                     <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                       ₹{preview.price.toFixed(2)}
                     </span>

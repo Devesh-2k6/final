@@ -1,5 +1,5 @@
 {
-  "name": "freshsave-frontend",
+  "name": "expirygo-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,11 @@
     "build:android": "npm run build && npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.2",
     "@capacitor/core": "^6.1.0",
+    "@capacitor/haptics": "^6.0.2",
+    "@capacitor/keyboard": "^6.0.4",
+    "@capacitor/push-notifications": "^6.0.4",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@vis.gl/react-google-maps": "^1.8.3",
     "canvas-confetti": "^1.9.4",
