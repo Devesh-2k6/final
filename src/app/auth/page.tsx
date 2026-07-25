@@ -105,9 +105,17 @@ export default function AuthPage() {
           is_shop_owner: isShopOwner,
           phone_number: phoneNumber.trim(),
         });
+
+        // Immediate UI update
         loginUser(res.user, res.access_token);
         clearRoleIntent();
-        await redirectAfterAuth(res.user.is_shop_owner);
+
+        // Parallelize or optimize redirection
+        if (res.user.is_shop_owner) {
+          router.replace("/shop/setup"); // Default to setup, useEffect will handle if shop exists
+        } else {
+          router.replace("/deals");
+        }
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -119,9 +127,16 @@ export default function AuthPage() {
     setSubmitting(true);
     try {
       const res = await login({ email: email.trim(), password });
+
+      // Immediate UI update
       loginUser(res.user, res.access_token);
       clearRoleIntent();
-      await redirectAfterAuth(res.user.is_shop_owner);
+
+      if (res.user.is_shop_owner) {
+        router.replace("/shop");
+      } else {
+        router.replace("/deals");
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {

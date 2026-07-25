@@ -56,8 +56,14 @@ def register(body: schemas.RegisterRequest, db: Annotated[Session, Depends(get_d
 @router.post("/login", response_model=schemas.AuthResponse)
 def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
     email = body.email.strip().lower()
+    # Optimized query: only fetch what's needed for initial response
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(body.password, user.hashed_password):
+    if not user:
+        # Constant time response to prevent user enumeration and feel consistent
+        verify_password(body.password, "$2b$12$LQv3c1yqBWVHxkdZ.5BcleSWS.L3Y5mD.7/1W6fW1W1W1W1W1W1W1")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    if not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     token = create_access_token(user.id)

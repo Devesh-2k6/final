@@ -33,9 +33,10 @@ def _create_engine():
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
     elif url.startswith("postgresql"):
-        kwargs["pool_size"] = 10
-        kwargs["max_overflow"] = 20
+        kwargs["pool_size"] = 20
+        kwargs["max_overflow"] = 0
         kwargs["pool_pre_ping"] = True
+        kwargs["pool_recycle"] = 300
     return create_engine(url, **kwargs)
 
 
