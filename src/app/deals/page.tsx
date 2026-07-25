@@ -41,6 +41,7 @@ import { createOrder } from "@/services/orders";
 import { addFavorite, removeFavorite, getFavorites, getRecommendedProducts, getDeepSearchResults, generateRecipe, type ApiRecipeSearchResponse, type ApiRecipeResponse } from "@/services/products";
 import { getMyFollowing, followShop, unfollowShop } from "@/services/shops";
 import { BottomNav } from "@/components/BottomNav";
+import { LiveDealTicker } from "@/components/ui/LiveDealTicker";
 import type { ProductCategory, ApiProduct } from "@/types/product";
 import { fetchIpGeolocation } from "@/lib/geolocation";
 
@@ -607,6 +608,7 @@ export default function CustomerDealsPage() {
           </AnimatePresence>
 
           {/* Category filter pills */}
+          <LiveDealTicker />
           <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
             {FILTERS.map((f) => (
               <button

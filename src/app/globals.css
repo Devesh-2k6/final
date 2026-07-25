@@ -7,10 +7,10 @@
   --color-primary-light: #C25C14; /* Darker terracotta */
   --color-secondary: #E39B14; /* Golden orange */
   --color-danger: #DC2626; /* Red 600 */
-  --color-background: #FAF5E7; /* Warm honey cream */
-  --color-surface: #FFFDF9; /* Pure warm off-white */
-  --color-text-primary: #3C2314; /* Dark coffee brown */
-  --color-text-secondary: #7A6659; /* Muted brown-gray */
+  --color-background: #F4FBF7; /* Light sage cream */
+  --color-surface: #FFFFFF;
+  --color-text-primary: #0F172A; /* Slate 900 */
+  --color-text-secondary: #64748B; /* Slate 500 */
 
   --color-emerald-50: #FCF8EC;
   --color-emerald-100: #F9F2D8;

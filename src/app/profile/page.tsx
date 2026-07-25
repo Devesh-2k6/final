@@ -9,6 +9,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { getMyFollowing } from "@/services/shops";
 import type { ApiFollower } from "@/types/product";
 import { motion } from "framer-motion";
+import { ImpactTracker } from "@/components/ImpactTracker";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
@@ -108,24 +109,32 @@ export default function ProfilePage() {
         {/* Impact Dashboard */}
         <div>
           <h2 className="text-lg font-black text-gray-900 dark:text-white mb-4 px-1">Sustainability Impact</h2>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-emerald-600 text-white rounded-[2rem] p-5 shadow-xl shadow-emerald-500/20 flex flex-col items-center justify-center text-center">
-              <Coins size={24} className="mb-2 opacity-80" />
-              <span className="text-2xl font-black">₹{user.total_money_saved?.toFixed(0) || "0"}</span>
-              <span className="text-[9px] font-bold opacity-80 uppercase tracking-widest">Total Saved</span>
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-emerald-600 text-white rounded-[2rem] p-5 shadow-xl shadow-emerald-500/20 flex flex-col items-center justify-center text-center">
+                <Coins size={24} className="mb-2 opacity-80" />
+                <span className="text-2xl font-black">₹{user.total_money_saved?.toFixed(0) || "0"}</span>
+                <span className="text-[9px] font-bold opacity-80 uppercase tracking-widest">Total Saved</span>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 border border-emerald-100/40 dark:border-gray-700 rounded-[2rem] p-5 shadow-sm flex flex-col items-center justify-center text-center">
+                <PackageCheck size={24} className="mb-2 text-blue-500" />
+                <span className="text-2xl font-black text-gray-900 dark:text-white">{user.total_items_saved || "0"}</span>
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rescued</span>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 border border-emerald-100/40 dark:border-gray-700 rounded-[2rem] p-5 shadow-sm flex flex-col items-center justify-center text-center">
+                <Leaf size={24} className="mb-2 text-emerald-500" />
+                <span className="text-2xl font-black text-gray-900 dark:text-white">{user.co2_saved_kg?.toFixed(1) || "0"}</span>
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">kg CO₂</span>
+              </div>
             </div>
-            
-            <div className="bg-white dark:bg-gray-800 border border-emerald-100/40 dark:border-gray-700 rounded-[2rem] p-5 shadow-sm flex flex-col items-center justify-center text-center">
-              <PackageCheck size={24} className="mb-2 text-blue-500" />
-              <span className="text-2xl font-black text-gray-900 dark:text-white">{user.total_items_saved || "0"}</span>
-              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Rescued</span>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 border border-emerald-100/40 dark:border-gray-700 rounded-[2rem] p-5 shadow-sm flex flex-col items-center justify-center text-center">
-              <Leaf size={24} className="mb-2 text-emerald-500" />
-              <span className="text-2xl font-black text-gray-900 dark:text-white">{user.co2_saved_kg?.toFixed(1) || "0"}</span>
-              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">kg CO₂</span>
-            </div>
+
+            <ImpactTracker
+              data={[1.2, 2.5, 1.8, 3.4, 4.2, 3.8, user.co2_saved_kg || 0]}
+              label="CO2 Offset Progress (Weekly)"
+              color="#10b981"
+            />
           </div>
         </div>
 

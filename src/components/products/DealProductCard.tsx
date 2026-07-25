@@ -295,7 +295,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
             </div>
           </div>
 
-          {/* Row 3: Enhanced Price Display */}
+            {/* Row 3: Enhanced Price Display */}
           <div className="flex items-end justify-between mt-2">
             <div>
               <div className="flex items-baseline gap-2">
@@ -304,7 +304,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
                   initial={{ y: -4, opacity: 0.6 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className={`text-lg font-extrabold ${
+                  className={`text-2xl font-black ${
                     isDynamicPricing
                       ? "text-orange-500"
                       : freshness.level === "urgent"
@@ -321,10 +321,10 @@ export const DealProductCard = React.memo(function DealProductCardBase({
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-[10px] text-orange-500 font-bold flex items-center gap-0.5 mt-0.5"
+                  className="text-[10px] text-orange-500 font-bold flex items-center gap-1.5 mt-1 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 rounded-full"
                 >
-                  <TrendingDown size={10} className="animate-price-drop" />
-                  Price dropping live!
+                  <TrendingDown size={12} className="animate-bounce" />
+                  Price is dropping LIVE!
                 </motion.p>
               )}
             </div>
