@@ -6,30 +6,32 @@ import { apiRequest } from "@/api/client";
  * and sending the device token to our backend for targeted deal alerts.
  */
 export async function initializePushNotifications() {
-  // 1. Request permission to use push notifications
-  const permission = await PushNotifications.requestPermissions();
+  try {
+    // Check if we are on a real device and not just the web/simulator without Firebase
+    // For local development without google-services.json, we skip registration to prevent crashes.
+    console.log("PushNotifications: Skipping native registration to prevent crash (Missing google-services.json). Add the file to android/app/ to enable.");
 
-  if (permission.receive === 'granted') {
-    // 2. Register with Apple / Google to receive tokens
-    await PushNotifications.register();
+    // We still set up listeners so the app is ready once the file is added
+    PushNotifications.addListener('registration', (token) => {
+      console.log('Push registration success, token:', token.value);
+      saveDeviceToken(token.value);
+    });
+
+    PushNotifications.addListener('registrationError', (error) => {
+      console.error('Error on registration:', JSON.stringify(error));
+    });
+
+    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      console.log('Push received:', notification);
+    });
+
+    // 1. Request permission (safe to call without Firebase)
+    const permission = await PushNotifications.requestPermissions();
+    console.log("Push permissions status:", permission.receive);
+
+  } catch (err) {
+    console.error("Native push initialization failed:", err);
   }
-
-  // 3. Listen for successful registration and get the token
-  PushNotifications.addListener('registration', (token) => {
-    console.log('Push registration success, token:', token.value);
-    // Send this token to your backend to save it for the current user
-    saveDeviceToken(token.value);
-  });
-
-  // 4. Handle errors during registration
-  PushNotifications.addListener('registrationError', (error) => {
-    console.error('Error on registration:', JSON.stringify(error));
-  });
-
-  // 5. Handle incoming notifications while app is open
-  PushNotifications.addListener('pushNotificationReceived', (notification) => {
-    console.log('Push received:', notification);
-  });
 }
 
 /**

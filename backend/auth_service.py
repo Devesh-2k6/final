@@ -21,8 +21,9 @@ security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
-    # Use 10 rounds for high-speed login/signup without compromising security for this scale
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=10)).decode("utf-8")
+    # Use 4 rounds for maximum speed during demo.
+    # For a high-security production app, we would increase this back to 10-12.
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=4)).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:

@@ -106,16 +106,18 @@ export default function AuthPage() {
           phone_number: phoneNumber.trim(),
         });
 
-        // Immediate UI update
-        loginUser(res.user, res.access_token);
+        // Parallel actions for maximum speed
         clearRoleIntent();
 
-        // Parallelize or optimize redirection
-        if (res.user.is_shop_owner) {
-          router.replace("/shop/setup"); // Default to setup, useEffect will handle if shop exists
+        // Immediate redirection based on user choice, skipping redundant API lookups
+        if (isShopOwner) {
+          router.replace("/shop/setup");
         } else {
           router.replace("/deals");
         }
+
+        // Background state update (React will handle this asynchronously)
+        loginUser(res.user, res.access_token);
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -128,15 +130,14 @@ export default function AuthPage() {
     try {
       const res = await login({ email: email.trim(), password });
 
-      // Immediate UI update
-      loginUser(res.user, res.access_token);
       clearRoleIntent();
 
-      if (res.user.is_shop_owner) {
-        router.replace("/shop");
-      } else {
-        router.replace("/deals");
-      }
+      // Determine redirection path immediately
+      const nextPath = res.user.is_shop_owner ? "/shop" : "/deals";
+      router.replace(nextPath);
+
+      // Background state update
+      loginUser(res.user, res.access_token);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
