@@ -143,7 +143,7 @@ export default function CustomerDealsPage() {
   const { data: deepSearchData, error: deepSearchError, isLoading: deepSearchLoading, mutate: mutateDeepSearch } = useSWR(
     deepSearchKey,
     (params) => getDeepSearchResults(params),
-    { refreshInterval: 5000 }
+    { refreshInterval: 15000 }
   );
 
   const { products: standardProducts, status: standardStatus, errorMessage: standardErrorMessage, refetch: refetchStandard } = useProducts({ 
