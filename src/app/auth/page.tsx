@@ -317,9 +317,25 @@ export default function AuthPage() {
           )}
 
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-3">
-              {error}
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-4 py-3">
+                {error}
+              </p>
+              {error.includes("connect") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ip = prompt("Enter your local backend IP (e.g. 192.168.1.5:8000) or keep empty for localhost:8000:");
+                    const newUrl = ip ? `http://${ip}` : "http://localhost:8000";
+                    localStorage.setItem("EXPIRYGO_API_OVERRIDE", newUrl);
+                    window.location.reload();
+                  }}
+                  className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/5 transition"
+                >
+                  ⚙️ Switch to Local Demo Server
+                </button>
+              )}
+            </div>
           )}
 
           <button

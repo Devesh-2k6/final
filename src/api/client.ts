@@ -12,7 +12,14 @@ export type ApiRequestOptions = Omit<RequestInit, "body"> & {
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { json: jsonBody, body: explicitBody, headers: initHeaders, skipAuth, ...rest } = options;
-  const base = getPublicApiBaseUrl();
+
+  // Use override if present (for demo day reliability)
+  let base = getPublicApiBaseUrl();
+  if (typeof window !== "undefined") {
+    const override = localStorage.getItem("EXPIRYGO_API_OVERRIDE");
+    if (override) base = override;
+  }
+
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${normalizedPath}`;
 

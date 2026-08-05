@@ -268,12 +268,17 @@ async def deep_search_products(
     parsed_expiry_urgency = None
     
     if semantic and q:
-        parsed = await parse_semantic_search(q)
-        parsed_keywords = parsed.get("keywords") or [q]
-        parsed_categories = parsed.get("categories") or []
-        parsed_max_price = parsed.get("max_price")
-        parsed_min_discount_pct = parsed.get("min_discount_pct")
-        parsed_expiry_urgency = parsed.get("expiry_urgency")
+        try:
+            parsed = await parse_semantic_search(q)
+            parsed_keywords = parsed.get("keywords") or [q]
+            parsed_categories = parsed.get("categories") or []
+            parsed_max_price = parsed.get("max_price")
+            parsed_min_discount_pct = parsed.get("min_discount_pct")
+            parsed_expiry_urgency = parsed.get("expiry_urgency")
+        except Exception as e:
+            logger.error(f"Semantic search parsing failed, using fallback: {e}")
+            # Reliable local fallback already exists in services/ai.py but we wrap here too
+            parsed_keywords = [q]
 
     query = db.query(Product).join(Product.shop).options(contains_eager(Product.shop)).filter(
         Product.quantity > 0,
@@ -283,15 +288,16 @@ async def deep_search_products(
     
     from sqlalchemy import or_
     if parsed_keywords:
+        # Optimization: use a single filter with OR logic for keywords to handle 500+ users
+        keyword_filters = []
         for token in parsed_keywords:
-            if token:
-                query = query.filter(
-                    or_(
-                        Product.name.ilike(f"%{token}%"),
-                        Product.description.ilike(f"%{token}%"),
-                        Shop.name.ilike(f"%{token}%")
-                    )
-                )
+            if token and len(token) > 1:
+                pattern = f"%{token}%"
+                keyword_filters.append(Product.name.ilike(pattern))
+                keyword_filters.append(Product.description.ilike(pattern))
+                keyword_filters.append(Shop.name.ilike(pattern))
+        if keyword_filters:
+            query = query.filter(or_(*keyword_filters))
                 
     if parsed_categories:
         enum_categories = []
