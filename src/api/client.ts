@@ -41,16 +41,29 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     body = JSON.stringify(jsonBody);
   }
 
-  const res = await fetch(url, { ...rest, headers, body });
+  // Setup timeout to prevent "hanging" during login if server is asleep
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
-  const contentType = res.headers.get("content-type") ?? "";
-  const isJson = contentType.includes("application/json");
-  const parsedBody = isJson ? await res.json().catch(() => null) : await res.text();
+  try {
+    const res = await fetch(url, { ...rest, headers, body, signal: controller.signal });
+    clearTimeout(timeoutId);
 
-  if (!res.ok) {
-    const message = parseApiErrorMessage(res.status, parsedBody);
-    throw new ApiError(res.status, parsedBody, message);
+    const contentType = res.headers.get("content-type") ?? "";
+    const isJson = contentType.includes("application/json");
+    const parsedBody = isJson ? await res.json().catch(() => null) : await res.text();
+
+    if (!res.ok) {
+      const message = parseApiErrorMessage(res.status, parsedBody);
+      throw new ApiError(res.status, parsedBody, message);
+    }
+
+    return parsedBody as T;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error("Server is taking too long to respond. It might be waking up or down.");
+    }
+    throw err;
   }
-
-  return parsedBody as T;
 }
