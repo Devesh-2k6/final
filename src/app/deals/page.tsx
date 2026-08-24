@@ -412,21 +412,21 @@ export default function CustomerDealsPage() {
   const initial = user?.name ? user.name[0].toUpperCase() : "?";
 
   return (
-    <div className="min-h-screen bg-[#F4FBF7] pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-[#ECFDF5] via-[#F8FAFC] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-3xl border-b border-emerald-100/50 px-4 pt-4 pb-3">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-3xl border-b border-emerald-100/60 dark:border-gray-800 px-4 pt-4 pb-3">
         <div className="max-w-2xl mx-auto">
           {/* Top row: brand + user */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="bg-emerald-500 p-1.5 rounded-xl text-white shadow-lg shadow-emerald-500/30">
-                <Leaf size={16} />
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2 rounded-xl text-white shadow-lg shadow-emerald-500/20">
+                <Leaf size={18} />
               </div>
               <div>
-                <h1 className="text-base font-black text-gray-900 dark:text-white leading-none">
-                  Fresh<span className="text-emerald-500">Save</span>
+                <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">
+                  Expiry<span className="text-emerald-600 dark:text-emerald-400">Go</span>
                 </h1>
-                <p className="text-[10px] text-gray-400 leading-none mt-0.5">Nearby deals</p>
+                <p className="text-[10px] font-semibold text-slate-400 dark:text-gray-400 leading-none mt-0.5">Nearby rescued deals</p>
               </div>
             </div>
 

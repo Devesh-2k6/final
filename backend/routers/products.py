@@ -44,16 +44,21 @@ def _calculate_dynamic_price(p: Product, now: datetime) -> float:
     return round(current, 2)
 
 
-def _calculate_automatic_discount(original_price: float, days_left: int) -> float:
+def _calculate_automatic_discount(original_price: float, days_left: int, hours_left: float = 999.0) -> float:
     """
-    Calculate automatic discount based on days until expiry.
-    
-    - 1–2 days left → 70%
-    - 3–5 days → 50%
-    - 6–10 days → 30%
-    - More than 10 days → 10%
+    Calculate dynamic automatic discount based on exact hours and days until expiry.
+    - Under 6 hours left → 85% off (Emergency Flash Clearance)
+    - Under 12 hours left → 75% off (Same-Day Expiry Flash)
+    - 1–2 days left → 70% off
+    - 3–5 days → 50% off
+    - 6–10 days → 30% off
+    - More than 10 days → 10% off
     """
-    if days_left <= 2:
+    if hours_left <= 6:
+        discount_percent = 85
+    elif hours_left <= 12:
+        discount_percent = 75
+    elif days_left <= 2:
         discount_percent = 70
     elif days_left <= 5:
         discount_percent = 50
@@ -472,13 +477,13 @@ async def create_product(
     
     # Calculate days until expiry
     now = datetime.now(UTC).replace(tzinfo=None)
-    days_left = (product_in.expiry_date.date() - now.date()).days
+    hours_left = max(0.0, (product_in.expiry_date - now).total_seconds() / 3600.0)
     
-    # Auto-calculate discount based on days left (unless override is provided)
+    # Auto-calculate discount based on days and hours left (unless override is provided)
     if product_in.discount_price is not None:
         discount_price = product_in.discount_price
     else:
-        discount_price = _calculate_automatic_discount(product_in.original_price, days_left)
+        discount_price = _calculate_automatic_discount(product_in.original_price, days_left, hours_left)
     
     product = Product(
         shop_id=shop.id,

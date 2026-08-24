@@ -45,6 +45,10 @@ def user_to_dict(user: User) -> dict:
         "email": user.email,
         "name": user.name,
         "is_shop_owner": user.is_shop_owner,
+        "phone_number": getattr(user, "phone_number", None),
+        "total_money_saved": getattr(user, "total_money_saved", 0.0) or 0.0,
+        "total_items_saved": getattr(user, "total_items_saved", 0) or 0,
+        "co2_saved_kg": getattr(user, "co2_saved_kg", 0.0) or 0.0,
     }
 
 

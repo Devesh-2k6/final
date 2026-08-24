@@ -3,46 +3,47 @@
 @custom-variant dark (&:not(*));
 
 @theme {
-  --color-primary: #D66B1F; /* Terracotta orange */
-  --color-primary-light: #C25C14; /* Darker terracotta */
-  --color-secondary: #E39B14; /* Golden orange */
-  --color-danger: #DC2626; /* Red 600 */
-  --color-background: #F4FBF7; /* Light sage cream */
+  --color-primary: #10B981; /* Emerald 500 */
+  --color-primary-light: #34D399; /* Emerald 400 */
+  --color-primary-dark: #059669; /* Emerald 600 */
+  --color-secondary: #F59E0B; /* Amber 500 */
+  --color-danger: #EF4444; /* Red 500 */
+  --color-background: #F8FAFC; /* Pleasant Soft Slate Cream */
   --color-surface: #FFFFFF;
   --color-text-primary: #0F172A; /* Slate 900 */
   --color-text-secondary: #64748B; /* Slate 500 */
 
-  --color-emerald-50: #FCF8EC;
-  --color-emerald-100: #F9F2D8;
-  --color-emerald-200: #F3E4B0;
-  --color-emerald-300: #ECC77D;
-  --color-emerald-400: #E5A84D;
-  --color-emerald-500: #D66B1F;
-  --color-emerald-600: #C25C14;
-  --color-emerald-700: #9E450B;
-  --color-emerald-800: #7A3105;
-  --color-emerald-900: #551D01;
-  --color-emerald-950: #300C00;
+  --color-emerald-50: #ECFDF5;
+  --color-emerald-100: #D1FAE5;
+  --color-emerald-200: #A7F3D0;
+  --color-emerald-300: #6EE7B7;
+  --color-emerald-400: #34D399;
+  --color-emerald-500: #10B981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065F46;
+  --color-emerald-900: #064E3B;
+  --color-emerald-950: #022C22;
 
-  --color-green-50: #FCF8EC;
-  --color-green-100: #F9F2D8;
-  --color-green-200: #F3E4B0;
-  --color-green-300: #ECC77D;
-  --color-green-400: #E5A84D;
-  --color-green-500: #D66B1F;
-  --color-green-600: #C25C14;
-  --color-green-700: #9E450B;
-  --color-green-800: #7A3105;
-  --color-green-900: #551D01;
-  --color-green-950: #300C00;
+  --color-green-50: #ECFDF5;
+  --color-green-100: #D1FAE5;
+  --color-green-200: #A7F3D0;
+  --color-green-300: #6EE7B7;
+  --color-green-400: #34D399;
+  --color-green-500: #10B981;
+  --color-green-600: #059669;
+  --color-green-700: #047857;
+  --color-green-800: #065F46;
+  --color-green-900: #064E3B;
+  --color-green-950: #022C22;
 
   --font-sans: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: #FAF5E7;
-    --foreground: #3C2314;
+    --background: #F8FAFC;
+    --foreground: #0F172A;
   }
 
   body {
@@ -57,15 +58,15 @@
 
 @layer utilities {
   .glass {
-    background-color: rgba(255, 253, 249, 0.7);
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(214, 107, 31, 0.1);
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(16, 185, 129, 0.12);
   }
   
   .glass-card {
-    background-color: #FFFDF9;
-    border: 1px solid rgba(214, 107, 31, 0.1);
-    box-shadow: 0 10px 30px -10px rgba(214, 107, 31, 0.06);
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.08);
     transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   }
 

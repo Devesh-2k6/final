@@ -106,6 +106,7 @@ function getExplainabilityReasoning(product: any, forecast: any) {
 export default function ShopDashboardOverview() {
   const [shop, setShop] = useState<ShopWithDescription | null>(null);
   const [shopId, setShopId] = useState<string | undefined>(undefined);
+  const [loadingShop, setLoadingShop] = useState<boolean>(true);
 
   const [activeTab, setActiveTab] = useState<"overview" | "ai">("overview");
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -134,6 +135,7 @@ export default function ShopDashboardOverview() {
   };
 
   useEffect(() => {
+    setLoadingShop(true);
     getMyShop()
       .then((data) => {
         setShop(data);
@@ -142,6 +144,9 @@ export default function ShopDashboardOverview() {
       .catch(() => {
         setShop(null);
         setShopId(undefined);
+      })
+      .finally(() => {
+        setLoadingShop(false);
       });
   }, []);
 
@@ -249,6 +254,14 @@ export default function ShopDashboardOverview() {
       { name: "Revenue Summary", value: `₹${revenueSummary.toFixed(0)}`, icon: DollarSign, change: "Total Sales", changeType: "positive" },
     ];
   }, [products, analytics]);
+
+  if (loadingShop) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-emerald-500" size={36} />
+      </div>
+    );
+  }
 
   if (!shop) {
     return (

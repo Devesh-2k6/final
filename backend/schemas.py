@@ -37,9 +37,47 @@ class RegisterRequest(BaseModel):
     is_shop_owner: bool = False
     phone_number: Optional[str] = None
 
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean or "." not in v_clean.split("@")[-1]:
+            raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters long.")
+        return v
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v_clean = v.strip()
+        if not v_clean:
+            raise ValueError("Name cannot be empty.")
+        return v_clean
+
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean:
+            raise ValueError("Email cannot be empty.")
+        return v_clean
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Password cannot be empty.")
+        return v
 
 class AuthResponse(BaseModel):
     access_token: str

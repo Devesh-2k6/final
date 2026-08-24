@@ -65,24 +65,14 @@ app = FastAPI(
 # Gzip compress large responses
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# CORS Configuration
-origins = settings.cors_origins_list
-if origins == ["*"]:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex="https?://.*",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS Configuration - Optimized for React + Capacitor Phone Deployment
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allow all origins for mobile deployment
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Structured request/response logging middleware
 @app.middleware("http")

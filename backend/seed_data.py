@@ -15,11 +15,12 @@ if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
 from datetime import datetime, timedelta
-from db.session import SessionLocal
+from db.session import SessionLocal, init_db
 from db.models import User, Shop, Product
 from auth_service import hash_password
 
 def seed_database():
+    init_db()
     db = SessionLocal()
     
     try:
