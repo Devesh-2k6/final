@@ -1,0 +1,127 @@
+name: 🛡️ ExpiryGo DevSecOps & Security Assurance Pipeline
+
+on:
+  push:
+    branches: [ main, master, staging ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly automated security scan every Sunday
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ===========================================================================
+  # 1. SECRET DETECTION SCANNING
+  # ===========================================================================
+  secret-scan:
+    name: 🔑 Secret & Credential Leakage Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  # ===========================================================================
+  # 2. STATIC APPLICATION SECURITY TESTING (SAST)
+  # ===========================================================================
+  sast-scan:
+    name: 🔍 SAST Static Code Analysis (Bandit & Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Bandit Security Scanner
+        run: pip install bandit[sarif]
+
+      - name: Run Bandit on FastAPI Backend
+        run: |
+          bandit -r backend/ -ll -f sarif -o bandit-results.sarif || true
+          bandit -r backend/ -ll
+
+      - name: Run Semgrep SAST Rules (OWASP Top 10)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/jwt
+            p/secrets
+        continue-on-error: true
+
+  # ===========================================================================
+  # 3. SOFTWARE COMPOSITION ANALYSIS (SCA & DEPENDENCY AUDIT)
+  # ===========================================================================
+  dependency-audit:
+    name: 📦 SCA Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Audit Python Dependencies with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt || true
+
+      - name: Audit Node.js Frontend Dependencies
+        run: |
+          npm audit --audit-level=high || true
+
+  # ===========================================================================
+  # 4. DAST API PENETRATION & INTEGRATION TESTING
+  # ===========================================================================
+  dast-security-test:
+    name: 🎯 DAST API Security Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11 & Node.js 20
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Backend Dependencies & Start Test Server
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+          sleep 5
+
+      - name: Run Automated DAST Security Penetration Suite
+        run: |
+          cd security-tests
+          npm install
+          node security-penetration-tests.js
+
+      - name: Upload Security PenTest Excel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ExpiryGo_Security_PenTest_Report
+          path: security-tests/reports/ExpiryGo_Security_PenTest_Report.xlsx

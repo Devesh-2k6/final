@@ -6,7 +6,7 @@ export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
 export const CURRENT_LAN_IP = "10.189.164.184";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
-export const TUNNEL_API_URL = "https://slick-points-look.loca.lt";
+export const TUNNEL_API_URL = "https://good-queens-tap.loca.lt";
 
 /**
  * Returns the default API URL depending on the platform:

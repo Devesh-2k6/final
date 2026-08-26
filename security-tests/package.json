@@ -1,0 +1,13 @@
+{
+  "name": "expirygo-security-tests",
+  "version": "1.0.0",
+  "description": "ExpiryGo DAST Security Penetration Test Suite & OWASP API Top 10 Audit",
+  "main": "security-penetration-tests.js",
+  "type": "module",
+  "scripts": {
+    "test": "node security-penetration-tests.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
+}

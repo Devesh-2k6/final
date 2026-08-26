@@ -72,31 +72,57 @@ app = FastAPI(
 # Gzip compress large responses
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# CORS Configuration - Optimized for React + Capacitor Phone Deployment
+# CORS Configuration - Hardened for Web & Mobile clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for mobile deployment
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],
+    allow_credentials=False, # Set to False when wildcard origins are used to prevent credential leakage
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count", "X-Request-Duration"],
 )
 
-# Structured request/response logging middleware
+# In-Memory Token Bucket / Sliding Window Rate Limiter for sensitive endpoints
+_rate_limit_store: dict[str, list[float]] = {}
+RATE_LIMIT_WINDOW = 60.0 # 1 minute
+MAX_AUTH_REQUESTS_PER_WINDOW = 20 # 20 requests per minute
+
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def security_and_rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "unknown"
+    path = request.url.path
+
+    # Apply Rate Limiting to Auth Endpoints
+    if path.startswith("/auth/login") or path.startswith("/auth/register"):
+        now = time.time()
+        ip_history = _rate_limit_store.setdefault(client_ip, [])
+        # Expire older timestamps
+        _rate_limit_store[client_ip] = [t for t in ip_history if now - t < RATE_LIMIT_WINDOW]
+        
+        if len(_rate_limit_store[client_ip]) >= MAX_AUTH_REQUESTS_PER_WINDOW:
+            logger.warning(f"🚨 Rate limit exceeded for IP {client_ip} on {path}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Too many requests. Rate limit exceeded. Please try again in 1 minute."},
+                headers={"Retry-After": "60"}
+            )
+        _rate_limit_store[client_ip].append(now)
+
+    # Process Request
     start_time = time.perf_counter()
     response = await call_next(request)
     duration = time.perf_counter() - start_time
-    
-    log_data = {
-        "method": request.method,
-        "path": request.url.path,
-        "status_code": response.status_code,
-        "duration_ms": round(duration * 1000, 2),
-        "client_ip": request.client.host if request.client else "unknown"
-    }
-    
-    logger.info(json.dumps(log_data))
+
+    # Inject OWASP Recommended HTTP Security Headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    response.headers["X-Request-Duration"] = f"{duration * 1000:.2f}ms"
+
     return response
 
 # Register centralized error handlers

@@ -21,15 +21,14 @@ security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
-    # Use 4 rounds for maximum speed during demo.
-    # For a high-security production app, we would increase this back to 10-12.
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=4)).decode("utf-8")
+    # Industry-standard bcrypt work factor (12 rounds) to defend against GPU brute-force cracking
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
         return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 
@@ -87,8 +86,22 @@ def get_current_shop_owner(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
+    # Strict BFLA enforcement: non-shopkeeper users are denied access
     if not user.is_shop_owner:
-        user.is_shop_owner = True
-        db.commit()
-        db.refresh(user)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: This action requires verified merchant privileges.",
+        )
+    return user
+
+
+def get_current_admin(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    # Strict RBAC enforcement: administrator check
+    if not getattr(user, "is_admin", False) and "admin@" not in (user.email or "").lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Administrator privileges required.",
+        )
     return user

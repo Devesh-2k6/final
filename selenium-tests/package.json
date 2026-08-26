@@ -1,0 +1,14 @@
+{
+  "name": "expirygo-selenium-tests",
+  "version": "1.0.0",
+  "description": "Selenium E2E Automated Test Suite & Excel Reporting for ExpiryGo Web Frontend",
+  "main": "tests/login-tests.js",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/login-tests.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "selenium-webdriver": "^4.27.0"
+  }
+}
