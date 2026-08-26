@@ -17,12 +17,6 @@ def leave_review(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if user.is_shop_owner:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Shop owners cannot leave reviews."
-        )
-        
     shop = db.get(Shop, shop_id)
     if not shop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")

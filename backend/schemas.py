@@ -120,8 +120,8 @@ class ProductBase(BaseModel):
     quantity: int = Field(..., ge=0, description="Stock quantity cannot be negative")
     manufacturing_date: datetime
     expiry_date: datetime
-    front_image_url: str
-    expiry_image_url: str
+    front_image_url: Optional[str] = None
+    expiry_image_url: Optional[str] = None
     voice_note_url: Optional[str] = None
     description: Optional[str] = None
     is_active: bool = True
@@ -133,10 +133,12 @@ class ProductBase(BaseModel):
 
     @field_validator('front_image_url', 'expiry_image_url')
     @classmethod
-    def validate_images(cls, v: str) -> str:
+    def validate_images(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
         v_strip = v.strip()
         if not v_strip:
-            raise ValueError("Image URL cannot be empty")
+            return None
         if not (v_strip.startswith("http://") or v_strip.startswith("https://") or v_strip.startswith("/")):
             raise ValueError("Image must have a valid URL or path")
         return v_strip
@@ -370,4 +372,15 @@ class RecipeResponse(BaseModel):
     waste_saved_summary: str
 
 
+# =========================
+# BARCODE LOOKUP
+# =========================
 
+class BarcodeLookupResponse(BaseModel):
+    barcode: str
+    name: Optional[str] = None
+    brand: Optional[str] = None
+    category: Optional[ProductCategory] = None
+    description: Optional[str] = None
+    suggested_price: Optional[float] = None
+    image_url: Optional[str] = None

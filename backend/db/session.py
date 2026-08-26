@@ -2,15 +2,11 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-
 from db.base import Base
-
 from config import settings
-
-from sqlalchemy import create_engine, text
 
 _backend_dir = Path(__file__).resolve().parent.parent
 LOCAL_DEV_DB = f"sqlite:///{_backend_dir / 'expirygo_local_dev.db'}"

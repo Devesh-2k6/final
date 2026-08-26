@@ -9,6 +9,9 @@ import json
 from datetime import datetime, timedelta
 import random
 import string
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 BASE_URL = "http://localhost:8000"
 

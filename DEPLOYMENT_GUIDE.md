@@ -122,18 +122,16 @@ Here is a breakdown of the key external integrations used by the backend and why
 ## **STEP 4: Deploy Frontend to Vercel**
 
 1. Go to: https://vercel.com
-2. Sign up with GitHub
-3. Click "Import Project" → Select your `expiry-go` repo
-4. Select "Next.js" as framework
-5. Set Root Directory: `frontend`
-6. Add environment variable:
-   ```
-   NEXT_PUBLIC_API_URL=[YOUR_BACKEND_URL]
-   Example: https://yourapp-prod.up.railway.app
-   ```
-7. Click "Deploy"
-8. Wait ~2-3 minutes
-9. Get your frontend URL (e.g., `https://expiry-go.vercel.app`)
+2. Sign up or log in with GitHub
+3. Click "Add New..." → "Project" → Import your `expiry-go` repository
+4. Framework Preset will auto-detect as: **Next.js**
+5. Root Directory: `./` (leave default)
+6. Add environment variable under **Environment Variables**:
+   - **Key:** `NEXT_PUBLIC_API_URL`
+   - **Value:** `https://yourapp-prod.up.railway.app` (or your deployed backend URL on Render/Railway/Tunnel)
+7. Click **Deploy**
+8. Wait ~1-2 minutes for Vercel to build and publish your web app!
+9. Your web app is live at `https://your-project.vercel.app` 🎉
 
 ---
 

@@ -20,12 +20,6 @@ def create_reservation(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if user.is_shop_owner:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Shop owners cannot make reservations."
-        )
-        
     # Optimized query to load Product and Shop together with a write lock to prevent race conditions
     product = db.query(Product).options(joinedload(Product.shop)).filter(Product.id == res_in.product_id).with_for_update().first()
     if not product or product.quantity < res_in.quantity:
@@ -98,6 +92,39 @@ def get_my_reservations(
     return db.query(Reservation).filter(Reservation.user_id == user.id)\
         .options(joinedload(Reservation.product).joinedload(Product.shop))\
         .order_by(Reservation.created_at.desc()).all()
+
+
+@router.post("/verify/{pickup_code}")
+def verify_reservation_by_code(
+    pickup_code: str,
+    user: Annotated[User, Depends(get_current_shop_owner)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    shop = _get_owner_shop(user, db)
+    reservation = db.query(Reservation).options(joinedload(Reservation.product)).filter(
+        Reservation.shop_id == shop.id,
+        Reservation.pickup_code.ilike(pickup_code.strip())
+    ).first()
+    if not reservation:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reservation with this code not found for your shop.")
+    if reservation.status != ReservationStatus.PENDING:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reservation already processed")
+
+    reservation.status = ReservationStatus.COMPLETED
+    reservation.completed_at = datetime.now(UTC).replace(tzinfo=None)
+    
+    customer = db.get(User, reservation.user_id)
+    if customer:
+        customer.total_items_saved += reservation.quantity
+        customer.co2_saved_kg += (0.5 * reservation.quantity)
+        original_total = reservation.product.original_price * reservation.quantity
+        saved_amount = original_total - reservation.total_price
+        if saved_amount > 0:
+            customer.total_money_saved += saved_amount
+
+    db.commit()
+    db.refresh(reservation)
+    return {"message": "Reservation verified successfully!", "status": reservation.status}
 
 
 @router.post("/{reservation_id}/verify")
@@ -184,9 +211,6 @@ def checkout_reservation(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if user.is_shop_owner:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Shop owners cannot checkout.")
-        
     reservation = db.get(Reservation, reservation_id)
     if not reservation or reservation.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found")

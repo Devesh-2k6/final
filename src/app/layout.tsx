@@ -5,6 +5,7 @@ import "./globals.css";
 import { HydrationZapper } from "@/components/HydrationZapper";
 import { AppInitializer } from "@/components/AppInitializer";
 import { AuthenticationProvider } from "@/contexts/AuthenticationContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 import { LiveDealToast } from "@/components/ui/LiveDealToast";
 
@@ -35,10 +36,12 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen bg-[#111111] text-white selection:bg-emerald-500/30 overflow-x-hidden relative`} suppressHydrationWarning>
         <HydrationZapper />
         <AppInitializer />
-        <AuthenticationProvider>
-          {children}
-          <LiveDealToast />
-        </AuthenticationProvider>
+        <LanguageProvider>
+          <AuthenticationProvider>
+            {children}
+            <LiveDealToast />
+          </AuthenticationProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthenticationContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { DealProductCard } from "@/components/products/DealProductCard";
 import { DealProductSkeleton } from "@/components/products/DealProductSkeleton";
 import { getErrorMessage } from "@/api/errors";
@@ -49,6 +51,7 @@ const FILTERS = ["All", "AI Recommended ✨", "Saved ❤️", "BAKERY", "DAIRY",
 
 export default function CustomerDealsPage() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -431,6 +434,9 @@ export default function CustomerDealsPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Language Switcher */}
+              <LanguageSelector compact />
+
               {/* Notifications bell */}
               <Link
                 href="/notifications"
@@ -527,7 +533,7 @@ export default function CustomerDealsPage() {
               <input
                 id="deals-search"
                 type="search"
-                placeholder={semanticSearch ? "Ask AI for something (e.g. dinner under ₹200)" : "Search near-expiry deals…"}
+                placeholder={semanticSearch ? "Ask AI (e.g., 'dinner under ₹200')" : t("search.placeholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-sm text-slate-800 placeholder:text-slate-400 border border-emerald-100/50 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all font-semibold ${semanticSearch ? "ring-2 ring-indigo-500/20" : ""}`}
@@ -730,16 +736,16 @@ export default function CustomerDealsPage() {
                   </div>
 
                   {/* Urgency and AI features */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                     {/* Expiry Urgency Select */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-col justify-between">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
                         Expiry Urgency
                       </label>
                       <select
                         value={expiryUrgency}
                         onChange={(e) => setExpiryUrgency(e.target.value)}
-                        className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 outline-none text-gray-900 dark:text-white"
+                        className="w-full text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 outline-none text-gray-900 dark:text-white font-medium"
                       >
                         <option value="any">Any Expiry</option>
                         <option value="today">Expiring Today (&lt;24h)</option>
@@ -749,12 +755,12 @@ export default function CustomerDealsPage() {
                     </div>
 
                     {/* AI Semantic Search Toggle */}
-                    <div className="flex items-center justify-between gap-3 pt-2 sm:pt-0">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                          AI Semantic Parsing
+                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <label className="block text-[10px] font-bold text-gray-900 dark:text-white uppercase tracking-wider truncate">
+                          AI Semantic
                         </label>
-                        <span className="text-[9px] text-gray-400 leading-none">Understand query intent</span>
+                        <span className="text-[9px] text-gray-400 block truncate">Intent search</span>
                       </div>
                       <button
                         type="button"
@@ -775,12 +781,12 @@ export default function CustomerDealsPage() {
                     </div>
 
                     {/* AI Recipe Matcher Toggle */}
-                    <div className="flex items-center justify-between gap-3 pt-2 sm:pt-0">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                          Recipe Ingredient Match
+                    <div className="bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <label className="block text-[10px] font-bold text-gray-900 dark:text-white uppercase tracking-wider truncate">
+                          Recipe Match
                         </label>
-                        <span className="text-[9px] text-gray-400 leading-none">Assemble recipe bundles</span>
+                        <span className="text-[9px] text-gray-400 block truncate">Bundle recipes</span>
                       </div>
                       <button
                         type="button"

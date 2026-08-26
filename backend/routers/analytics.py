@@ -167,30 +167,16 @@ def get_shop_ml_diagnostics(
 ):
     shop = _get_owner_shop(user, db)
     
-    # Train the diagnostics model on the live database
+    # Train the diagnostics model on the live database with genuine gradient descent
     diag = train_diagnostics_model(db)
-    
-    loss_history = [
-        {"epoch": 0, "loss": 0.654},
-        {"epoch": 20, "loss": 0.432},
-        {"epoch": 40, "loss": 0.312},
-        {"epoch": 60, "loss": 0.245},
-        {"epoch": 80, "loss": 0.198},
-        {"epoch": 100, "loss": 0.165},
-        {"epoch": 120, "loss": 0.143},
-        {"epoch": 140, "loss": 0.128},
-        {"epoch": 160, "loss": 0.118},
-        {"epoch": 180, "loss": 0.112},
-        {"epoch": 200, "loss": 0.108}
-    ]
     
     return {
         "weights": diag["weights"],
         "bias": diag["bias"],
-        "epochs": 200,
-        "learning_rate": 0.05,
+        "epochs": diag.get("epochs", 200),
+        "learning_rate": diag.get("learning_rate", 0.05),
         "sample_count": diag["sample_count"],
-        "loss_history": loss_history,
-        "algorithm": "Multivariate Sigmoid Regression (Gradient Descent)",
+        "loss_history": diag["loss_history"],
+        "algorithm": "Multivariate Logistic Regression (Gradient Descent Loss)",
         "accuracy": diag["accuracy"]
     }

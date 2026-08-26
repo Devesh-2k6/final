@@ -92,16 +92,17 @@ export default function AuthPage() {
     setError("");
 
     if (tab === "signup") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        setError("Please enter a valid email address (e.g., name@example.com).");
+        return;
+      }
       if (password.length < 6) {
-        setError("Password must be at least 6 characters.");
+        setError("Password must be at least 6 characters for security.");
         return;
       }
       if (password !== confirmPassword) {
         setError("Passwords do not match.");
-        return;
-      }
-      if (!phoneNumber.trim()) {
-        setError("Mobile phone number is required.");
         return;
       }
       
@@ -109,10 +110,10 @@ export default function AuthPage() {
       try {
         const res = await register({
           name: name.trim(),
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password,
           is_shop_owner: isShopOwner,
-          phone_number: phoneNumber.trim(),
+          phone_number: phoneNumber.trim() || undefined,
         });
 
         // 1. Immediately store token and update React state
@@ -126,7 +127,12 @@ export default function AuthPage() {
           router.replace("/deals");
         }
       } catch (err: unknown) {
-        setError(getErrorMessage(err));
+        const msg = getErrorMessage(err);
+        if (msg.toLowerCase().includes("already registered")) {
+          setError("This email address is already registered. Please switch to the Sign In tab to log in.");
+        } else {
+          setError(msg);
+        }
       } finally {
         setSubmitting(false);
       }

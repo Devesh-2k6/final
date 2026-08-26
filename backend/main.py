@@ -2,6 +2,7 @@ import time
 import json
 import logging
 import os
+import sys
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from websocket_manager import manager
@@ -23,6 +24,7 @@ from routers import (
     orders,
     interactions,
     analytics,
+    translation,
 )
 from routers.errors import register_error_handlers
 
@@ -38,18 +40,23 @@ async def lifespan(_app: FastAPI):
     logger.info(f"Backend database initialized in {elapsed:.3f} seconds.")
     
     # Detect if running under tests
-    import sys
-    import os
     is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "True"
     
     # Initialize Redis Cache
     try:
-        redis = aioredis.from_url(settings.REDIS_URL, encoding="utf8", decode_responses=True)
-        await redis.ping()
+        import asyncio
+        redis = aioredis.from_url(
+            settings.REDIS_URL,
+            encoding="utf8",
+            decode_responses=True,
+            socket_connect_timeout=0.2,
+            socket_timeout=0.2,
+        )
+        await asyncio.wait_for(redis.ping(), timeout=0.2)
         FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache", enable=not is_testing)
         logger.info(f"Redis cache initialized successfully (enabled: {not is_testing}).")
     except Exception as e:
-        logger.warning(f"Redis connection failed: {e}. Falling back to InMemoryBackend for local caching.")
+        logger.warning(f"Redis connection failed or unavailable: {e}. Using InMemoryBackend for fast local caching.")
         from fastapi_cache.backends.inmemory import InMemoryBackend
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache", enable=not is_testing)
         
@@ -102,7 +109,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, Exception):
         manager.disconnect(websocket)
 
 # Include all subrouters
@@ -116,6 +123,7 @@ app.include_router(reservations.router)
 app.include_router(orders.router)
 app.include_router(interactions.router)
 app.include_router(analytics.router)
+app.include_router(translation.router)
 
 # Serve local static uploads fallback
 os.makedirs("static/uploads", exist_ok=True)

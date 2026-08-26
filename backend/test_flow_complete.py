@@ -1,4 +1,4 @@
-import requests
+import requests as _orig_requests
 import json
 from datetime import datetime, timedelta
 import random
@@ -6,6 +6,57 @@ import string
 import sys
 
 BASE_URL = "http://127.0.0.1:8000"
+
+class SmartClient:
+    def __init__(self):
+        self.use_live = False
+        try:
+            r = _orig_requests.get(f"{BASE_URL}/health", timeout=0.5)
+            if r.status_code == 200:
+                self.use_live = True
+        except Exception:
+            pass
+        if not self.use_live:
+            from fastapi.testclient import TestClient
+            from fastapi_cache import FastAPICache
+            from fastapi_cache.backends.inmemory import InMemoryBackend
+            from main import app
+            from db.session import init_db
+            init_db()
+            FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+            self._client = TestClient(app)
+
+    def _format_url(self, url: str) -> str:
+        if not self.use_live:
+            return url.replace(BASE_URL, "")
+        return url
+
+    def get(self, url, **kwargs):
+        if self.use_live:
+            return _orig_requests.get(url, **kwargs)
+        return self._client.get(self._format_url(url), **kwargs)
+
+    def post(self, url, **kwargs):
+        if self.use_live:
+            return _orig_requests.post(url, **kwargs)
+        return self._client.post(self._format_url(url), **kwargs)
+
+    def put(self, url, **kwargs):
+        if self.use_live:
+            return _orig_requests.put(url, **kwargs)
+        return self._client.put(self._format_url(url), **kwargs)
+
+    def patch(self, url, **kwargs):
+        if self.use_live:
+            return _orig_requests.patch(url, **kwargs)
+        return self._client.patch(self._format_url(url), **kwargs)
+
+    def delete(self, url, **kwargs):
+        if self.use_live:
+            return _orig_requests.delete(url, **kwargs)
+        return self._client.delete(self._format_url(url), **kwargs)
+
+requests = SmartClient()
 
 def generate_random_string(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))

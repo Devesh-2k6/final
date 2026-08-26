@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tag, MapPin, Bell, User, ShieldCheck } from "lucide-react";
-
-const NAV_ITEMS = [
-  { href: "/deals", label: "Deals", icon: Tag },
-  { href: "/map", label: "Map", icon: MapPin },
-  { href: "/reservations", label: "Orders", icon: ShieldCheck },
-  { href: "/notifications", label: "Alerts", icon: Bell },
-  { href: "/profile", label: "Profile", icon: User },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useLanguage();
+
+  const NAV_ITEMS = [
+    { href: "/deals", label: t("nav.deals"), icon: Tag },
+    { href: "/map", label: t("nav.map"), icon: MapPin },
+    { href: "/reservations", label: t("nav.orders"), icon: ShieldCheck },
+    { href: "/notifications", label: t("nav.alerts"), icon: Bell },
+    { href: "/profile", label: t("nav.profile"), icon: User },
+  ];
 
   return (
     <div className="fixed bottom-6 inset-x-0 z-50 px-4 pointer-events-none flex justify-center">

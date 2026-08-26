@@ -6,7 +6,7 @@ from typing import Optional, List
 class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = Field(default="SUPER_SECRET_KEY_FOR_EXPIRYGO_CHANGE_ME")
-    ACCESS_TOKEN_EXPIRE_DAYS: int = Field(default=7)
+    ACCESS_TOKEN_EXPIRE_DAYS: int = Field(default=30)
     
     # App Settings
     DEBUG: bool = Field(default=True)
@@ -14,17 +14,17 @@ class Settings(BaseSettings):
     API_BASE_URL: str = Field(default="http://localhost:8000")
     
     # Database Settings
-    DATABASE_URL: str = Field(default="postgresql://postgres:Sureshkumar12345%40@db.hfdgntprwcdjazbikozb.supabase.co:5432/postgres")
+    DATABASE_URL: str = Field(default="sqlite:///./expirygo_local_dev.db")
     
     # Supabase (Postgres & Storage)
-    SUPABASE_URL: Optional[str] = Field(default="https://hfdgntprwcdjazbikozb.supabase.co")
+    SUPABASE_URL: Optional[str] = Field(default=None)
     SUPABASE_ANON_KEY: Optional[str] = Field(default=None)
     
     # External APIs
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     GEMINI_API_KEY: Optional[str] = Field(default=None)
     GOOGLE_MAPS_PLATFORM_KEY: Optional[str] = Field(default=None)
-    FAST2SMS_API_KEY: Optional[str] = Field(default="8fHTV6AL1XChPg9apF6Cp9O2A0PWEygBiJzRnHzA9TN2l0YCsu5o9Yok4pFh")
+    FAST2SMS_API_KEY: Optional[str] = Field(default=None)
     REDIS_URL: str = Field(default="redis://localhost:6379")
     
     # SMTP Notification Settings
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def clean_quotes(self) -> 'Settings':
-        for field_name in self.model_fields:
+        for field_name in type(self).model_fields:
             value = getattr(self, field_name)
             if isinstance(value, str):
                 cleaned = value.strip().strip('"').strip("'")

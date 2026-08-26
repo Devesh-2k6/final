@@ -2,7 +2,9 @@ import json
 import httpx
 import base64
 import math
-from datetime import datetime, timedelta
+import re
+import asyncio
+from datetime import datetime, timedelta, UTC
 from config import settings
 
 GEMINI_API_KEY = settings.GEMINI_API_KEY or ""
@@ -46,18 +48,18 @@ async def optimize_product_details(
         except Exception:
             expiry_date = datetime.now()
             
-    days_left = (expiry_date.date() - datetime.now().date()).days
+    days_left = (expiry_date.date() - datetime.now(UTC).date()).days
     
-    # Determine discount tier & percent
-    if days_left <= 3:
+    # Determine discount tier & percent (fair, sustainable retail thresholds)
+    if days_left <= 2:
         suggested_tier = "high"
-        suggested_percent = 50
-    elif days_left <= 7:
+        suggested_percent = 35
+    elif days_left <= 6:
         suggested_tier = "medium"
         suggested_percent = 25
     else:
         suggested_tier = "low"
-        suggested_percent = 10
+        suggested_percent = 15
         
     # Attempt to use Gemini API if key is present
     if GEMINI_API_KEY:
@@ -125,8 +127,8 @@ async def scan_date_label_vision(file_bytes: bytes) -> dict:
     if not GOOGLE_MAPS_PLATFORM_KEY:
         print("⚠️ GOOGLE_MAPS_PLATFORM_KEY is missing. Falling back to default date mock.")
         return {
-            "manufacturing_date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"),
-            "expiry_date": (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d"),
+            "manufacturing_date": (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%d"),
+            "expiry_date": (datetime.now(UTC) + timedelta(days=5)).strftime("%Y-%m-%d"),
             "confidence_score": 0.50,
             "detected_text": "AI vision scanner simulated fallback (No API Key)"
         }
@@ -161,8 +163,8 @@ async def scan_date_label_vision(file_bytes: bytes) -> dict:
         print(f"⚠️ Google Vision API exception: {e}")
         
     return {
-        "manufacturing_date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"),
-        "expiry_date": (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d"),
+        "manufacturing_date": (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%d"),
+        "expiry_date": (datetime.now(UTC) + timedelta(days=5)).strftime("%Y-%m-%d"),
         "confidence_score": 0.60,
         "detected_text": "Heuristic fallback due to error"
     }
@@ -286,7 +288,6 @@ async def parse_semantic_search(q: str) -> dict:
         
     # Extract max price (e.g. "under 150", "below 200", "budget 100")
     max_price = None
-    import re
     price_match = re.search(r'(?:under|below|budget|less than|rs|inr|₹)\s*(\d+)', q_lower)
     if price_match:
         max_price = float(price_match.group(1))
@@ -479,4 +480,256 @@ async def generate_recipe_from_deals(products: list[dict]) -> dict:
             print(f"⚠️ Gemini recipe generator failed: {e}")
             
     return fallback_recipe
+
+
+# =====================================================================
+# MULTI-LANGUAGE TRANSLATOR SERVICE (HI, TA, TE, KN, EN)
+# =====================================================================
+
+# Comprehensive local lexicon for high-speed sub-millisecond translation
+LOCAL_TRANSLATION_LEXICON: dict[str, dict[str, str]] = {
+    # Hindi (hi)
+    "hi": {
+        "deals": "सस्ते सौदे",
+        "live deals": "लाइव सौदे",
+        "surplus food": "अधिशेष भोजन",
+        "near expiry": "समाप्ति के करीब",
+        "food waste": "भोजन की बर्बादी",
+        "save food": "भोजन बचाएं",
+        "save money": "पैसे बचाएं",
+        "organic milk": "जैविक दूध",
+        "whole wheat bread": "गेहूं की ब्रेड",
+        "fresh yogurt": "ताजा दही",
+        "bananas": "केले",
+        "orange juice": "संतरे का रस",
+        "cheese slice pack": "पनीर स्लाइस पैक",
+        "croissants": "क्रॉसों",
+        "mixed nuts": "मिश्रित मेवे",
+        "butter": "मक्खन",
+        "store pickup": "दुकान से उठाएं",
+        "home delivery": "घर पर डिलीवरी",
+        "pickup pin": "पिकअप पिन",
+        "verified": "सत्यापित",
+        "completed": "पूरा हुआ",
+        "pending": "लंबित",
+        "accepted": "स्वीकृत",
+        "out for delivery": "डिलीवरी के लिए निकल गया",
+        "delivered": "डिलीवर हो गया",
+        "bakery": "बेकरी",
+        "dairy": "डेयरी",
+        "produce": "फल और सब्जियां",
+        "meat": "मांस",
+        "pantry": "किराना",
+        "prepared food": "तैयार भोजन",
+        "other": "अन्य",
+        "ai recipe chef": "एआई रेसिपी शेफ",
+        "zero waste cooking": "शून्य बर्बादी भोजन",
+    },
+    # Tamil (ta)
+    "ta": {
+        "deals": "சிறப்பு சலுகைகள்",
+        "live deals": "நேரடி சலுகைகள்",
+        "surplus food": "கூடுதல் உணவு",
+        "near expiry": "காலாவதிக்கு அருகில்",
+        "food waste": "உணவு வீணாவதைத் தடுக்கவும்",
+        "save food": "உணவை சேமியுங்கள்",
+        "save money": "பணத்தை சேமியுங்கள்",
+        "organic milk": "இயற்கை பால்",
+        "whole wheat bread": "கோதுமை ரொட்டி",
+        "fresh yogurt": "புதிய தயிர்",
+        "bananas": "வாழைப்பழங்கள்",
+        "orange juice": "ஆரஞ்சு சாறு",
+        "cheese slice pack": "சீஸ் ஸ்லைஸ் பாக்கெட்",
+        "croissants": "குரோசண்ட்ஸ்",
+        "mixed nuts": "கலந்த பருப்புகள்",
+        "butter": "வெண்ணெய்",
+        "store pickup": "கடையில் பெற்றுக்கொள்ளுதல்",
+        "home delivery": "வீட்டு டெலிவரி",
+        "pickup pin": "பிக்கப் பின்",
+        "verified": "சரிபார்க்கப்பட்டது",
+        "completed": "முடிந்தது",
+        "pending": "நிலுவையில் உள்ளது",
+        "accepted": "ஏற்றுக்கொள்ளப்பட்டது",
+        "out for delivery": "டெலிவரிக்கு புறப்பட்டது",
+        "delivered": "டெலிவரி செய்யப்பட்டது",
+        "bakery": "பேக்கரி",
+        "dairy": "பால் பொருட்கள்",
+        "produce": "காய்கறி & பழங்கள்",
+        "meat": "இறைச்சி",
+        "pantry": "மளிகை பொருட்கள்",
+        "prepared food": "தயாரிக்கப்பட்ட உணவு",
+        "other": "மற்றவை",
+        "ai recipe chef": "AI சமையல் குறிப்புகள்",
+        "zero waste cooking": "வீணாகாத சமையல்",
+    },
+    # Telugu (te)
+    "te": {
+        "deals": "ప్రత్యేక డీల్స్",
+        "live deals": "లైవ్ డీల్స్",
+        "surplus food": "మిగిలిన ఆహారం",
+        "near expiry": "గడువు ముగియనున్నది",
+        "food waste": "ఆహార వృధాను అరికట్టండి",
+        "save food": "ఆహారాన్ని ఆదా చేయండి",
+        "save money": "డబ్బు ఆదా చేయండి",
+        "organic milk": "సేంద్రీయ పాలు",
+        "whole wheat bread": "గోధుమ రొట్టె",
+        "fresh yogurt": "తాజా పెరుగు",
+        "bananas": "అరటిపండ్లు",
+        "orange juice": "నారింజ రసం",
+        "cheese slice pack": "చీజ్ ముక్కల ప్యాక్",
+        "croissants": "క్రోసెంట్స్",
+        "mixed nuts": "మిశ్రమ గింజలు",
+        "butter": "వెన్న",
+        "store pickup": "దుకాణం నుండి పికప్",
+        "home delivery": "ఇంటి డెలివరీ",
+        "pickup pin": "పికప్ పిన్",
+        "verified": "ధృవీకరించబడింది",
+        "completed": "పూర్తయింది",
+        "pending": "పెండింగ్‌లో ఉంది",
+        "accepted": "అంగీకరించబడింది",
+        "out for delivery": "డెలివరీకి బయలుదేరింది",
+        "delivered": "డెలివరీ చేయబడింది",
+        "bakery": "బేకరీ",
+        "dairy": "పాల ఉత్పత్తులు",
+        "produce": "పండ్లు & కూరగాయలు",
+        "meat": "మాంసం",
+        "pantry": "కిరాణా",
+        "prepared food": "సిద్ధం చేసిన ఆహారం",
+        "other": "ఇతర",
+        "ai recipe chef": "AI వంటకాల నిపుణుడు",
+        "zero waste cooking": "వృధా లేని వంట",
+    },
+    # Kannada (kn)
+    "kn": {
+        "deals": "ವಿಶೇಷ ಕೊಡುಗೆಗಳು",
+        "live deals": "ಲೈವ್ ಕೊಡುಗೆಗಳು",
+        "surplus food": "ಉಳಿದ ಆಹಾರ",
+        "near expiry": "ಅವಧಿ ಮುಗಿಯುವ ಹಂತದಲ್ಲಿದೆ",
+        "food waste": "ಆಹಾರ ವ್ಯರ್ಥ ತಡೆಯಿರಿ",
+        "save food": "ಆಹಾರ ಉಳಿಸಿ",
+        "save money": "ಹಣ ಉಳಿಸಿ",
+        "organic milk": "ಸಾವಯವ ಹಾಲು",
+        "whole wheat bread": "ಗೋಧಿ ಬ್ರೆಡ್",
+        "fresh yogurt": "ತಾಜಾ ಮೊಸರು",
+        "bananas": "ಬಾಳೆಹಣ್ಣುಗಳು",
+        "orange juice": "ಕಿತ್ತಳೆ ರಸ",
+        "cheese slice pack": "ಚೀಸ್ ಸ್ಲೈಸ್ ಪ್ಯಾಕ್",
+        "croissants": "ಕ್ರೋಸೆಂಟ್ಸ್",
+        "mixed nuts": "ಮಿಶ್ರ ಬೀಜಗಳು",
+        "butter": "ಬೆಣ್ಣೆ",
+        "store pickup": "ಅಂಗಡಿಯಿಂದ ಪಿಕಪ್",
+        "home delivery": "ಮನೆ ಬಾಗಿಲಿಗೆ ಡೆಲಿವರಿ",
+        "pickup pin": "ಪಿಕಪ್ ಪಿನ್",
+        "verified": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+        "completed": "ಪೂರ್ಣಗೊಂಡಿದೆ",
+        "pending": "ಬಾಕಿ ಇದೆ",
+        "accepted": "ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
+        "out for delivery": "ಡೆಲಿವರಿಗೆ ಹೊರಟಿದೆ",
+        "delivered": "ಡೆಲಿವರಿ ಮಾಡಲಾಗಿದೆ",
+        "bakery": "ಬೇಕರಿ",
+        "dairy": "ಹಾಲು ಉತ್ಪನ್ನಗಳು",
+        "produce": "ಹಣ್ಣು & ತರಕಾರಿಗಳು",
+        "meat": "ಮಾಂಸ",
+        "pantry": "ದಿನಸಿ",
+        "prepared food": "ಸಿದ್ಧಪಡಿಸಿದ ಆಹಾರ",
+        "other": "ಇತರೆ",
+        "ai recipe chef": "AI ಅಡುಗೆ ತಜ್ಞ",
+        "zero waste cooking": "ವ್ಯರ್ಥವಿಲ್ಲದ ಅಡುಗೆ",
+    },
+}
+
+LANGUAGE_NAMES = {
+    "en": "English",
+    "hi": "Hindi",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "kn": "Kannada"
+}
+
+async def translate_text(text: str, target_lang: str, source_lang: str = "en") -> dict:
+    """
+    Translates text to the target language (en, hi, ta, te, kn)
+    using Gemini API with immediate fallback to local lexicons.
+    """
+    if not text or not text.strip():
+        return {"translated_text": text, "target_language": target_lang, "confidence": 1.0}
+    
+    target_clean = target_lang.lower().strip()
+    if target_clean in ["en", "english"]:
+        return {"translated_text": text, "target_language": "en", "confidence": 1.0}
+
+    # 1. Check local lexicon
+    text_lower = text.lower().strip()
+    if target_clean in LOCAL_TRANSLATION_LEXICON:
+        lexicon = LOCAL_TRANSLATION_LEXICON[target_clean]
+        if text_lower in lexicon:
+            return {
+                "translated_text": lexicon[text_lower],
+                "target_language": target_clean,
+                "confidence": 0.99,
+                "engine": "local_lexicon"
+            }
+
+    # 2. Use Gemini AI if key is present
+    target_lang_name = LANGUAGE_NAMES.get(target_clean, target_clean)
+    if GEMINI_API_KEY:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            prompt = (
+                f"You are an expert multilingual food translator for 'ExpiryGo'.\n"
+                f"Translate the following text into natural, fluent {target_lang_name}.\n"
+                f"Text: \"{text}\"\n\n"
+                f"Return ONLY a raw JSON object matching this structure (no markdown wrapper, no extra text):\n"
+                f"{{\n"
+                f'  "translated_text": "Translated content here in native script"\n'
+                f"}}"
+            )
+
+            headers = {"Content-Type": "application/json"}
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload, timeout=8.0)
+                if response.status_code == 200:
+                    res_data = response.json()
+                    text_out = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    if text_out.startswith("```"):
+                        lines = text_out.splitlines()
+                        text_out = "\n".join(lines[1:-1]) if lines[-1].startswith("```") else "\n".join(lines[1:])
+                    parsed = json.loads(text_out)
+                    if "translated_text" in parsed:
+                        return {
+                            "translated_text": parsed["translated_text"],
+                            "target_language": target_clean,
+                            "confidence": 0.95,
+                            "engine": "gemini"
+                        }
+        except Exception as e:
+            print(f"⚠️ Gemini translation failed: {e}")
+
+    # 3. Partial fallback: replace known words in phrase
+    if target_clean in LOCAL_TRANSLATION_LEXICON:
+        lexicon = LOCAL_TRANSLATION_LEXICON[target_clean]
+        words = text.split()
+        translated_words = [lexicon.get(w.lower().strip(".,!?:"), w) for w in words]
+        if any(w != orig for w, orig in zip(translated_words, words)):
+            return {
+                "translated_text": " ".join(translated_words),
+                "target_language": target_clean,
+                "confidence": 0.80,
+                "engine": "lexicon_composite"
+            }
+
+    return {
+        "translated_text": text,
+        "target_language": target_clean,
+        "confidence": 0.50,
+        "engine": "pass_through"
+    }
+
+async def translate_batch(texts: list[str], target_lang: str) -> list[dict]:
+    """Translates a batch of strings concurrently."""
+    tasks = [translate_text(t, target_lang) for t in texts]
+    return await asyncio.gather(*tasks)
+
 

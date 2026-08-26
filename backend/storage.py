@@ -1,6 +1,7 @@
 import uuid
-import os
 import shutil
+import re
+from pathlib import Path
 from typing import Optional
 from fastapi import UploadFile, Request
 from supabase import create_client, Client
@@ -16,8 +17,11 @@ def get_supabase_client() -> Optional[Client]:
     return create_client(url, key)
 
 def upload_product_image(file: UploadFile, request: Optional[Request] = None) -> str:
-    file_ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-    file_name = f"{uuid.uuid4()}.{file_ext}"
+    raw_ext = (file.filename or "").split(".")[-1] if file.filename and "." in file.filename else "jpg"
+    clean_ext = re.sub(r'[^a-zA-Z0-9]', '', raw_ext).lower() or "jpg"
+    if len(clean_ext) > 5:
+        clean_ext = "jpg"
+    file_name = f"{uuid.uuid4().hex}.{clean_ext}"
 
     # Try Supabase first (if configured)
     supabase = get_supabase_client()
@@ -35,12 +39,11 @@ def upload_product_image(file: UploadFile, request: Optional[Request] = None) ->
             print(f"Error uploading image to Supabase: {str(e)}")
             # Fall through to local storage fallback
 
-    # Local filesystem fallback
+    # Local filesystem fallback with cross-platform pathlib.Path
     try:
-        # Resolve target uploads directory
-        static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "static", "uploads"))
-        os.makedirs(static_dir, exist_ok=True)
-        file_path = os.path.join(static_dir, file_name)
+        static_dir = Path(__file__).resolve().parent / "static" / "uploads"
+        static_dir.mkdir(parents=True, exist_ok=True)
+        file_path = static_dir / file_name
         
         # Seek back to 0 in case the file pointer was moved by a failed supabase read
         file.file.seek(0)
@@ -49,8 +52,8 @@ def upload_product_image(file: UploadFile, request: Optional[Request] = None) ->
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # Return local static URL
-        base_url = settings.API_BASE_URL
+        # Return local static URL with forward slashes
+        base_url = settings.API_BASE_URL.rstrip("/")
         if request:
             base_url = str(request.base_url).rstrip("/")
             

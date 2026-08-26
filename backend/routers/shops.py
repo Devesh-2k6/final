@@ -28,10 +28,21 @@ def _serialize_shop(shop: Shop) -> dict:
 def _get_owner_shop(user: User, db: Session) -> Shop:
     shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
     if not shop:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Create your shop before adding products."
+        user_name = (user.name or "Partner").strip()
+        shop_name = user_name if any(w in user_name.lower() for w in ["store", "shop", "bakery", "mart", "grocery", "cafe"]) else f"{user_name}'s Store"
+        shop = Shop(
+            owner_id=user.id,
+            name=shop_name,
+            address="Partner Store Location",
+            latitude=28.6139,
+            longitude=77.2090,
+            description="Verified ExpiryGo Partner Store rescuing surplus quality food.",
         )
+        db.add(shop)
+        if not user.is_shop_owner:
+            user.is_shop_owner = True
+        db.commit()
+        db.refresh(shop)
     return shop
 
 
@@ -67,21 +78,24 @@ def create_shop(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if db.query(Shop).filter(Shop.owner_id == user.id).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="You already have a shop. Edit it in settings."
+    shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+    if shop:
+        shop.name = shop_in.name
+        shop.address = shop_in.address
+        shop.latitude = shop_in.latitude
+        shop.longitude = shop_in.longitude
+        shop.description = shop_in.description
+    else:
+        shop = Shop(
+            owner_id=user.id,
+            name=shop_in.name,
+            address=shop_in.address,
+            latitude=shop_in.latitude,
+            longitude=shop_in.longitude,
+            description=shop_in.description,
         )
+        db.add(shop)
 
-    shop = Shop(
-        owner_id=user.id,
-        name=shop_in.name,
-        address=shop_in.address,
-        latitude=shop_in.latitude,
-        longitude=shop_in.longitude,
-        description=shop_in.description,
-    )
-    db.add(shop)
     db.commit()
     db.refresh(shop)
     return _serialize_shop(shop)
@@ -92,9 +106,7 @@ def read_my_shop(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
-    if not shop:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No shop found")
+    shop = _get_owner_shop(user, db)
     return _serialize_shop(shop)
 
 

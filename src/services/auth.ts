@@ -48,19 +48,3 @@ export async function login(data: LoginInput): Promise<AuthResponse> {
 export async function getMe(): Promise<AuthUser> {
   return apiRequest<AuthUser>("/users/me");
 }
-
-export async function sendOtp(phoneNumber: string): Promise<{ message: string }> {
-  return apiRequest<{ message: string }>("/auth/send-otp", {
-    method: "POST",
-    json: { phone_number: phoneNumber },
-    skipAuth: true,
-  });
-}
-
-export async function verifyOtp(phoneNumber: string, code: string): Promise<{ verified: boolean; message: string }> {
-  return apiRequest<{ verified: boolean; message: string }>("/auth/verify-otp", {
-    method: "POST",
-    json: { phone_number: phoneNumber, code },
-    skipAuth: true,
-  });
-}

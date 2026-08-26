@@ -1,5 +1,6 @@
 import math
 import logging
+import asyncio
 from datetime import datetime, UTC
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
@@ -24,11 +25,16 @@ upload_router = APIRouter(tags=["Uploads"])
 
 
 def _calculate_dynamic_price(p: Product, now: datetime) -> float:
-    if not p.auto_discount_enabled or not p.auto_discount_min_price:
+    if not p.discount_price:
+        return p.original_price
+    # By default, strictly respect the shopkeeper's explicit discounted price without unwanted automatic decreases
+    if not p.auto_discount_enabled or not p.auto_discount_min_price or p.auto_discount_min_price >= p.discount_price:
         return p.discount_price
     
-    # Simple linear drop over the last 24 hours before expiry
-    time_left = (p.expiry_date - now).total_seconds()
+    exp = p.expiry_date.replace(tzinfo=None) if p.expiry_date and p.expiry_date.tzinfo else p.expiry_date
+    now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+    
+    time_left = (exp - now_naive).total_seconds()
     if time_left <= 0:
         return p.auto_discount_min_price
     
@@ -36,7 +42,7 @@ def _calculate_dynamic_price(p: Product, now: datetime) -> float:
     if hours_left > 24:
         return p.discount_price
     
-    # It drops from discount_price to min_price over 24 hours
+    # Only drops if shopkeeper explicitly opted into dynamic clearance markdown
     drop_range = p.discount_price - p.auto_discount_min_price
     fraction = (24 - hours_left) / 24.0 # 0 at 24 hours, 1 at 0 hours
     
@@ -46,26 +52,21 @@ def _calculate_dynamic_price(p: Product, now: datetime) -> float:
 
 def _calculate_automatic_discount(original_price: float, days_left: int, hours_left: float = 999.0) -> float:
     """
-    Calculate dynamic automatic discount based on exact hours and days until expiry.
-    - Under 6 hours left → 85% off (Emergency Flash Clearance)
-    - Under 12 hours left → 75% off (Same-Day Expiry Flash)
-    - 1–2 days left → 70% off
-    - 3–5 days → 50% off
-    - 6–10 days → 30% off
-    - More than 10 days → 10% off
+    Calculate fair, balanced, and sustainable automatic discount based on days until expiry.
+    Protects the merchant's wholesale cost price while offering compelling customer value.
+    - Same-day / Under 12 hours left → 40% off (Fair Last-Day Markdown)
+    - 1–3 days left → 30% off (Standard Surplus Discount)
+    - 4–7 days left → 20% off (Moderate Clearance)
+    - 8+ days left → 15% off (Early Discount)
     """
-    if hours_left <= 6:
-        discount_percent = 85
-    elif hours_left <= 12:
-        discount_percent = 75
-    elif days_left <= 2:
-        discount_percent = 70
-    elif days_left <= 5:
-        discount_percent = 50
-    elif days_left <= 10:
+    if hours_left <= 12 or days_left <= 1:
+        discount_percent = 40
+    elif days_left <= 3:
         discount_percent = 30
+    elif days_left <= 7:
+        discount_percent = 20
     else:
-        discount_percent = 10
+        discount_percent = 15
     
     discount_price = original_price * (1 - discount_percent / 100)
     return round(discount_price, 2)
@@ -389,6 +390,105 @@ def get_recommended_deals(
     return [_serialize_product(p, p.shop) for p in recommended]
 
 
+COMMON_BARCODE_CATALOG = {
+    "8901234567890": {
+        "name": "Amul Taaza Homogenised Toned Milk (1L)",
+        "brand": "Amul",
+        "category": ProductCategory.DAIRY,
+        "description": "Long life toned milk, rich in calcium and vitamins.",
+        "suggested_price": 72.0,
+        "image_url": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&q=80"
+    },
+    "8901030383748": {
+        "name": "Britannia 100% Whole Wheat Bread (400g)",
+        "brand": "Britannia",
+        "category": ProductCategory.BAKERY,
+        "description": "Wholesome and fibre-rich whole wheat brown bread.",
+        "suggested_price": 50.0,
+        "image_url": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80"
+    },
+    "8901063012345": {
+        "name": "Mother Dairy Classic Curd / Dahi (400g)",
+        "brand": "Mother Dairy",
+        "category": ProductCategory.DAIRY,
+        "description": "Thick and creamy probiotic dahi.",
+        "suggested_price": 35.0,
+        "image_url": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80"
+    },
+    "8901725132209": {
+        "name": "Kellogg's Real Almond & Honey Corn Flakes (300g)",
+        "brand": "Kellogg's",
+        "category": ProductCategory.PANTRY,
+        "description": "Crisp golden corn flakes with crunchy sliced almonds and honey.",
+        "suggested_price": 185.0,
+        "image_url": "https://images.unsplash.com/photo-1521483451569-e33803c0330c?w=600&q=80"
+    },
+    "8901058852882": {
+        "name": "Maggi 2-Minute Masala Noodles (Pack of 4)",
+        "brand": "Nestle Maggi",
+        "category": ProductCategory.PANTRY,
+        "description": "Classic instant noodles infused with signature aromatic spices.",
+        "suggested_price": 60.0,
+        "image_url": "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=600&q=80"
+    },
+    "8901491101838": {
+        "name": "Lay's India's Magic Masala Potato Chips (90g)",
+        "brand": "Lay's",
+        "category": ProductCategory.PANTRY,
+        "description": "Crisp potato chips bursting with authentic Indian spice mix.",
+        "suggested_price": 30.0,
+        "image_url": "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&q=80"
+    }
+}
+
+
+@router.get("/barcode/{barcode}", response_model=schemas.BarcodeLookupResponse)
+def lookup_product_by_barcode(
+    barcode: str,
+    db: Annotated[Session, Depends(get_db)]
+):
+    clean_barcode = barcode.strip()
+    if not clean_barcode or len(clean_barcode) < 4 or len(clean_barcode) > 32 or not clean_barcode.replace("-", "").isalnum():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid barcode format. Barcode must be 4 to 32 alphanumeric characters."
+        )
+
+    # 1. Check known catalog
+    if clean_barcode in COMMON_BARCODE_CATALOG:
+        item = COMMON_BARCODE_CATALOG[clean_barcode]
+        return schemas.BarcodeLookupResponse(
+            barcode=clean_barcode,
+            name=item["name"],
+            brand=item["brand"],
+            category=item["category"],
+            description=item["description"],
+            suggested_price=item["suggested_price"],
+            image_url=item["image_url"]
+        )
+
+    # 2. Check existing database products matching barcode in description or name
+    matched_prod = db.query(Product).filter(
+        (Product.description.ilike(f"%{clean_barcode}%")) | (Product.name.ilike(f"%{clean_barcode}%"))
+    ).first()
+
+    if matched_prod:
+        return schemas.BarcodeLookupResponse(
+            barcode=clean_barcode,
+            name=matched_prod.name,
+            brand="Store Inventory",
+            category=matched_prod.category,
+            description=matched_prod.description,
+            suggested_price=matched_prod.original_price,
+            image_url=matched_prod.front_image_url
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Product with barcode '{clean_barcode}' not found in catalog."
+    )
+
+
 @router.get("/{product_id}/forecast")
 def get_product_forecast(
     product_id: str,
@@ -475,9 +575,12 @@ async def create_product(
 ):
     shop = _get_owner_shop(user, db)
     
-    # Calculate days until expiry
+    # Calculate days until expiry safely
+    expiry_naive = product_in.expiry_date.replace(tzinfo=None) if product_in.expiry_date.tzinfo else product_in.expiry_date
+    mfg_naive = product_in.manufacturing_date.replace(tzinfo=None) if product_in.manufacturing_date.tzinfo else product_in.manufacturing_date
     now = datetime.now(UTC).replace(tzinfo=None)
-    hours_left = max(0.0, (product_in.expiry_date - now).total_seconds() / 3600.0)
+    days_left = (expiry_naive.date() - now.date()).days
+    hours_left = max(0.0, (expiry_naive - now).total_seconds() / 3600.0)
     
     # Auto-calculate discount based on days and hours left (unless override is provided)
     if product_in.discount_price is not None:
@@ -492,10 +595,10 @@ async def create_product(
         original_price=product_in.original_price,
         discount_price=discount_price,
         quantity=product_in.quantity,
-        manufacturing_date=product_in.manufacturing_date,
-        expiry_date=product_in.expiry_date,
-        front_image_url=product_in.front_image_url,
-        expiry_image_url=product_in.expiry_image_url,
+        manufacturing_date=mfg_naive,
+        expiry_date=expiry_naive,
+        front_image_url=product_in.front_image_url or "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600",
+        expiry_image_url=product_in.expiry_image_url or product_in.front_image_url or "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600",
         voice_note_url=product_in.voice_note_url,
         description=product_in.description,
         is_active=product_in.is_active,
@@ -552,7 +655,6 @@ async def create_product(
     serialized = _serialize_product(product, shop)
     
     # Broadcast the new deal to all connected clients!
-    import asyncio
     asyncio.create_task(manager.broadcast({
         "type": "new_deal",
         "product": serialized

@@ -19,12 +19,6 @@ def create_order(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if user.is_shop_owner:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Shop owners cannot place orders."
-        )
-        
     product = db.query(Product).options(joinedload(Product.shop)).filter(Product.id == order_in.product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
@@ -88,6 +82,7 @@ def get_my_orders(
 
 
 @router.patch("/{order_id}/status", response_model=schemas.OrderResponse)
+@router.put("/{order_id}/status", response_model=schemas.OrderResponse)
 def update_order_status(
     order_id: str,
     status_update: schemas.OrderStatusUpdate,

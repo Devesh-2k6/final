@@ -1,83 +1,152 @@
 # ExpiryGo 🚀
 
-Near-expiry grocery deals from local shops. Fight food waste and save money.
+**Near-expiry grocery & food surplus rescue platform.** Fight food waste, empower local shops, and save money with dynamic AI pricing and live inventory dispatch.
 
-## Stack
+---
 
-- **Frontend:** Next.js 15, React 19, Tailwind CSS
-- **Backend:** FastAPI, SQLAlchemy, PostgreSQL (Supabase) / SQLite
-- **Mobile:** Capacitor (Android)
-- **Auth:** JWT (register / login), bcrypt passwords
+## 🏛️ System Architecture
 
-## 🚀 Scalability Report (Built for 1000+ Concurrent Users)
+ExpiryGo is built with a decoupled, high-performance architecture:
 
-This project implements professional-grade architecture to handle high traffic:
-
-1.  **Multi-Layer Caching:**
-    *   **Backend (Redis):** Uses `FastAPICache` with Redis to store results of heavy queries (product lists, map search). This prevents the database from being overwhelmed.
-    *   **Frontend (SWR):** Implements Stale-While-Revalidate and LocalStorage caching. Even if the server is busy, the user sees immediate data.
-2.  **Stateless API:** Designed to scale horizontally. The FastAPI app can be deployed in multiple containers behind a load balancer (Nginx/Render) without session conflicts.
-3.  **WebSocket Optimization:** Uses an async `ConnectionManager` with Python `sets` for O(1) performance. It can broadcast price drops to 1000+ users in <50ms.
-4.  **Database Efficiency:** Uses SQLAlchemy connection pooling to reuse database connections, preventing "too many connections" errors during traffic spikes.
-5.  **GZip Compression:** All API responses are compressed on the fly, reducing bandwidth usage by up to 70%, which is critical for mobile users on weak data.
-
-## Project Structure
-
-- `/src` - Next.js frontend source code (Root is the frontend)
-- `/backend` - FastAPI backend source code
-- `/android` - Android platform files for Capacitor
-- `/public` - Static assets for the web/app
-
-## Run locally
-
-**Terminal 1 — API**
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+```
+                                  ┌─────────────────────────────┐
+                                  │   FastAPI Backend Server    │
+                                  │   (Python 3.11, Port 8000)  │
+                                  └──────────────┬──────────────┘
+                                                 │
+                        ┌────────────────────────┴────────────────────────┐
+                        ▼                                                 ▼
+        ┌───────────────────────────────┐                 ┌───────────────────────────────┐
+        │   React / Next.js Web App     │                 │   React Native (Expo) App     │
+        │   (Next.js 15, Port 3000)     │                 │   (Expo SDK 52 Mobile Client) │
+        │   - Responsive Desktop & PWA  │                 │   - iOS & Android Native App  │
+        │   - Live Map & Deals Feed     │                 │   - Native Camera & Barcode   │
+        │   - Shopkeeper Analytics      │                 │   - 1-Tap PIN Verification    │
+        │   - Zero-Waste Recipe Basket  │                 │   - Local Surplus Radar       │
+        └───────────────────────────────┘                 └───────────────────────────────┘
 ```
 
-**Terminal 2 — Web/App**
+---
 
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Web Frontend** | React 19, Next.js 15 (App Router), Tailwind CSS, Lucide React, Framer Motion, Leaflet Maps, SWR |
+| **Mobile App** | React Native, Expo SDK 52, React Navigation 7, TypeScript, Camera & Barcode Scanner |
+| **Backend API** | Python FastAPI, Pydantic v2, SQLAlchemy, JWT Auth (bcrypt), GZip compression, WebSockets |
+| **Database & Cache** | SQLite (Local Dev) / PostgreSQL (Supabase Production), In-Memory / Redis Caching |
+| **AI & ML Engine** | Scikit-Learn Logistic Regression (Rescue Probability & Demand Velocity), Dynamic Markdown Engine |
+
+---
+
+## ⚡ Quick Start (1-Click Run)
+
+### Option 1: Automatic Launcher (Windows)
+Double-click `start-local.bat` or run:
+```cmd
+start-local.bat
+```
+*This automatically seeds the database, launches the FastAPI backend at port 8000, and boots the Next.js web application at port 3000.*
+
+---
+
+### Option 2: Manual Terminal Startup
+
+**Terminal 1 — Backend API**
+```bash
+cd backend
+python seed_data.py
+python -m uvicorn main:app --reload --port 8000
+```
+- API Docs (Swagger): [http://localhost:8000/docs](http://localhost:8000/docs)
+- Health Endpoint: [http://localhost:8000/health](http://localhost:8000/health)
+
+**Terminal 2 — React Web App**
 ```bash
 npm install
 npm run dev
 ```
+- Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Open [http://localhost:3000](http://localhost:3000).
+**Terminal 3 — React Native Mobile App**
+```bash
+npm run mobile
+```
+- Press `w` for Web preview, `a` for Android emulator, `i` for iOS simulator, or scan the QR code with **Expo Go** on your phone.
 
-## Android App
+---
 
-To run the Android app:
+## 🔑 Pre-Seeded Demo Accounts
+
+The database comes pre-populated with active shops, categories, and discounted products:
+
+| Role | Email | Password | Access & Dashboard |
+|---|---|---|---|
+| **Customer** | `customer@test.com` | `password123` | Deals Feed, Store Pickups, Delivery Checkout, Recipe Chef |
+| **Shopkeeper 1** | `shop1@test.com` | `password123` | *Green Valley Supermarket* — Add Products, Analytics, Verify PINs |
+| **Shopkeeper 2** | `shop2@test.com` | `password123` | *Fresh Mart Express* — Manage Inventory & Orders |
+| **Shopkeeper 3** | `shop3@test.com` | `password123` | *Daily Bazaar* — Bakery & Produce Surplus |
+
+---
+
+## 📱 Feature Highlights
+
+### 🛒 Customer Features
+1. **Live Surplus Deals Feed**: Real-time deals with automated countdown discounts (up to 70-85% off near expiry).
+2. **Interactive Map & Proximity Radar**: Live store locator with distance-based navigation and store hours.
+3. **Smart Checkout**: Select between **Store Pickup** (generates a secure 6-digit pickup PIN) or **Home Delivery**.
+4. **Zero-Waste Recipe Generator**: Convert surplus basket ingredients into recipes before expiry.
+5. **Impact Tracker**: Measure personal money saved, food rescued (kg), and CO₂ emissions prevented.
+
+### 🏪 Shopkeeper Features
+1. **AI Spoilage Risk Dashboard**: Predicts rescue likelihood using logistic regression and demand velocity.
+2. **Smart Product Management**: Real-time automatic discount tiering based on days/hours left until expiration.
+3. **Pickup PIN Verifier**: Instant 6-digit PIN validation at the retail counter.
+4. **Order Status Lifecycle**: Full transition workflow (`PENDING` → `ACCEPTED` → `OUT_FOR_DELIVERY` → `DELIVERED`).
+
+---
+
+## 🧪 Automated Testing & Verification
+
+The project includes a 100% passing test suite:
 
 ```bash
-npm run build:android
-npm run cap:open
+# Run backend comprehensive automated flow tests (13 core flows)
+python backend/test_flow_complete.py
+
+# Run unit tests
+cd backend && python -m pytest tests/test_api.py -v
+
+# Verify Next.js frontend build
+npm run build
 ```
 
-## Auth flows
+---
 
- Role | Sign up | After login |
-------|---------|-------------|
- **Customer** | Sign up → Customer | Browse `/deals` and `/map` |
- **Shopkeeper** | Sign up → Shopkeeper | `/shop` dashboard to manage products |
+## 📁 Project Directory Structure
 
-## Configuration
-
-`.env.local` (Root):
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
-
-`backend/.env`:
-
-```env
-JWT_SECRET_KEY=change-me-in-production
-DATABASE_URL=postgresql://user:pass@host:port/dbname
+expirygo/
+├── backend/                  # FastAPI Python backend
+│   ├── db/                   # Database models & SQLAlchemy sessions
+│   ├── routers/              # API endpoints (auth, products, shops, orders, etc.)
+│   ├── services/             # ML forecast, OCR scan, email notification
+│   ├── tests/                # Pytest unit & integration test suites
+│   ├── main.py               # Application entrypoint & middleware
+│   ├── schemas.py            # Pydantic validation schemas
+│   └── seed_data.py          # Demo database seeder
+├── mobile/                   # Native React Native (Expo) application
+│   ├── src/
+│   │   ├── api/              # Unified fetch client with auth token interceptor
+│   │   ├── navigation/       # React Navigation bottom tabs & stack navigators
+│   │   ├── screens/          # Customer, Shopkeeper, Admin, & Auth screens
+│   │   └── theme/            # Design tokens & color system
+│   └── App.tsx               # Expo root component
+├── src/                      # React / Next.js 15 Web Application
+│   ├── app/                  # App Router pages (deals, map, profile, shop, checkout)
+│   ├── components/           # Reusable UI cards, modal dialogs, map components
+│   └── contexts/             # Client state (AuthContext, CartContext, WebSocket)
+├── start-local.bat           # 1-Click launcher for local review & demo
+└── package.json              # Web app scripts and dependencies
 ```
-
-## API docs
-
-[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)

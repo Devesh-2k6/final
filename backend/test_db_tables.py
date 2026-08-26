@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, inspect
+from config import settings
 
-db_url = "postgresql://postgres:Sureshkumar12345%40@db.hfdgntprwcdjazbikozb.supabase.co:5432/postgres"
+db_url = settings.DATABASE_URL
 try:
     engine = create_engine(db_url)
     inspector = inspect(engine)

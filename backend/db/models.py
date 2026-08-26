@@ -1,7 +1,7 @@
 import uuid
 import random
 import string
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db.base import Base
@@ -31,6 +31,9 @@ class PaymentStatus(str, enum.Enum):
     PAID = "PAID"
     REFUNDED = "REFUNDED"
 
+def utc_now() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
 class User(Base):
     __tablename__ = "users"
 
@@ -39,7 +42,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_shop_owner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     phone_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
     # Impact Tracking (Gamification)
@@ -90,12 +93,12 @@ class Product(Base):
     quantity: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
     manufacturing_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     expiry_date: Mapped[datetime] = mapped_column(DateTime, index=True, nullable=False)
-    front_image_url: Mapped[str] = mapped_column(Text, nullable=False)
-    expiry_image_url: Mapped[str] = mapped_column(Text, nullable=False)
+    front_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expiry_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     voice_note_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     # Surprise Bags
     is_surprise_bag: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -115,7 +118,7 @@ class Favorite(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, nullable=False)
     product_id: Mapped[str] = mapped_column(String(36), ForeignKey("products.id"), index=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="favorites")
     product: Mapped["Product"] = relationship(back_populates="favorites")
@@ -126,7 +129,7 @@ class Follower(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, nullable=False)
     shop_id: Mapped[str] = mapped_column(String(36), ForeignKey("shops.id"), index=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="following")
     shop: Mapped["Shop"] = relationship(back_populates="followers")
@@ -145,7 +148,7 @@ class Reservation(Base):
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.UNPAID, nullable=False)
     pickup_code: Mapped[str] = mapped_column(String(6), default=generate_pickup_code, nullable=False)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="reservations")
@@ -161,7 +164,7 @@ class Review(Base):
     
     rating: Mapped[int] = mapped_column(Integer, nullable=False) # 1 to 5
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="reviews")
     shop: Mapped["Shop"] = relationship(back_populates="reviews")
@@ -175,7 +178,7 @@ class Notification(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="notifications")
 
@@ -198,7 +201,7 @@ class Order(Base):
     customer_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     customer: Mapped["User"] = relationship("User", foreign_keys=[customer_id], back_populates="orders_placed")

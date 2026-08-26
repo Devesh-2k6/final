@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "ExpiryGo",
+    "slug": "expirygo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F19"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.expirygo.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "ExpiryGo needs camera access to scan expiration dates and product barcodes with AI.",
+        "NSLocationWhenInUseUsageDescription": "ExpiryGo needs your location to show nearby grocery and bakery discounts.",
+        "NSPhotoLibraryUsageDescription": "ExpiryGo allows you to upload product deal photos from your library."
+      }
+    },
+    "android": {
+      "package": "com.expirygo.app",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ExpiryGo to access your camera to scan expiry labels and barcodes."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow ExpiryGo to use your location to calculate distance to deals."
+        }
+      ]
+    ]
+  }
+}
