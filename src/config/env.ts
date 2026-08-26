@@ -11,6 +11,8 @@ function stripTrailingSlash(url: string): string {
  * Base URL for the FastAPI backend (e.g. https://api.example.com).
  * Uses NEXT_PUBLIC_API_URL environment variable.
  */
+export const DEFAULT_LIVE_API_URL = "https://slick-points-look.loca.lt";
+
 export function getPublicApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     const override = localStorage.getItem("EXPIRYGO_API_OVERRIDE");
@@ -23,7 +25,10 @@ export function getPublicApiBaseUrl(): string {
   }
 
   const raw = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (raw && raw !== "https://expirygo-iokl.onrender.com") return stripTrailingSlash(raw);
+  if (raw && raw !== "https://expirygo-iokl.onrender.com" && !raw.includes("localhost")) {
+    return stripTrailingSlash(raw);
+  }
 
-  return "http://localhost:8000";
+  // When deployed on Vercel or online, fall back to our active cloud backend tunnel
+  return DEFAULT_LIVE_API_URL;
 }

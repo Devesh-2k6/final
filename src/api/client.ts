@@ -27,6 +27,9 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   if (!headers.has("Accept")) {
     headers.set("Accept", "application/json");
   }
+  // Bypass tunnel security interstitial screen
+  headers.set("Bypass-Tunnel-Reminder", "true");
+  headers.set("ngrok-skip-browser-warning", "true");
 
   if (!skipAuth) {
     const token = getAuthToken();
@@ -43,7 +46,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   // Setup timeout to prevent "hanging" during login if server is asleep
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
   try {
     const res = await fetch(url, { ...rest, headers, body, signal: controller.signal });
