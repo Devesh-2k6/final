@@ -99,7 +99,7 @@ def get_shop_ai_inventory(
     shop = _get_owner_shop(user, db)
     
     # Active products
-    now = datetime.now()
+    now = datetime.now(UTC).replace(tzinfo=None)
     active_products = db.query(Product).filter(
         Product.shop_id == shop.id,
         Product.quantity > 0,

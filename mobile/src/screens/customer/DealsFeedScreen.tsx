@@ -152,7 +152,7 @@ export const DealsFeedScreen: React.FC<DealsFeedScreenProps> = ({ navigation }) 
       });
       fetchDeals();
     } catch (err: any) {
-      navigation.navigate("ProductDetail", { productId: product.id, autoReserve: true });
+      navigation.navigate("ProductDetail", { productId: product.id });
     }
   };
 

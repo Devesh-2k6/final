@@ -120,17 +120,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Switch to Shopkeeper Mode Action */}
-      <TouchableOpacity style={styles.shopSwitchCard} onPress={handleSwitchToShop} activeOpacity={0.85}>
-        <View style={styles.shopSwitchLeft}>
-          <Store size={22} color={Colors.amberBright} />
-          <View>
-            <Text style={styles.shopSwitchTitle}>Switch to Store Owner Mode</Text>
-            <Text style={styles.shopSwitchSub}>Manage your store, publish deals & stop waste</Text>
+      {/* Switch to Shopkeeper Mode Action (only for registered store owners) */}
+      {user?.is_shop_owner && (
+        <TouchableOpacity style={styles.shopSwitchCard} onPress={handleSwitchToShop} activeOpacity={0.85}>
+          <View style={styles.shopSwitchLeft}>
+            <Store size={22} color={Colors.amberBright} />
+            <View>
+              <Text style={styles.shopSwitchTitle}>Switch to Store Owner Mode</Text>
+              <Text style={styles.shopSwitchSub}>Manage your store, publish deals & stop waste</Text>
+            </View>
           </View>
-        </View>
-        <ChevronRight size={18} color={Colors.amberBright} />
-      </TouchableOpacity>
+          <ChevronRight size={18} color={Colors.amberBright} />
+        </TouchableOpacity>
+      )}
 
       {/* Admin Moderation Queue Button */}
       <TouchableOpacity

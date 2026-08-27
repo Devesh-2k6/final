@@ -201,7 +201,7 @@ class AnalyticsResponse(BaseModel):
 
 class ReservationCreate(BaseModel):
     product_id: str
-    quantity: int
+    quantity: int = Field(..., gt=0, description="Quantity must be a positive number")
 
 class ReservationVerify(BaseModel):
     pickup_code: str
@@ -257,7 +257,7 @@ class FollowerResponse(BaseModel):
 # =========================
 
 class ReviewCreate(BaseModel):
-    rating: int
+    rating: int = Field(..., ge=1, le=5, description="Rating must be between 1 and 5")
     comment: Optional[str] = None
 
 class ReviewResponse(BaseModel):
@@ -309,7 +309,7 @@ class ProductOptimizeResponse(BaseModel):
 class OrderCreate(BaseModel):
     product_id: str
     order_type: str # "PICKUP" or "DELIVERY"
-    quantity: int = 1
+    quantity: int = Field(default=1, gt=0, description="Quantity must be a positive number")
     delivery_fee: float = 0.0
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None

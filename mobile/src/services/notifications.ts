@@ -96,6 +96,8 @@ export async function getNotifications(): Promise<ApiNotification[]> {
   return apiRequest<ApiNotification[]>("/notifications/");
 }
 
-export async function markNotificationAsRead(id: string): Promise<void> {
-  await apiRequest(`/notifications/${id}/read`, { method: "PATCH" });
+// Backend only supports marking ALL of the current user's notifications as read
+// (POST /notifications/read); there is no per-notification endpoint.
+export async function markAllNotificationsAsRead(): Promise<void> {
+  await apiRequest("/notifications/read", { method: "POST" });
 }

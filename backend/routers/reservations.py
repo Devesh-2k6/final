@@ -166,12 +166,13 @@ def verify_reservation(
             customer.total_money_saved += saved_amount
             
     # Send notification to customer
-    notif = Notification(
-        user_id=customer.id,
-        title="Reservation Completed!",
-        message=f"You successfully picked up your items from {shop.name}."
-    )
-    db.add(notif)
+    if customer:
+        notif = Notification(
+            user_id=customer.id,
+            title="Reservation Completed!",
+            message=f"You successfully picked up your items from {shop.name}."
+        )
+        db.add(notif)
     
     # Send email notification to customer
     if customer and customer.email:

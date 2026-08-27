@@ -11,7 +11,7 @@ import {
 import { ArrowLeft, Bell, Sparkles, Tag, CheckCheck, Clock } from "lucide-react-native";
 import { Colors, Radius, Spacing, Typography } from "../../theme";
 import { EmptyState } from "../../components/EmptyState";
-import { getNotifications, markNotificationAsRead } from "../../services/notifications";
+import { getNotifications, markAllNotificationsAsRead } from "../../services/notifications";
 import type { ApiNotification } from "../../types";
 
 interface NotificationsScreenProps {
@@ -39,13 +39,11 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ naviga
     fetchNotifs();
   }, []);
 
-  const handleMarkRead = async (id: string) => {
+  const handleMarkRead = async () => {
     try {
-      await markNotificationAsRead(id);
+      await markAllNotificationsAsRead();
     } catch {}
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   };
 
   return (
@@ -79,7 +77,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ naviga
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.notifCard, !item.is_read && styles.notifCardUnread]}
-              onPress={() => handleMarkRead(item.id)}
+              onPress={() => handleMarkRead()}
             >
               <View style={styles.iconBox}>
                 <Sparkles size={16} color={!item.is_read ? Colors.primary : Colors.textMuted} />

@@ -15,6 +15,7 @@ import { Colors, Radius, Shadows, Spacing, Typography } from "../../theme";
 import { formatExpiryDisplay, getFreshnessLevel } from "../../lib/formatters";
 import { EmptyState } from "../../components/EmptyState";
 import { getProducts, deleteProduct } from "../../services/products";
+import { getMyShop } from "../../services/shops";
 import type { ApiProduct } from "../../types";
 
 interface ShopProductsScreenProps {
@@ -28,7 +29,9 @@ export const ShopProductsScreen: React.FC<ShopProductsScreenProps> = ({ navigati
 
   const loadProducts = useCallback(async () => {
     try {
-      const data = await getProducts();
+      // Scope to the owner's own shop; include expired so they can still manage them.
+      const myShop = await getMyShop();
+      const data = await getProducts({ shopId: myShop.id, hideExpired: false });
       setProducts(data);
     } catch (err) {
       console.log("Error loading shop products:", err);

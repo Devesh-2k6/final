@@ -45,11 +45,15 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
 
   const loadData = useCallback(async () => {
     try {
-      const [an, ai, prods] = await Promise.all([
+      const [an, ai, myShop] = await Promise.all([
         getShopAnalytics().catch(() => null),
         getShopAiInventory().catch(() => null),
-        getProducts().catch(() => []),
+        getMyShop().catch(() => null),
       ]);
+      // Scope the product list to the owner's own shop (include expired for management).
+      const prods = myShop
+        ? await getProducts({ shopId: myShop.id, hideExpired: false }).catch(() => [])
+        : [];
       setAnalytics(an);
       setAiInventory(ai);
       setProducts(prods);
