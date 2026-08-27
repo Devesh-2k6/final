@@ -29,7 +29,7 @@ export function useWebSocket() {
     if (typeof window === "undefined") return;
 
     let ws: WebSocket | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     let isUnmounted = false;
 
     const connect = () => {

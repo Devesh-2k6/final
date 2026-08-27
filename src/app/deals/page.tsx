@@ -415,19 +415,19 @@ export default function CustomerDealsPage() {
   const initial = user?.name ? user.name[0].toUpperCase() : "?";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#ECFDF5] via-[#F8FAFC] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
+    <div className="min-h-screen bg-gradient-to-b from-[#FFF5F0] via-[#F8F9FA] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-3xl border-b border-emerald-100/60 dark:border-gray-800 px-4 pt-4 pb-3">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-3xl border-b border-orange-100/60 dark:border-gray-800 px-4 pt-4 pb-3">
         <div className="max-w-2xl mx-auto">
           {/* Top row: brand + user */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2 rounded-xl text-white shadow-lg shadow-emerald-500/20">
+              <div className="bg-gradient-to-br from-[#FF5B26] to-[#F59E0B] p-2 rounded-xl text-white shadow-lg shadow-orange-500/20">
                 <Leaf size={18} />
               </div>
               <div>
                 <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">
-                  Expiry<span className="text-emerald-600 dark:text-emerald-400">Go</span>
+                  Expiry<span className="text-[#FF5B26]">Go</span>
                 </h1>
                 <p className="text-[10px] font-semibold text-slate-400 dark:text-gray-400 leading-none mt-0.5">Nearby rescued deals</p>
               </div>
@@ -456,7 +456,7 @@ export default function CustomerDealsPage() {
                     className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
                     aria-label="User menu"
                   >
-                    <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                    <div className="w-7 h-7 rounded-full bg-[#FF5B26] flex items-center justify-center text-white font-bold text-sm">
                       {initial}
                     </div>
                     <ChevronDown size={14} className="text-gray-500 dark:text-gray-400" />
@@ -468,7 +468,7 @@ export default function CustomerDealsPage() {
                       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-                        <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                        <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded-full">
                           Customer
                         </span>
                       </div>
@@ -497,7 +497,7 @@ export default function CustomerDealsPage() {
                       <button
                         id="logout-btn"
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition cursor-pointer"
                       >
                         <LogOut size={16} />
                         Log out
@@ -506,12 +506,10 @@ export default function CustomerDealsPage() {
                   )}
                 </div>
               ) : (
-                /* ── Sign-in link ── */
                 <Link
-                  href="/auth?role=customer&tab=login"
-                  className="flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-400 px-3 py-2 rounded-full transition"
+                  href="/auth"
+                  className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#FF5B26] hover:bg-[#E54B18] px-3.5 py-1.5 rounded-full transition shadow-md shadow-orange-500/20"
                 >
-                  <LogIn size={14} />
                   Sign in
                 </Link>
               )}
@@ -519,32 +517,32 @@ export default function CustomerDealsPage() {
           </div>
 
           {/* Search bar + Filter button row */}
-          <div className="bg-[#E2F0E7] p-1.5 rounded-full flex gap-1 items-center border border-emerald-100 shadow-[0_4px_20px_rgba(16,185,129,0.06)] relative overflow-hidden">
+          <div className="bg-[#FFF0EB] p-1.5 rounded-full flex gap-1 items-center border border-orange-100 shadow-[0_4px_20px_rgba(255,91,38,0.06)] relative overflow-hidden">
             {deepSearchLoading && (
               <motion.div
                 initial={{ x: "-100%" }}
                 animate={{ x: "100%" }}
                 transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                className="absolute bottom-0 left-0 h-0.5 bg-emerald-500 w-1/2 z-10"
+                className="absolute bottom-0 left-0 h-0.5 bg-[#FF5B26] w-1/2 z-10"
               />
             )}
             <div className="relative flex-1">
-              <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${deepSearchLoading ? "text-emerald-500 animate-pulse" : "text-emerald-800/80"}`} />
+              <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${deepSearchLoading ? "text-[#FF5B26] animate-pulse" : "text-slate-500"}`} />
               <input
                 id="deals-search"
                 type="search"
                 placeholder={semanticSearch ? "Ask AI (e.g., 'dinner under ₹200')" : t("search.placeholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-sm text-slate-800 placeholder:text-slate-400 border border-emerald-100/50 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all font-semibold ${semanticSearch ? "ring-2 ring-indigo-500/20" : ""}`}
+                className={`w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-sm text-slate-800 placeholder:text-slate-400 border border-orange-100/50 outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF5B26] transition-all font-semibold ${semanticSearch ? "ring-2 ring-indigo-500/20" : ""}`}
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-1.5 text-xs font-extrabold px-5 py-2.5 rounded-full transition-all duration-300 cursor-pointer relative ${
                 showFilters || isDeepSearchActive
-                  ? "bg-[#15803D] text-white shadow-md shadow-emerald-500/20"
-                  : "bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-100"
+                  ? "bg-[#FF5B26] text-white shadow-md shadow-orange-500/20"
+                  : "bg-white hover:bg-orange-50 text-slate-700 border border-orange-100"
               }`}
             >
               <SlidersHorizontal size={14} />

@@ -3,39 +3,40 @@
 @custom-variant dark (&:not(*));
 
 @theme {
-  --color-primary: #10B981; /* Emerald 500 */
-  --color-primary-light: #34D399; /* Emerald 400 */
-  --color-primary-dark: #059669; /* Emerald 600 */
+  --color-primary: #FF5B26; /* Signature Warm Tangerine Orange */
+  --color-primary-light: #FF7A4D; /* Soft Orange */
+  --color-primary-dark: #E54B18; /* Deep Orange */
   --color-secondary: #F59E0B; /* Amber 500 */
   --color-danger: #EF4444; /* Red 500 */
-  --color-background: #F8FAFC; /* Pleasant Soft Slate Cream */
+  --color-background: #F8F9FA; /* Pearl Light Minimalist Canvas */
   --color-surface: #FFFFFF;
-  --color-text-primary: #0F172A; /* Slate 900 */
+  --color-text-primary: #121826; /* Deep Charcoal */
   --color-text-secondary: #64748B; /* Slate 500 */
 
-  --color-emerald-50: #ECFDF5;
-  --color-emerald-100: #D1FAE5;
-  --color-emerald-200: #A7F3D0;
-  --color-emerald-300: #6EE7B7;
-  --color-emerald-400: #34D399;
-  --color-emerald-500: #10B981;
-  --color-emerald-600: #059669;
-  --color-emerald-700: #047857;
-  --color-emerald-800: #065F46;
-  --color-emerald-900: #064E3B;
-  --color-emerald-950: #022C22;
+  /* Harmonized Orange Scale */
+  --color-emerald-50: #FFF5F0;
+  --color-emerald-100: #FFE6DB;
+  --color-emerald-200: #FFCEB8;
+  --color-emerald-300: #FFAA85;
+  --color-emerald-400: #FF7A4D;
+  --color-emerald-500: #FF5B26;
+  --color-emerald-600: #E54B18;
+  --color-emerald-700: #C93A0D;
+  --color-emerald-800: #A62E0A;
+  --color-emerald-900: #802307;
+  --color-emerald-950: #4D1202;
 
-  --color-green-50: #ECFDF5;
-  --color-green-100: #D1FAE5;
-  --color-green-200: #A7F3D0;
-  --color-green-300: #6EE7B7;
-  --color-green-400: #34D399;
-  --color-green-500: #10B981;
-  --color-green-600: #059669;
-  --color-green-700: #047857;
-  --color-green-800: #065F46;
-  --color-green-900: #064E3B;
-  --color-green-950: #022C22;
+  --color-orange-50: #FFF5F0;
+  --color-orange-100: #FFE6DB;
+  --color-orange-200: #FFCEB8;
+  --color-orange-300: #FFAA85;
+  --color-orange-400: #FF7A4D;
+  --color-orange-500: #FF5B26;
+  --color-orange-600: #E54B18;
+  --color-orange-700: #C93A0D;
+  --color-orange-800: #A62E0A;
+  --color-orange-900: #802307;
+  --color-orange-950: #4D1202;
 
   --font-sans: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }

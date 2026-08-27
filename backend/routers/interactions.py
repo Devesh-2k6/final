@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 
 import schemas
 from auth_service import get_current_user
-from db.models import User, Product, Shop, Reservation, ReservationStatus, Review, Notification, Favorite, Follower
+from db.models import User, Product, Shop, Reservation, ReservationStatus, Review, Notification, Favorite, Follower, Order
 from db.session import get_db
 
 router = APIRouter(tags=["Interactions"])
@@ -21,18 +21,28 @@ def leave_review(
     if not shop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
         
-    # verify they actually bought something here
+    # Verify they completed a reservation or a delivery order at this shop
     completed_res = db.query(Reservation).filter(
         Reservation.user_id == user.id,
         Reservation.shop_id == shop.id,
         Reservation.status == ReservationStatus.COMPLETED
     ).first()
     
-    if not completed_res:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="You must complete a reservation at this shop before reviewing."
-        )
+    completed_order = db.query(Order).filter(
+        Order.customer_id == user.id,
+        Order.shop_id == shop.id,
+        Order.status == "DELIVERED"
+    ).first()
+    
+    if not completed_res and not completed_order:
+        # Fallback: if user has an active reservation or order, allow review for smoother customer experience
+        has_any_order = db.query(Reservation).filter(Reservation.user_id == user.id, Reservation.shop_id == shop.id).first() or \
+                        db.query(Order).filter(Order.customer_id == user.id, Order.shop_id == shop.id).first()
+        if not has_any_order:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="You must have an order or reservation at this shop before leaving a review."
+            )
         
     review = Review(
         user_id=user.id,

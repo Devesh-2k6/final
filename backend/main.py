@@ -128,9 +128,22 @@ async def security_and_rate_limit_middleware(request: Request, call_next):
 # Register centralized error handlers
 register_error_handlers(app)
 
-# Real-time WebSocket notifications endpoint
+# Real-time WebSocket notifications endpoint with token authentication
 @app.websocket("/ws/notifications")
 async def websocket_endpoint(websocket: WebSocket):
+    token = websocket.query_params.get("token")
+    if token:
+        from db.session import SessionLocal
+        from auth_service import get_user_from_token
+        db = SessionLocal()
+        try:
+            user = get_user_from_token(db, token)
+            if not user:
+                await websocket.close(code=1008)  # Policy Violation / Unauthorized
+                return
+        finally:
+            db.close()
+
     await manager.connect(websocket)
     try:
         while True:

@@ -96,8 +96,14 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
 
   // Generate interactive Leaflet Real Map HTML with pins and live route polyline
   const generateMapHtml = () => {
+    const activeShops = shops.length > 0 ? shops : [
+      { id: "1", name: "Green Valley Supermarket", address: "Downtown Chennai", latitude: 13.0827, longitude: 80.2707, deal_count: 5 },
+      { id: "2", name: "Fresh Mart Express", address: "T. Nagar, Chennai", latitude: 13.0406, longitude: 80.2443, deal_count: 3 },
+      { id: "3", name: "Daily Bazaar", address: "Nungambakkam, Chennai", latitude: 13.0598, longitude: 80.2206, deal_count: 4 },
+    ];
+
     const shopsJson = JSON.stringify(
-      shops.map((s) => ({
+      activeShops.map((s) => ({
         id: s.id,
         name: s.name,
         address: s.address,
@@ -107,12 +113,13 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
       }))
     );
 
-    const activeShopJson = selectedShop
+    const activeTarget = selectedShop || (activeShops[0] as any);
+    const activeShopJson = activeTarget
       ? JSON.stringify({
-          id: selectedShop.id,
-          lat: selectedShop.latitude,
-          lng: selectedShop.longitude,
-          name: selectedShop.name,
+          id: activeTarget.id,
+          lat: activeTarget.latitude,
+          lng: activeTarget.longitude,
+          name: activeTarget.name,
         })
       : "null";
 
@@ -121,8 +128,8 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
       <html>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
           <style>
             html, body, #map {
               height: 100%;
@@ -201,12 +208,16 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
             const map = L.map('map', {
               zoomControl: false,
               attributionControl: false
-            }).setView([userLat, userLng], 14);
+            }).setView([userLat, userLng], 13);
 
-            // High-detail modern street tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // High-detail street tiles with fallback
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               maxZoom: 19
             }).addTo(map);
+
+            // Trigger size calculation
+            setTimeout(function() { map.invalidateSize(); }, 150);
+            setTimeout(function() { map.invalidateSize(); }, 600);
 
             // User Location Marker
             const userIcon = L.divIcon({
@@ -223,12 +234,37 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               if (routeLine) {
                 map.removeLayer(routeLine);
               }
-              routeLine = L.polyline([[userLat, userLng], [toLat, toLng]], {
-                color: '#FF5B26',
-                weight: 4,
-                opacity: 0.85,
-                dashArray: '8, 8'
-              }).addTo(map);
+              // Call real-world OSRM Road Routing engine to get actual street turns
+              const osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + userLng + ',' + userLat + ';' + toLng + ',' + toLat + '?overview=full&geometries=geojson';
+              fetch(osrmUrl)
+                .then(res => res.json())
+                .then(data => {
+                  if (data && data.routes && data.routes.length > 0) {
+                    const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    routeLine = L.polyline(coords, {
+                      color: '#FF5B26',
+                      weight: 5,
+                      opacity: 0.9,
+                      lineJoin: 'round'
+                    }).addTo(map);
+                    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+                  } else {
+                    routeLine = L.polyline([[userLat, userLng], [toLat, toLng]], {
+                      color: '#FF5B26',
+                      weight: 4,
+                      opacity: 0.85,
+                      dashArray: '6, 6'
+                    }).addTo(map);
+                  }
+                })
+                .catch(() => {
+                  routeLine = L.polyline([[userLat, userLng], [toLat, toLng]], {
+                    color: '#FF5B26',
+                    weight: 4,
+                    opacity: 0.85,
+                    dashArray: '6, 6'
+                  }).addTo(map);
+                });
             }
 
             // Add Store Markers

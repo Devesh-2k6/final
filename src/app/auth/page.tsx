@@ -37,7 +37,7 @@ export default function AuthPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const override = localStorage.getItem("EXPIRYGO_API_OVERRIDE");
-      if (override && override.includes("onrender.com")) {
+      if (override && (override.includes("onrender.com") || override.includes("loca.lt"))) {
         localStorage.removeItem("EXPIRYGO_API_OVERRIDE");
       }
     }
@@ -335,75 +335,25 @@ export default function AuthPage() {
           )}
 
           {error && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200/50 dark:border-red-500/20 rounded-2xl px-4 py-3">
-                {error}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  const url = prompt(
-                    "Enter Backend URL (e.g. https://slick-points-look.loca.lt or http://localhost:8000):",
-                    localStorage.getItem("EXPIRYGO_API_OVERRIDE") || "https://slick-points-look.loca.lt"
-                  );
-                  if (url !== null) {
-                    if (url.trim()) {
-                      localStorage.setItem("EXPIRYGO_API_OVERRIDE", url.trim());
-                    } else {
-                      localStorage.removeItem("EXPIRYGO_API_OVERRIDE");
-                    }
-                    window.location.reload();
-                  }
-                }}
-                className="w-full py-2.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-500/30 rounded-2xl hover:bg-emerald-500/10 transition"
-              >
-                ⚙️ Change Backend Server URL
-              </button>
-            </div>
+            <p className="text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200/50 dark:border-red-500/20 rounded-2xl px-4 py-3">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-4 rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.98] cursor-pointer"
+            className="w-full bg-[#FF5B26] hover:bg-[#E54B18] text-white font-black py-4 rounded-2xl transition shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 disabled:opacity-70 active:scale-[0.98] cursor-pointer"
           >
             {submitting && <Loader2 size={18} className="animate-spin" />}
             {tab === "login" ? "Log in" : "Create account"}
           </button>
         </form>
 
-        {/* Live Server Indicator */}
-        <div className="border-t border-emerald-100/60 dark:border-gray-800/80 px-6 py-3 bg-emerald-50/20 dark:bg-gray-900/30 flex items-center justify-between text-[11px] text-slate-500 dark:text-gray-400">
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Cloud API
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const url = prompt(
-                "Change API Server URL:",
-                localStorage.getItem("EXPIRYGO_API_OVERRIDE") || "https://slick-points-look.loca.lt"
-              );
-              if (url !== null) {
-                if (url.trim()) {
-                  localStorage.setItem("EXPIRYGO_API_OVERRIDE", url.trim());
-                } else {
-                  localStorage.removeItem("EXPIRYGO_API_OVERRIDE");
-                }
-                window.location.reload();
-              }
-            }}
-            className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
-          >
-            Switch Server
-          </button>
-        </div>
-
-        <p className="text-center text-xs text-slate-500 dark:text-gray-400 pb-6 pt-3 px-4">
+        <p className="text-center text-xs text-slate-500 dark:text-gray-400 pb-6 pt-4 px-4">
           Browse deals without an account from the{" "}
-          <Link href="/" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
-            home page
+          <Link href="/deals" className="text-[#FF5B26] font-bold hover:underline">
+            deals feed
           </Link>
           .
         </p>

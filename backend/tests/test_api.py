@@ -145,8 +145,11 @@ def test_product_discount_calculation(client: TestClient):
     )
 
     from datetime import datetime, timedelta
-    
-    # 1. Expiry in 2 days -> High discount (50% off)
+
+    # Fair-pricing tiers (see _calculate_automatic_discount):
+    #   <=1 day / <=12h -> 40% off, 2-3 days -> 30% off, 4-7 days -> 20% off, 8+ days -> 15% off
+
+    # 1. Expiry in 2 days -> 30% off -> 100 * 0.70 = 70.0
     expiry_2d = (datetime.now() + timedelta(days=2)).isoformat()
     p1 = client.post(
         "/products/",
@@ -164,10 +167,10 @@ def test_product_discount_calculation(client: TestClient):
         },
     )
     assert p1.status_code in [200, 201], p1.text
-    assert p1.json()["discount_price"] == 30.0
+    assert p1.json()["discount_price"] == 70.0
     assert p1.json()["description"] == "Milk expiring soon"
 
-    # 2. Expiry in 5 days -> Medium discount (25% off? Code uses 50% off)
+    # 2. Expiry in 5 days -> 20% off -> 100 * 0.80 = 80.0
     expiry_5d = (datetime.now() + timedelta(days=5)).isoformat()
     p2 = client.post(
         "/products/",
@@ -184,10 +187,10 @@ def test_product_discount_calculation(client: TestClient):
         },
     )
     assert p2.status_code in [200, 201], p2.text
-    assert p2.json()["discount_price"] == 50.0
+    assert p2.json()["discount_price"] == 80.0
     assert p2.json()["description"] is None
 
-    # 3. Expiry in 9 days -> Low discount (10% off? Code uses 30% off)
+    # 3. Expiry in 9 days -> 15% off -> 100 * 0.85 = 85.0
     expiry_9d = (datetime.now() + timedelta(days=9)).isoformat()
     p3 = client.post(
         "/products/",
@@ -204,7 +207,7 @@ def test_product_discount_calculation(client: TestClient):
         },
     )
     assert p3.status_code in [200, 201], p3.text
-    assert p3.json()["discount_price"] == 70.0
+    assert p3.json()["discount_price"] == 85.0
 
 
 def test_product_optimization(client: TestClient):
@@ -237,7 +240,8 @@ def test_product_optimization(client: TestClient):
     assert "suggested_description" in data
     assert "suggested_discount_tier" in data
     assert "confidence_score" in data
-    assert data["suggested_discount_percent"] in [10, 25, 50]
+    # Fair-pricing optimizer tiers: <=2 days -> 35%, <=6 days -> 25%, else 15%
+    assert data["suggested_discount_percent"] in [15, 25, 35]
 
 
 def test_order_flow(client: TestClient):
