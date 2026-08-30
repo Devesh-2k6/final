@@ -15,6 +15,16 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 BASE_URL = "http://localhost:8000"
 
+def _verify_user(email: str):
+    import sqlite3
+    from pathlib import Path
+    db_file = Path(__file__).resolve().parent / "expirygo_local_dev.db"
+    conn = sqlite3.connect(str(db_file))
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET email_verified=1 WHERE email=?", (email,))
+    conn.commit()
+    conn.close()
+
 def random_email():
     """Generate random email to avoid conflicts"""
     rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
@@ -34,6 +44,7 @@ def test_auth():
         "is_shop_owner": False
     })
     assert resp.status_code in (200, 201), f"Register failed: {resp.text}"
+    _verify_user(email)
     data = resp.json()
     customer_token = data["access_token"]
     print(f"    ✅ Registered, token: {customer_token[:20]}...")
@@ -156,6 +167,7 @@ if __name__ == "__main__":
             print(f"    ❌ Register failed: {resp.status_code}")
             print(f"    Response: {resp.text}")
             raise Exception(f"Shop owner registration failed: {resp.text}")
+        _verify_user(shop_email)
         data = resp.json()
         if "access_token" not in data:
             print(f"    ❌ Response missing access_token")

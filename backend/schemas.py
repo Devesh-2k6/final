@@ -3,7 +3,7 @@ Pydantic schemas for request/response validation
 """
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from typing import List, Optional
+from typing import List, Optional, Any, Dict, Union
 from datetime import datetime
 from db.models import ReservationStatus, PaymentStatus, ProductCategory
 
@@ -15,7 +15,9 @@ from db.models import ReservationStatus, PaymentStatus, ProductCategory
 class UserBase(BaseModel):
     email: str
     name: str
+    role: str = "CUSTOMER"
     is_shop_owner: bool = False
+    email_verified: bool = False
     phone_number: Optional[str] = None
 
 class User(UserBase):
@@ -83,20 +85,167 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: dict
+    dev_otp: Optional[str] = None
+
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean:
+            raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+class VerifyEmailResponse(BaseModel):
+    success: bool
+    message: str
+    email: Optional[str] = None
+    user: Optional[dict] = None
+
+class SendOtpRequest(BaseModel):
+    identifier: str  # email or phone number
+    name: Optional[str] = None
+
+    @field_validator('identifier')
+    @classmethod
+    def validate_id(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or len(v_clean) < 3:
+            raise ValueError("Identifier must be a valid email or phone number.")
+        return v_clean
+
+class SendOtpResponse(BaseModel):
+    success: bool
+    message: str
+    expires_in_seconds: int = 600
+    cooldown_remaining: Optional[int] = None
+    dev_code: Optional[str] = None
+
+class VerifyOtpRequest(BaseModel):
+    identifier: str
+    otp: str
+    name: Optional[str] = None
+    is_shop_owner: bool = False
+    phone_number: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_otp_or_code(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "otp" not in data and "code" in data:
+                data["otp"] = data["code"]
+        return data
+
+    @field_validator('otp')
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        v_clean = v.strip().replace(" ", "").replace("-", "")
+        if len(v_clean) < 4:
+            raise ValueError("Please enter a valid OTP code.")
+        return v_clean
+
 
 # =========================
 # SHOPS
 # =========================
 
+class ShopLocationVerifyRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=255)
+    address: str = Field(..., min_length=2, max_length=500)
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+
+    @field_validator('latitude')
+    @classmethod
+    def check_latitude(cls, v: float) -> float:
+        import math
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError("Latitude cannot be NaN or Infinity")
+        return v
+
+    @field_validator('longitude')
+    @classmethod
+    def check_longitude(cls, v: float) -> float:
+        import math
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError("Longitude cannot be NaN or Infinity")
+        return v
+
+class ShopLocationVerifyResponse(BaseModel):
+    verified: bool
+    is_error: bool = False
+    provider: str = "nominatim"
+    matched_business_name: Optional[str] = None
+    matched_address: Optional[str] = None
+    distance_meters: Optional[float] = None
+    category: Optional[str] = None
+    message: str
+
+class ShopDocumentUploadResponse(BaseModel):
+    document_url: str
+    filename: str
+
 class ShopBase(BaseModel):
+    name: str = Field(..., min_length=2, max_length=255)
+    address: str = Field(..., min_length=2, max_length=500)
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    description: Optional[str] = None
+    verification_document_url: Optional[str] = None
+    verification_document_name: Optional[str] = None
+
+    @field_validator('latitude')
+    @classmethod
+    def check_latitude(cls, v: float) -> float:
+        import math
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError("Latitude cannot be NaN or Infinity")
+        return v
+
+    @field_validator('longitude')
+    @classmethod
+    def check_longitude(cls, v: float) -> float:
+        import math
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError("Longitude cannot be NaN or Infinity")
+        return v
+
+class ShopCreate(ShopBase):
+    pass
+
+class ShopResponse(BaseModel):
+    id: str
+    owner_id: Optional[str] = None
+    owner_uid: Optional[str] = None
     name: str
     address: str
     latitude: float
     longitude: float
     description: Optional[str] = None
+    average_rating: float = 0.0
+    rating_count: int = 0
+    deal_count: Optional[int] = 0
+    is_active: bool = False
+    location_verified: bool = False
+    location_verified_at: Optional[datetime] = None
+    location_verification_provider: Optional[str] = None
+    location_verification_name: Optional[str] = None
+    location_verification_address: Optional[str] = None
+    location_verification_distance_meters: Optional[float] = None
+    location_verification_category: Optional[str] = None
+    approval_status: str = "PENDING"
+    approval_reason: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    rejected_at: Optional[datetime] = None
+    verification_document_url: Optional[str] = None
+    verification_document_name: Optional[str] = None
 
-class ShopCreate(ShopBase):
-    pass
+    model_config = ConfigDict(from_attributes=True)
+
+    model_config = ConfigDict(from_attributes=True)
 
 class ShopSummary(BaseModel):
     id: str
@@ -106,6 +255,8 @@ class ShopSummary(BaseModel):
     longitude: float
     average_rating: float = 0.0
     rating_count: int = 0
+    is_active: bool = False
+    location_verified: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -346,8 +497,8 @@ class OrderStatusUpdate(BaseModel):
 
 class RecipeProductItem(BaseModel):
     name: str
-    category: str
-    quantity: int = 1
+    category: str = "OTHER"
+    quantity: Union[int, str] = 1
 
 class RecipeGenerationRequest(BaseModel):
     products: List[RecipeProductItem]
@@ -355,7 +506,7 @@ class RecipeGenerationRequest(BaseModel):
 class RecipeIngredientItem(BaseModel):
     name: str
     is_deal: bool
-    quantity: str
+    quantity: Union[str, int] = "1 unit"
 
 class RecipeStep(BaseModel):
     step_number: int
@@ -384,3 +535,123 @@ class BarcodeLookupResponse(BaseModel):
     description: Optional[str] = None
     suggested_price: Optional[float] = None
     image_url: Optional[str] = None
+
+
+# =========================
+# DIGITAL FRIDGE / PANTRY
+# =========================
+
+class PantryItemBase(BaseModel):
+    name: str
+    category: ProductCategory = ProductCategory.PANTRY
+    quantity: str = "1 unit"
+    expiry_date: datetime
+    image_url: Optional[str] = None
+    notes: Optional[str] = None
+
+class PantryItemCreate(PantryItemBase):
+    pass
+
+class PantryItemUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[ProductCategory] = None
+    quantity: Optional[str] = None
+    expiry_date: Optional[datetime] = None
+    is_consumed: Optional[bool] = None
+    notes: Optional[str] = None
+
+class PantryItem(PantryItemBase):
+    id: str
+    user_id: str
+    purchase_date: datetime
+    is_consumed: bool = False
+    created_at: datetime
+    days_left: int = 0
+    hours_left: float = 0.0
+    urgency_status: str = "FRESH" # FRESH, EXPIRING_SOON, CRITICAL, EXPIRED
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PantryAiScanItem(BaseModel):
+    name: str
+    category: ProductCategory
+    estimated_days_shelf_life: int
+    suggested_quantity: str = "1 unit"
+    confidence: float = 0.9
+
+class PantryAiScanResponse(BaseModel):
+    detected_items: List[PantryAiScanItem]
+    scan_summary: str
+
+class PantrySmartAlert(BaseModel):
+    item_id: str
+    item_name: str
+    hours_left: float
+    urgency: str
+    alert_message: str
+    suggested_recipe_title: Optional[str] = None
+    recipe_preview: Optional[str] = None
+
+# =========================
+# ADMIN MODERATION & APPROVAL
+# =========================
+
+class AdminShopApprovalRequest(BaseModel):
+    notes: Optional[str] = None
+
+class AdminShopRejectRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=1000, description="Mandatory reason for rejection")
+
+    @field_validator('reason')
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        v_clean = v.strip()
+        if len(v_clean) < 3:
+            raise ValueError("Rejection reason must be at least 3 characters long.")
+        return v_clean
+
+class AdminShopSuspendRequest(BaseModel):
+    reason: Optional[str] = None
+
+class AdminShopResponse(BaseModel):
+    id: str
+    name: str
+    owner_id: str
+    owner_name: Optional[str] = None
+    owner_email: Optional[str] = None
+    owner_phone: Optional[str] = None
+    address: str
+    latitude: float
+    longitude: float
+    description: Optional[str] = None
+    is_active: bool = False
+    location_verified: bool = False
+    location_verified_at: Optional[datetime] = None
+    location_verification_provider: Optional[str] = None
+    location_verification_name: Optional[str] = None
+    location_verification_address: Optional[str] = None
+    location_verification_distance_meters: Optional[float] = None
+    location_verification_category: Optional[str] = None
+    approval_status: str = "PENDING"
+    approval_reason: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    rejected_at: Optional[datetime] = None
+    verification_document_url: Optional[str] = None
+    verification_document_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AdminStatsResponse(BaseModel):
+    total_users: int = 0
+    total_customers: int = 0
+    total_merchants: int = 0
+    active_shops: int = 0
+    pending_shops: int = 0
+    rejected_shops: int = 0
+    suspended_shops: int = 0
+    total_products: int = 0
+    total_deals: int = 0
+
+

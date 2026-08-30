@@ -63,4 +63,4 @@ def test_recipe_generator_vegetable_fallback(client: TestClient):
     data = response.json()
     
     # Verify fallback recipe has produce-related titles
-    assert "Stir Fry" in data["recipe_name"] or "Produce" in data["recipe_name"] or "Harvest" in data["recipe_name"] or "Bowl" in data["recipe_name"]
+    assert any(term.lower() in data["recipe_name"].lower() for term in ["stir fry", "produce", "harvest", "bowl", "gratin", "caprese", "sauté", "skillet", "medley", "tomato"])

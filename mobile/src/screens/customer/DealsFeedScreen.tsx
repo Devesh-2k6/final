@@ -110,7 +110,16 @@ export const DealsFeedScreen: React.FC<DealsFeedScreenProps> = ({ navigation }) 
     useCallback(() => {
       fetchDeals();
       loadFavorites();
-    }, [fetchDeals, loadFavorites])
+
+      // Real-time live sync: refresh deals every 4 seconds while screen is active
+      const interval = setInterval(() => {
+        if (!query.trim() && !recipeMode) {
+          fetchDeals();
+        }
+      }, 4000);
+
+      return () => clearInterval(interval);
+    }, [fetchDeals, loadFavorites, query, recipeMode])
   );
 
   const handleRefresh = () => {
@@ -467,6 +476,9 @@ export const DealsFeedScreen: React.FC<DealsFeedScreenProps> = ({ navigation }) 
         }}
         onQrScanned={(data) => {
           setQuery(data);
+        }}
+        onNavigateToDealsWithQuery={(q) => {
+          setQuery(q);
         }}
       />
     </View>

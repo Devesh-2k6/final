@@ -210,24 +210,28 @@ export const DealProductCard = React.memo(function DealProductCardBase({
                 </div>
                 <h2 className="font-bold text-slate-900 dark:text-white truncate text-base">{name}</h2>
               </div>
+
               <div className="flex gap-2 items-center flex-shrink-0">
-                {onToggleFavorite && (
-                  <button
-                    onClick={(e) => onToggleFavorite(id, isFavorite, e)}
-                    className="p-1 -m-1 text-slate-400 hover:text-red-500 transition"
-                  >
-                    <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
-                  </button>
-                )}
                 {onToggleRecipeBasket && (
                   <button
                     onClick={(e) => onToggleRecipeBasket(id, e)}
-                    className={`p-1 -m-1 transition ml-2 ${
-                      isInRecipeBasket ? "text-emerald-650 hover:text-emerald-700" : "text-slate-400 hover:text-emerald-500"
+                    className={`flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-xl transition cursor-pointer ${
+                      isInRecipeBasket 
+                        ? "bg-orange-500 text-white shadow-md shadow-orange-500/25 scale-105" 
+                        : "bg-orange-50 dark:bg-orange-950/40 text-[#FF5B26] border border-orange-200/80 hover:bg-orange-100"
                     }`}
                     title={isInRecipeBasket ? "Remove from AI Recipe Basket" : "Add to AI Recipe Basket"}
                   >
-                    <ChefHat size={16} className={isInRecipeBasket ? "fill-emerald-600/20" : ""} />
+                    <ChefHat size={14} className={isInRecipeBasket ? "text-white" : "text-[#FF5B26]"} />
+                    <span>{isInRecipeBasket ? "In Recipe 👨‍🍳" : "+ Cook"}</span>
+                  </button>
+                )}
+                {onToggleFavorite && (
+                  <button
+                    onClick={(e) => onToggleFavorite(id, isFavorite, e)}
+                    className="p-1 text-slate-400 hover:text-red-500 transition ml-1"
+                  >
+                    <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
                   </button>
                 )}
                 {/* Discount percentage badge */}

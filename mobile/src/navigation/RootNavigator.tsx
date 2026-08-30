@@ -15,6 +15,7 @@ import { ProductDetailScreen } from "../screens/customer/ProductDetailScreen";
 import { CheckoutScreen } from "../screens/customer/CheckoutScreen";
 import { NotificationsScreen } from "../screens/customer/NotificationsScreen";
 import { AdminDashboardScreen } from "../screens/admin/AdminDashboardScreen";
+import { ScannerScreen } from "../screens/ScannerScreen";
 
 const Stack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -52,6 +53,11 @@ export function RootNavigator() {
               component={AddEditProductScreen}
               options={{ presentation: "modal" }}
             />
+            <Stack.Screen
+              name="Scanner"
+              component={ScannerScreen}
+              options={{ presentation: "fullScreenModal" }}
+            />
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
           </>
         ) : (
@@ -60,6 +66,11 @@ export function RootNavigator() {
             <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen
+              name="Scanner"
+              component={ScannerScreen}
+              options={{ presentation: "fullScreenModal" }}
+            />
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
           </>
         )}

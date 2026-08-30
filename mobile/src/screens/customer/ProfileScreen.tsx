@@ -22,11 +22,16 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
+  Mail,
+  CheckCircle2,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react-native";
 import { Colors, Radius, Spacing, Typography, Shadows } from "../../theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { getApiBaseUrl, setApiBaseUrl, resetApiBaseUrl } from "../../config/env";
 import { getFavorites } from "../../services/products";
+import { instantVerifyEmail, resendVerification } from "../../services/auth";
 import type { ApiFavorite } from "../../types";
 
 interface ProfileScreenProps {
@@ -38,6 +43,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const [apiUrl, setApiUrl] = useState("");
   const [favorites, setFavorites] = useState<ApiFavorite[]>([]);
   const [editingApi, setEditingApi] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
+
 
   useEffect(() => {
     async function load() {
@@ -68,9 +77,42 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     setEditingApi(false);
   };
 
+  const handleInstantVerifyEmail = async () => {
+    if (!user?.email || verifyingEmail) return;
+    setVerifyingEmail(true);
+    setEmailMsg(null);
+    try {
+      const res = await instantVerifyEmail(user.email);
+      Alert.alert("Email Verified", "⚡ Your email has been verified successfully! Deal reservations and merchant tools are now active.");
+      setEmailMsg(res.message || "Email verified!");
+      await refreshUser();
+    } catch (err: any) {
+      Alert.alert("Verification Error", err.message || "Failed to verify email.");
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
+  const handleResendVerificationEmail = async () => {
+    if (!user?.email || resendingEmail) return;
+    setResendingEmail(true);
+    setEmailMsg(null);
+    try {
+      const res = await resendVerification(user.email);
+      Alert.alert("Verification Sent", res.message || "A fresh verification link has been dispatched to your email address.");
+      setEmailMsg("Fresh verification link sent!");
+    } catch (err: any) {
+      Alert.alert("Resend Error", err.message || "Failed to resend verification link.");
+    } finally {
+      setResendingEmail(false);
+    }
+  };
+
   const handleSwitchToShop = () => {
     setRoleIntent("shop");
   };
+
+  const isVerified = user?.email_verified === true;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -82,12 +124,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
         <View style={{ flex: 1 }}>
           <Text style={styles.userName}>{user?.name || "Food Rescuer"}</Text>
           <Text style={styles.userEmail}>{user?.email || ""}</Text>
-          <View style={styles.badgePill}>
-            <Zap size={11} color={Colors.primaryBright} fill={Colors.primaryBright} />
-            <Text style={styles.badgeText}>Verified Food Rescuer</Text>
+          <View style={[styles.badgePill, !isVerified && { backgroundColor: "rgba(245, 158, 11, 0.15)" }]}>
+            <Zap size={11} color={isVerified ? Colors.primaryBright : Colors.amberBright} fill={isVerified ? Colors.primaryBright : Colors.amberBright} />
+            <Text style={[styles.badgeText, !isVerified && { color: Colors.amberBright }]}>
+              {isVerified ? "Verified Account" : "Unverified Email"}
+            </Text>
           </View>
         </View>
       </View>
+
+      {/* Email Verification Action Card (when unverified) */}
+      {!isVerified && (
+        <View style={styles.verifyCard}>
+          <View style={styles.verifyCardHeader}>
+            <Mail size={20} color={Colors.amberBright} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.verifyCardTitle}>Verify Your Email Address</Text>
+              <Text style={styles.verifyCardSub}>
+                Activate your account to make deal reservations & publish listings.
+              </Text>
+            </View>
+          </View>
+
+          {emailMsg && (
+            <Text style={styles.verifyMsgText}>{emailMsg}</Text>
+          )}
+
+          <View style={styles.verifyBtnRow}>
+            <TouchableOpacity
+              style={styles.instantVerifyBtn}
+              onPress={handleInstantVerifyEmail}
+              disabled={verifyingEmail}
+              activeOpacity={0.85}
+            >
+              <Zap size={14} color="#FFF" />
+              <Text style={styles.instantVerifyText}>
+                {verifyingEmail ? "Verifying..." : "⚡ 1-Click Verify"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resendVerifyBtn}
+              onPress={handleResendVerificationEmail}
+              disabled={resendingEmail}
+              activeOpacity={0.85}
+            >
+              <RefreshCw size={13} color={Colors.textSecondary} />
+              <Text style={styles.resendVerifyText}>
+                {resendingEmail ? "Sending..." : "Resend Link"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
 
       {/* Environmental Impact Hero Dashboard */}
       <View style={styles.impactCard}>
@@ -481,4 +571,75 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 14,
   },
+  verifyCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    padding: Spacing.md,
+    borderWidth: 1.5,
+    borderColor: "rgba(245, 158, 11, 0.3)",
+    marginBottom: Spacing.md,
+    ...Shadows.soft,
+  },
+  verifyCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  verifyCardTitle: {
+    ...Typography.title2,
+    fontSize: 14,
+    color: Colors.amberBright,
+  },
+  verifyCardSub: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  verifyMsgText: {
+    ...Typography.caption,
+    color: Colors.primaryBright,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  verifyBtnRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+  },
+  instantVerifyBtn: {
+    flex: 1.2,
+    backgroundColor: Colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    gap: 6,
+  },
+  instantVerifyText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  resendVerifyBtn: {
+    flex: 1,
+    backgroundColor: Colors.cardElevated,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    gap: 5,
+  },
+  resendVerifyText: {
+    color: Colors.textSecondary,
+    fontWeight: "700",
+    fontSize: 12,
+  },
 });
+

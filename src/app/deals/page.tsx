@@ -417,223 +417,143 @@ export default function CustomerDealsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FFF5F0] via-[#F8F9FA] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-3xl border-b border-orange-100/60 dark:border-gray-800 px-4 pt-4 pb-3">
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-b border-orange-100/60 dark:border-gray-800 px-4 pt-3 pb-2.5 shadow-sm">
         <div className="max-w-2xl mx-auto">
-          {/* Top row: brand + user */}
+          {/* Top row: QR icon + ExpiryGo branding + Shopper role + notifications */}
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-[#FF5B26] to-[#F59E0B] p-2 rounded-xl text-white shadow-lg shadow-orange-500/20">
-                <Leaf size={18} />
-              </div>
-              <div>
-                <h1 className="text-lg font-black text-slate-900 dark:text-white leading-none tracking-tight">
-                  Expiry<span className="text-[#FF5B26]">Go</span>
-                </h1>
-                <p className="text-[10px] font-semibold text-slate-400 dark:text-gray-400 leading-none mt-0.5">Nearby rescued deals</p>
-              </div>
+            <Link
+              href="/reservations"
+              className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-slate-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-gray-700 transition border border-slate-200/60 dark:border-gray-700 shadow-sm"
+              title="QR Pickup Code"
+            >
+              <QrCode size={20} />
+            </Link>
+
+            <div className="text-center">
+              <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight flex items-center justify-center gap-1">
+                <span>🌱 Expiry<span className="text-[#FF5B26]">Go</span></span>
+              </h1>
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-gray-400 leading-none mt-1">
+                Rescue surplus quality food
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Language Switcher */}
-              <LanguageSelector compact />
-
-              {/* Notifications bell */}
               <Link
-                href="/notifications"
-                className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                aria-label="Notifications"
+                href="/profile"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50/80 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40 rounded-xl text-[11px] font-black text-orange-700 dark:text-orange-300 shadow-sm"
               >
-                <Bell size={20} className="text-gray-600 dark:text-gray-300" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900" />
+                <ShoppingBag size={13} className="text-[#FF5B26]" />
+                Shopper
               </Link>
 
-              {user ? (
-                /* ── User avatar + dropdown ── */
-                <div className="relative" ref={menuRef}>
-                  <button
-                    id="user-menu-trigger"
-                    onClick={() => setShowUserMenu((v) => !v)}
-                    className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                    aria-label="User menu"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-[#FF5B26] flex items-center justify-center text-white font-bold text-sm">
-                      {initial}
-                    </div>
-                    <ChevronDown size={14} className="text-gray-500 dark:text-gray-400" />
-                  </button>
-
-                  {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                      {/* User info */}
-                      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-                        <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded-full">
-                          Customer
-                        </span>
-                      </div>
-
-                      {/* Menu items */}
-                      <Link
-                        href="/profile"
-                        onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-                      >
-                        <User size={16} className="text-gray-500" />
-                        View Profile
-                      </Link>
-                      <Link
-                        href="/notifications"
-                        onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-                      >
-                        <Bell size={16} className="text-gray-500" />
-                        Notifications
-                      </Link>
-
-                      <div className="border-t border-gray-100 dark:border-gray-700" />
-
-                      {/* Logout */}
-                      <button
-                        id="logout-btn"
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition cursor-pointer"
-                      >
-                        <LogOut size={16} />
-                        Log out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  href="/auth"
-                  className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#FF5B26] hover:bg-[#E54B18] px-3.5 py-1.5 rounded-full transition shadow-md shadow-orange-500/20"
-                >
-                  Sign in
-                </Link>
-              )}
+              <Link
+                href="/notifications"
+                className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-slate-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-gray-700 transition relative border border-slate-200/60 dark:border-gray-700 shadow-sm"
+              >
+                <Bell size={18} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-[#FF5B26] rounded-full ring-2 ring-white dark:ring-gray-900" />
+              </Link>
             </div>
           </div>
 
-          {/* Search bar + Filter button row */}
-          <div className="bg-[#FFF0EB] p-1.5 rounded-full flex gap-1 items-center border border-orange-100 shadow-[0_4px_20px_rgba(255,91,38,0.06)] relative overflow-hidden">
-            {deepSearchLoading && (
-              <motion.div
-                initial={{ x: "-100%" }}
-                animate={{ x: "100%" }}
-                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                className="absolute bottom-0 left-0 h-0.5 bg-[#FF5B26] w-1/2 z-10"
-              />
-            )}
-            <div className="relative flex-1">
-              <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${deepSearchLoading ? "text-[#FF5B26] animate-pulse" : "text-slate-500"}`} />
+          {/* Search bar + Recipe Generator Button Row */}
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1 bg-slate-100/90 dark:bg-gray-800/90 rounded-2xl border border-slate-200/80 dark:border-gray-700/80 flex items-center px-3.5 py-2.5 shadow-inner">
+              <Search size={18} className="text-slate-400 mr-2.5 flex-shrink-0" />
               <input
                 id="deals-search"
                 type="search"
-                placeholder={semanticSearch ? "Ask AI (e.g., 'dinner under ₹200')" : t("search.placeholder")}
+                placeholder="Search surplus food, groceries..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2.5 rounded-full bg-white text-sm text-slate-800 placeholder:text-slate-400 border border-orange-100/50 outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-[#FF5B26] transition-all font-semibold ${semanticSearch ? "ring-2 ring-indigo-500/20" : ""}`}
+                className="w-full bg-transparent text-sm text-slate-800 dark:text-white placeholder:text-slate-400 outline-none font-semibold"
               />
+              <Link href="/map" className="text-slate-400 hover:text-orange-500 transition ml-2">
+                <MapPin size={18} />
+              </Link>
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 text-xs font-extrabold px-5 py-2.5 rounded-full transition-all duration-300 cursor-pointer relative ${
-                showFilters || isDeepSearchActive
-                  ? "bg-[#FF5B26] text-white shadow-md shadow-orange-500/20"
-                  : "bg-white hover:bg-orange-50 text-slate-700 border border-orange-100"
-              }`}
+
+            {/* Orange Recipe Generator Button */}
+            <Link
+              href="/pantry"
+              className="w-12 h-12 rounded-2xl bg-[#FF5B26] hover:bg-[#E54B18] text-white flex items-center justify-center shadow-lg shadow-orange-500/25 flex-shrink-0 transition active:scale-95"
+              title="AI Recipe Generator"
             >
-              <SlidersHorizontal size={14} />
-              <span className="hidden sm:inline">Filter</span>
-              {isDeepSearchActive && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border-2 border-white ring-1 ring-red-500/20">
-                  { (maxPrice !== "" ? 1 : 0) + (minDiscount !== "" ? 1 : 0) + (radiusKm !== 50 ? 1 : 0) + (expiryUrgency !== "any" ? 1 : 0) + (semanticSearch ? 1 : 0) + (recipeMode ? 1 : 0) }
-                </span>
-              )}
-            </button>
+              <ChefHat size={22} />
+            </Link>
           </div>
 
-          {/* Applied Filters Summary Bar */}
-          <AnimatePresence>
-            {isDeepSearchActive && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex gap-1.5 mt-3 overflow-x-auto pb-1 scrollbar-hide no-scrollbar"
-              >
-                {maxPrice !== "" && (
-                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
-                    Max ₹{maxPrice} <X size={10} className="cursor-pointer" onClick={() => setMaxPrice("")} />
-                  </span>
-                )}
-                {minDiscount !== "" && (
-                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
-                    Min {minDiscount}% Off <X size={10} className="cursor-pointer" onClick={() => setMinDiscount("")} />
-                  </span>
-                )}
-                {radiusKm !== 50 && (
-                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
-                    {radiusKm}km Radius <X size={10} className="cursor-pointer" onClick={() => setRadiusKm(50)} />
-                  </span>
-                )}
-                {expiryUrgency !== "any" && (
-                  <span className="flex-shrink-0 flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
-                    {expiryUrgency} Urgency <X size={10} className="cursor-pointer" onClick={() => setExpiryUrgency("any")} />
-                  </span>
-                )}
-                {semanticSearch && (
-                  <span className="flex-shrink-0 flex items-center gap-1 bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-indigo-200">
-                    Semantic <X size={10} className="cursor-pointer" onClick={() => setSemanticSearch(false)} />
-                  </span>
-                )}
-                {recipeMode && (
-                  <span className="flex-shrink-0 flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-amber-200">
-                    Recipe Mode <X size={10} className="cursor-pointer" onClick={() => setRecipeMode(false)} />
-                  </span>
-                )}
+          {/* Circular Category Pills (Exact Mobile Match) */}
+          <div className="flex justify-between items-center gap-2 mt-4 px-1 overflow-x-auto pb-1 scrollbar-hide">
+            {[
+              { id: "All", label: "All Deals", emoji: "🔥" },
+              { id: "BAKERY", label: "Bakery", emoji: "🥐" },
+              { id: "DAIRY", label: "Dairy", emoji: "🥛" },
+              { id: "PRODUCE", label: "Produce", emoji: "🥗" },
+              { id: "MEAT", label: "Meat", emoji: "🥩" },
+            ].map((cat) => {
+              const active = activeFilter === cat.id;
+              return (
                 <button
-                  onClick={() => {
-                    setMaxPrice("");
-                    setMinDiscount("");
-                    setRadiusKm(50);
-                    setExpiryUrgency("any");
-                    setSemanticSearch(false);
-                    setRecipeMode(false);
-                  }}
-                  className="flex-shrink-0 text-[10px] font-black text-red-500 px-2 py-1"
+                  key={cat.id}
+                  onClick={() => setActiveFilter(cat.id)}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-1 min-w-[62px]"
                 >
-                  Clear All
+                  <div
+                    className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-all duration-200 border ${
+                      active
+                        ? "bg-orange-50 dark:bg-orange-950/60 border-[#FF5B26] shadow-md shadow-orange-500/20 scale-105"
+                        : "bg-white dark:bg-gray-800 border-slate-200/80 dark:border-gray-700 shadow-sm group-hover:bg-slate-50"
+                    }`}
+                  >
+                    {cat.emoji}
+                  </div>
+                  <span
+                    className={`text-[11px] font-black tracking-tight ${
+                      active
+                        ? "text-[#FF5B26]"
+                        : "text-slate-600 dark:text-gray-400 group-hover:text-slate-900"
+                    }`}
+                  >
+                    {cat.label}
+                  </span>
                 </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Category filter pills */}
-          <LiveDealTicker />
-          <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => {
-                  setActiveFilter(f);
-                  if (f === "AI Recommended ✨" || f === "Saved ❤️") {
-                    // Close advanced filters if using static special filters
-                    setShowFilters(false);
-                  }
-                }}
-                className={`flex-shrink-0 text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-150 ${
-                  activeFilter === f
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+              );
+            })}
           </div>
+        {/* Flash Surplus Rescue Featured Hero Card */}
+        <div className="relative rounded-[2rem] overflow-hidden bg-slate-900 text-white shadow-xl shadow-slate-900/15 p-5 flex flex-col justify-end min-h-[170px]">
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-900/40 z-10" />
+          <div className="absolute top-4 left-4 z-20">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FF5B26] text-white shadow-md shadow-orange-500/30">
+              🔥 FLASH SURPLUS RESCUE
+            </span>
+          </div>
+
+          <div className="relative z-20 mt-10">
+            <h2 className="text-lg font-black text-white tracking-tight leading-tight">
+              Artisan Butter Croissant (Pack of 4)
+            </h2>
+            <p className="text-xs text-slate-300 font-semibold mt-1">
+              Save up to 70% &bull; Verified Store Freshness
+            </p>
+          </div>
+        </div>
+
+        {/* Popular Surplus Deals Section Title */}
+        <div className="flex items-center justify-between pt-2">
+          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+            Popular Surplus Deals
+          </h3>
+          <button
+            onClick={() => setActiveFilter("All")}
+            className="text-xs font-bold text-[#FF5B26] hover:underline"
+          >
+            See All
+          </button>
+        </div>
 
           {/* Advanced Collapsible Filter Drawer */}
           <AnimatePresence>
@@ -1132,7 +1052,7 @@ export default function CustomerDealsPage() {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 setPaymentStep("upi");
-              }} className="p-6 space-y-6">
+              }} className="p-6 space-y-5">
                 {/* Product preview */}
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1150,111 +1070,31 @@ export default function CustomerDealsPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    <span className="text-xs font-black text-[#FF5B26]">
                       ₹{(selectedProductForOrder.current_price || selectedProductForOrder.discount_price).toFixed(2)}
                     </span>
                   </div>
                 </div>
 
-                {/* Delivery / Pickup options */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setOrderType("PICKUP")}
-                    className={`p-3 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all ${
-                      orderType === "PICKUP"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                        : "border-gray-100 dark:border-gray-800 text-gray-500 hover:border-gray-200 dark:hover:border-gray-700"
-                    }`}
-                  >
-                    <ShoppingBag size={18} />
-                    <span className="text-xs font-bold">Store Pickup</span>
-                    <span className="text-[10px] opacity-75">Free</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOrderType("DELIVERY")}
-                    className={`p-3 rounded-2xl border-2 flex flex-col items-center gap-1.5 transition-all ${
-                      orderType === "DELIVERY"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                        : "border-gray-100 dark:border-gray-800 text-gray-500 hover:border-gray-200 dark:hover:border-gray-700"
-                    }`}
-                  >
-                    <Truck size={18} />
-                    <span className="text-xs font-bold">Home Delivery</span>
-                    <span className="text-[10px] opacity-75">+ ₹45.00</span>
-                  </button>
+                {/* Pickup Instructions Banner */}
+                <div className="p-4 bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-800/40 rounded-2xl flex items-start gap-3 text-xs text-orange-900 dark:text-orange-200">
+                  <QrCode size={20} className="text-[#FF5B26] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-black text-slate-900 dark:text-white uppercase tracking-wider text-[10px] mb-1">
+                      Store Pickup Only &bull; Instant QR Pass
+                    </strong>
+                    You will receive a <strong>scannable QR code & 6-digit PIN</strong> to show the merchant when collecting:
+                    <p className="mt-1 font-bold text-[#FF5B26]">
+                      📍 {selectedProductForOrder.shop?.name} &bull; {selectedProductForOrder.shop?.address}
+                    </p>
+                  </div>
                 </div>
-
-                {/* Delivery fields */}
-                {orderType === "DELIVERY" ? (
-                  <div className="space-y-3.5 animate-in slide-in-from-top-3 duration-250">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                        Customer Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={deliveryName}
-                        onChange={(e) => setDeliveryName(e.target.value)}
-                        placeholder="Jane Doe"
-                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 outline-none text-xs text-gray-900 dark:text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                        Phone Number
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="tel"
-                          required
-                          value={deliveryPhone}
-                          onChange={(e) => setDeliveryPhone(e.target.value)}
-                          placeholder="e.g. 9876543210"
-                          className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-9 pr-3 py-2 outline-none text-xs text-gray-900 dark:text-white placeholder:text-gray-505 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                        />
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                          <Phone size={12} />
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                        Delivery Address
-                      </label>
-                      <textarea
-                        required
-                        rows={2}
-                        value={deliveryAddress}
-                        onChange={(e) => setDeliveryAddress(e.target.value)}
-                        placeholder="Street, building, apartment number..."
-                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 outline-none text-xs text-gray-900 dark:text-white placeholder:text-gray-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-none"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-2xl flex items-start gap-2.5 text-xs text-blue-800 dark:text-blue-300">
-                    <MapPin size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      Pickup coordinates are locked. Please collect your items at: <br />
-                      <strong className="block mt-1 text-blue-900 dark:text-blue-200">
-                        {selectedProductForOrder.shop?.name} - {selectedProductForOrder.shop?.address}
-                      </strong>
-                    </div>
-                  </div>
-                )}
 
                 {/* Order total */}
                 <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-4 text-sm">
                   <span className="font-bold text-gray-500">Total Price</span>
-                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                    ₹
-                    {(
-                      (selectedProductForOrder.current_price || selectedProductForOrder.discount_price) +
-                      (orderType === "DELIVERY" ? 45.0 : 0.0)
-                    ).toFixed(2)}
+                  <span className="text-xl font-black text-[#FF5B26]">
+                    ₹{(selectedProductForOrder.current_price || selectedProductForOrder.discount_price).toFixed(2)}
                   </span>
                 </div>
 
@@ -1263,16 +1103,16 @@ export default function CustomerDealsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedProductForOrder(null)}
-                    className="flex-1 py-3 rounded-xl border font-bold text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-center"
+                    className="flex-1 py-3 rounded-xl border font-bold text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-center cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                    className="flex-1 py-3 rounded-xl bg-[#FF5B26] hover:bg-[#E54B18] text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/25 cursor-pointer"
                   >
-                    <CreditCard size={14} />
-                    Pay via UPI
+                    <QrCode size={15} />
+                    Reserve & Get QR Pass
                   </button>
                 </div>
               </form>

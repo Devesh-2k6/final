@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -23,7 +24,9 @@ import {
   Droplets,
   Leaf,
   Zap,
+  Clock,
 } from "lucide-react-native";
+
 import { Colors, Radius, Spacing, Typography } from "../../theme";
 import { CustomHeader } from "../../components/CustomHeader";
 import { getShopAnalytics, getMyShop, getMlDiagnostics } from "../../services/shops";
@@ -37,6 +40,7 @@ interface ShopDashboardScreenProps {
 export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
   navigation,
 }) => {
+  const [myShop, setMyShop] = useState<any | null>(null);
   const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null);
   const [aiInventory, setAiInventory] = useState<ApiShopAiInventory | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -45,14 +49,15 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
 
   const loadData = useCallback(async () => {
     try {
-      const [an, ai, myShop] = await Promise.all([
+      const [an, ai, shopRes] = await Promise.all([
         getShopAnalytics().catch(() => null),
         getShopAiInventory().catch(() => null),
         getMyShop().catch(() => null),
       ]);
+      setMyShop(shopRes);
       // Scope the product list to the owner's own shop (include expired for management).
-      const prods = myShop
-        ? await getProducts({ shopId: myShop.id, hideExpired: false }).catch(() => [])
+      const prods = shopRes
+        ? await getProducts({ shopId: shopRes.id, hideExpired: false }).catch(() => [])
         : [];
       setAnalytics(an);
       setAiInventory(ai);
@@ -76,6 +81,10 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
     loadData();
   };
 
+  const isPending = myShop?.approval_status === "PENDING";
+  const isApproved = myShop?.approval_status === "APPROVED" && myShop?.is_active;
+  const isRejected = myShop?.approval_status === "REJECTED";
+
   const highRiskCount = products.filter((p) => {
     if (!p.expiry_date) return false;
     const time = new Date(p.expiry_date).getTime();
@@ -88,7 +97,7 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
     <View style={styles.container}>
       <CustomHeader
         title="Store AI Hub"
-        subtitle="AI Spoilage & Dynamic Surplus Revenue"
+        subtitle={myShop?.name || "Merchant Selling Center"}
       />
 
       {loading ? (
@@ -106,10 +115,44 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
             />
           }
         >
+          {/* Moderation Status Banners */}
+          {isPending && (
+            <View style={styles.pendingBanner}>
+              <View style={styles.pendingBannerHeader}>
+                <Clock size={16} color="#d97706" />
+                <Text style={styles.pendingBannerTitle}>Shop Approval Pending Review</Text>
+              </View>
+              <Text style={styles.pendingBannerText}>
+                Your food shop details and OpenStreetMap location have been verified and submitted. Live deal posting unlocks automatically upon Admin approval.
+              </Text>
+            </View>
+          )}
+
+          {isRejected && (
+            <View style={styles.rejectedBanner}>
+              <View style={styles.pendingBannerHeader}>
+                <AlertTriangle size={16} color="#dc2626" />
+                <Text style={styles.rejectedBannerTitle}>Shop Application Not Approved</Text>
+              </View>
+              <Text style={styles.rejectedBannerText}>
+                Reason: {myShop?.approval_reason || "Business verification criteria not met."}
+              </Text>
+            </View>
+          )}
+
           {/* Quick Action: Add Deal */}
           <TouchableOpacity
-            style={styles.addDealBanner}
-            onPress={() => navigation.navigate("AddProduct")}
+            style={[styles.addDealBanner, !isApproved && { opacity: 0.6 }]}
+            onPress={() => {
+              if (!isApproved) {
+                Alert.alert(
+                  "Product Listing Locked",
+                  "Your shop is currently pending admin review. Product listings will unlock once approved."
+                );
+                return;
+              }
+              navigation.navigate("AddProduct");
+            }}
             activeOpacity={0.85}
           >
             <View style={styles.addDealLeft}>
@@ -117,7 +160,9 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
                 <Plus size={20} color={Colors.textInverse} />
               </View>
               <View>
-                <Text style={styles.addDealTitle}>Post Surplus Deal</Text>
+                <Text style={styles.addDealTitle}>
+                  {isApproved ? "Post Surplus Deal" : "Post Surplus Deal (Locked)"}
+                </Text>
                 <Text style={styles.addDealSub}>Scan expiry date with AI Camera in seconds</Text>
               </View>
             </View>
@@ -232,6 +277,53 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.md,
     paddingBottom: 90,
+  },
+  pendingBanner: {
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.35)",
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: 4,
+  },
+  pendingBannerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pendingBannerTitle: {
+    ...Typography.bodyBold,
+    color: "#d97706",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  pendingBannerText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  rejectedBanner: {
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.35)",
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: 4,
+  },
+  rejectedBannerTitle: {
+    ...Typography.bodyBold,
+    color: "#dc2626",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  rejectedBannerText: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 16,
   },
   addDealBanner: {
     backgroundColor: Colors.amberBright,

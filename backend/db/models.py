@@ -31,6 +31,17 @@ class PaymentStatus(str, enum.Enum):
     PAID = "PAID"
     REFUNDED = "REFUNDED"
 
+class ShopApprovalStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    SUSPENDED = "SUSPENDED"
+
+class UserRole(str, enum.Enum):
+    CUSTOMER = "CUSTOMER"
+    SHOPKEEPER = "SHOPKEEPER"
+    ADMIN = "ADMIN"
+
 def utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
@@ -41,16 +52,23 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="CUSTOMER", nullable=False)
     is_shop_owner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     phone_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    
+    # Real Email Verification & Security
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    email_verification_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    email_verification_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_verification_email_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     
     # Impact Tracking (Gamification)
     total_money_saved: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     total_items_saved: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     co2_saved_kg: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
-    shop: Mapped["Shop | None"] = relationship(back_populates="owner", uselist=False)
+    shop: Mapped["Shop | None"] = relationship(back_populates="owner", uselist=False, cascade="all, delete-orphan")
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     reviews: Mapped[list["Review"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     notifications: Mapped[list["Notification"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -58,6 +76,7 @@ class User(Base):
     following: Mapped[list["Follower"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     orders_placed: Mapped[list["Order"]] = relationship("Order", foreign_keys="[Order.customer_id]", back_populates="customer", cascade="all, delete-orphan")
     orders_managed: Mapped[list["Order"]] = relationship("Order", foreign_keys="[Order.shopkeeper_id]", back_populates="shopkeeper", cascade="all, delete-orphan")
+    pantry_items: Mapped[list["PantryItem"]] = relationship("PantryItem", back_populates="user", cascade="all, delete-orphan")
 
 class Shop(Base):
     __tablename__ = "shops"
@@ -73,6 +92,25 @@ class Shop(Base):
     # Trust Ratings
     average_rating: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Status & Real Location Verification
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    location_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    location_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    location_verification_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    location_verification_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location_verification_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    location_verification_distance_meters: Mapped[float | None] = mapped_column(Float, nullable=True)
+    location_verification_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # Admin Approval Workflow & Verification Documents
+    approval_status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
+    approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    verification_document_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    verification_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     owner: Mapped["User"] = relationship(back_populates="shop")
     products: Mapped[list["Product"]] = relationship(back_populates="shop", cascade="all, delete-orphan")
@@ -208,3 +246,22 @@ class Order(Base):
     shopkeeper: Mapped["User"] = relationship("User", foreign_keys=[shopkeeper_id], back_populates="orders_managed")
     shop: Mapped["Shop"] = relationship("Shop", back_populates="orders")
     product: Mapped["Product"] = relationship("Product", back_populates="orders")
+
+
+class PantryItem(Base):
+    __tablename__ = "pantry_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[ProductCategory] = mapped_column(Enum(ProductCategory), default=ProductCategory.PANTRY, nullable=False)
+    quantity: Mapped[str] = mapped_column(String(100), default="1 unit", nullable=False)
+    purchase_date: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    expiry_date: Mapped[datetime] = mapped_column(DateTime, index=True, nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_consumed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="pantry_items")
+

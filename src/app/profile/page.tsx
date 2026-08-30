@@ -146,7 +146,7 @@ export default function ProfilePage() {
               {following.map(f => (
                 <div key={f.id} className="snap-start min-w-[140px] bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-4 flex flex-col items-center text-center">
                   <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-lg mb-2">
-                    {f.shop.name[0].toUpperCase()}
+                    {f.shop.name?.[0]?.toUpperCase() ?? "?"}
                   </div>
                   <span className="font-bold text-gray-900 dark:text-white text-sm truncate w-full">{f.shop.name}</span>
                   <div className="text-[10px] text-gray-500 mt-1 flex items-center justify-center gap-1">

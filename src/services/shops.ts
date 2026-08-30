@@ -12,10 +12,53 @@ export type ShopUpdatePayload = {
   latitude: number;
   longitude: number;
   description?: string;
+  verification_document_url?: string | null;
+  verification_document_name?: string | null;
 };
+
+export type ShopDocumentUploadResponse = {
+  document_url: string;
+  filename: string;
+};
+
+export type ShopLocationVerifyPayload = {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+};
+
+export type ShopLocationVerifyResponse = {
+  verified: boolean;
+  is_error?: boolean;
+  provider?: string | null;
+  matched_business_name?: string | null;
+  matched_address?: string | null;
+  distance_meters?: number | null;
+  category?: string | null;
+  message: string;
+};
+
+export async function uploadShopDocument(file: File): Promise<ShopDocumentUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiRequest<ShopDocumentUploadResponse>("/shops/upload-document", {
+    method: "POST",
+    body: formData,
+  });
+}
 
 export async function listShops(): Promise<ShopWithDescription[]> {
   return apiRequest<ShopWithDescription[]>("/shops/");
+}
+
+export async function verifyShopLocation(
+  data: ShopLocationVerifyPayload
+): Promise<ShopLocationVerifyResponse> {
+  return apiRequest<ShopLocationVerifyResponse>("/shops/verify-location", {
+    method: "POST",
+    json: data,
+  });
 }
 
 export async function getMyShop(): Promise<ShopWithDescription> {

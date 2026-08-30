@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Bell, LayoutGrid, Store, ShoppingBag, Globe } from "lucide-react-native";
+import { Bell, LayoutGrid, Store, ShoppingBag, Globe, ScanLine } from "lucide-react-native";
 import { Colors, Radius, Shadows, Spacing, Typography } from "../theme";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelectorModal } from "./LanguageSelectorModal";
+import { UniversalScannerModal } from "./UniversalScannerModal";
 
 interface CustomHeaderProps {
   title?: string;
   subtitle?: string;
   onPressNotifications?: () => void;
+  onPressScanner?: () => void;
   showRoleToggle?: boolean;
 }
 
@@ -17,15 +19,25 @@ export const CustomHeader: React.FC<CustomHeaderProps> = ({
   title = "ExpiryGo",
   subtitle,
   onPressNotifications,
+  onPressScanner,
   showRoleToggle = true,
 }) => {
   const { user, roleIntent, setRoleIntent } = useAuth();
   const { currentLanguageMeta, t } = useLanguage();
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
 
   const handleToggleRole = () => {
     const nextRole = roleIntent === "customer" ? "shop" : "customer";
     setRoleIntent(nextRole);
+  };
+
+  const handleOpenScanner = () => {
+    if (onPressScanner) {
+      onPressScanner();
+    } else {
+      setScannerVisible(true);
+    }
   };
 
   return (
@@ -43,6 +55,16 @@ export const CustomHeader: React.FC<CustomHeaderProps> = ({
 
       {/* Right Action Icons */}
       <View style={styles.rightActions}>
+        {/* Quick Scanner Button */}
+        <TouchableOpacity
+          style={styles.scanBtn}
+          onPress={handleOpenScanner}
+          activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <ScanLine size={16} color={Colors.primary} />
+        </TouchableOpacity>
+
         {/* Language Picker Button */}
         <TouchableOpacity
           style={styles.langBtn}
@@ -88,6 +110,13 @@ export const CustomHeader: React.FC<CustomHeaderProps> = ({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Universal Scanner Modal */}
+      <UniversalScannerModal
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        initialMode="barcode"
+      />
 
       {/* Language Selector Modal */}
       <LanguageSelectorModal
@@ -208,5 +237,16 @@ const styles = StyleSheet.create({
   },
   langFlag: {
     fontSize: 12,
+  },
+  scanBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1,
+    borderColor: Colors.cardBorderHighlight,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Shadows.soft,
   },
 });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Tag, MapPin, Bell, User, ShieldCheck } from "lucide-react";
+import { Flame, Compass, ShoppingBag, User, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export function BottomNav() {
@@ -10,11 +10,11 @@ export function BottomNav() {
   const { t } = useLanguage();
 
   const NAV_ITEMS = [
-    { href: "/deals", label: t("nav.deals"), icon: Tag },
-    { href: "/map", label: t("nav.map"), icon: MapPin },
-    { href: "/reservations", label: t("nav.orders"), icon: ShieldCheck },
-    { href: "/notifications", label: t("nav.alerts"), icon: Bell },
-    { href: "/profile", label: t("nav.profile"), icon: User },
+    { href: "/deals", label: "Deals", icon: Flame },
+    { href: "/map", label: "Explore", icon: Compass },
+    { href: "/pantry", label: "Fridge", icon: Sparkles },
+    { href: "/reservations", label: "Cart / Pickups", icon: ShoppingBag },
+    { href: "/profile", label: "Profile", icon: User },
   ];
 
   return (

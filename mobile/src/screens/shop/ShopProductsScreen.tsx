@@ -44,6 +44,11 @@ export const ShopProductsScreen: React.FC<ShopProductsScreenProps> = ({ navigati
   useFocusEffect(
     useCallback(() => {
       loadProducts();
+      // Auto-sync shop products list every 4 seconds
+      const interval = setInterval(() => {
+        loadProducts();
+      }, 4000);
+      return () => clearInterval(interval);
     }, [loadProducts])
   );
 

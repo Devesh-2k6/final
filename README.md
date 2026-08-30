@@ -18,7 +18,7 @@ ExpiryGo is built with a decoupled, high-performance architecture:
                         ▼                                                 ▼
         ┌───────────────────────────────┐                 ┌───────────────────────────────┐
         │   React / Next.js Web App     │                 │   React Native (Expo) App     │
-        │   (Next.js 15, Port 3000)     │                 │   (Expo SDK 52 Mobile Client) │
+        │   (Next.js 15, Port 3000)     │                 │   (Expo SDK 54 Mobile Client) │
         │   - Responsive Desktop & PWA  │                 │   - iOS & Android Native App  │
         │   - Live Map & Deals Feed     │                 │   - Native Camera & Barcode   │
         │   - Shopkeeper Analytics      │                 │   - 1-Tap PIN Verification    │
@@ -33,7 +33,7 @@ ExpiryGo is built with a decoupled, high-performance architecture:
 | Layer | Technologies |
 |---|---|
 | **Web Frontend** | React 19, Next.js 15 (App Router), Tailwind CSS, Lucide React, Framer Motion, Leaflet Maps, SWR |
-| **Mobile App** | React Native, Expo SDK 52, React Navigation 7, TypeScript, Camera & Barcode Scanner |
+| **Mobile App** | React Native, Expo SDK 54, React Navigation 7, TypeScript, Camera & Barcode Scanner |
 | **Backend API** | Python FastAPI, Pydantic v2, SQLAlchemy, JWT Auth (bcrypt), GZip compression, WebSockets |
 | **Database & Cache** | SQLite (Local Dev) / PostgreSQL (Supabase Production), In-Memory / Redis Caching |
 | **AI & ML Engine** | Scikit-Learn Logistic Regression (Rescue Probability & Demand Velocity), Dynamic Markdown Engine |

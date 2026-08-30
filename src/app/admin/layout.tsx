@@ -3,18 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shield, Users, Store, BarChart3, AlertTriangle, Menu, X, Leaf } from "lucide-react";
+import { BarChart3, Menu, X, Leaf } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  // Only link routes that actually exist. The other admin sections are not
+  // implemented yet, so we intentionally don't render nav links that 404.
   const navigation = [
     { name: 'Reports Dashboard', href: '/admin', icon: BarChart3 },
-    { name: 'Users', href: '/admin/users', icon: Users },
-    { name: 'Shops & Listings', href: '/admin/shops', icon: Store },
-    { name: 'Moderation', href: '/admin/moderation', icon: Shield },
-    { name: 'System Alerts', href: '/admin/alerts', icon: AlertTriangle },
   ];
 
   const closeSidebar = () => setIsSidebarOpen(false);

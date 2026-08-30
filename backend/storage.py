@@ -61,3 +61,52 @@ def upload_product_image(file: UploadFile, request: Optional[Request] = None) ->
     except Exception as e:
         print(f"Error saving image locally: {str(e)}")
         return f"https://placehold.co/400x300/e2e8f0/64748b?text=Image+Unavailable"
+
+
+def upload_shop_document(file: UploadFile, request: Optional[Request] = None) -> tuple[str, str]:
+    """
+    Saves a business verification document (FSSAI, GST, Trade Certificate, Store Photo).
+    Supports PDF, JPEG, PNG, WEBP up to 10MB.
+    Returns (document_url, original_filename).
+    """
+    orig_name = file.filename or "verification_document.pdf"
+    raw_ext = orig_name.split(".")[-1] if "." in orig_name else "pdf"
+    clean_ext = re.sub(r'[^a-zA-Z0-9]', '', raw_ext).lower() or "pdf"
+    if len(clean_ext) > 5:
+        clean_ext = "pdf"
+    file_name = f"doc_{uuid.uuid4().hex}.{clean_ext}"
+
+    # Try Supabase storage
+    supabase = get_supabase_client()
+    if supabase:
+        try:
+            file_content = file.file.read()
+            supabase.storage.from_("documents").upload(
+                file_name,
+                file_content,
+                {"content-type": file.content_type or "application/pdf"}
+            )
+            public_url = supabase.storage.from_("documents").get_public_url(file_name)
+            return public_url, orig_name
+        except Exception as e:
+            print(f"Error uploading document to Supabase: {str(e)}")
+
+    # Local filesystem fallback
+    try:
+        docs_dir = Path(__file__).resolve().parent / "static" / "uploads" / "documents"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        file_path = docs_dir / file_name
+
+        file.file.seek(0)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        base_url = settings.API_BASE_URL.rstrip("/")
+        if request:
+            base_url = str(request.base_url).rstrip("/")
+
+        return f"{base_url}/static/uploads/documents/{file_name}", orig_name
+    except Exception as e:
+        print(f"Error saving document locally: {str(e)}")
+        return f"/static/uploads/documents/{file_name}", orig_name
+

@@ -2,7 +2,18 @@ import sys
 from datetime import datetime, UTC, timedelta
 from fastapi.testclient import TestClient
 from main import app
-from db.session import init_db
+from db.session import init_db, SessionLocal
+from db.models import User
+
+def _verify_user(email: str):
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.email == email).first()
+        if u:
+            u.email_verified = True
+            db.commit()
+    finally:
+        db.close()
 
 def run_e2e_audit():
     print("==================================================")
@@ -35,6 +46,7 @@ def run_e2e_audit():
     if res.status_code not in [200, 201]:
         errors.append(f"Customer registration failed: {res.status_code} - {res.text}")
         return errors
+    _verify_user(cust_email)
     cust_token = res.json()["access_token"]
     cust_headers = {"Authorization": f"Bearer {cust_token}"}
     print(f"  [OK] Customer registered with JWT token: {cust_token[:15]}...")
@@ -52,6 +64,7 @@ def run_e2e_audit():
     if res.status_code not in [200, 201]:
         errors.append(f"Store owner registration failed: {res.status_code} - {res.text}")
         return errors
+    _verify_user(shop_email)
     shop_token = res.json()["access_token"]
     shop_headers = {"Authorization": f"Bearer {shop_token}"}
     print(f"  [OK] Store owner registered with JWT token: {shop_token[:15]}...")

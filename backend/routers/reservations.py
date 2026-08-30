@@ -20,6 +20,12 @@ def create_reservation(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    if not getattr(user, "email_verified", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email address before reserving deals."
+        )
+
     # Optimized query to load Product and Shop together with a write lock to prevent race conditions
     product = db.query(Product).options(joinedload(Product.shop)).filter(Product.id == res_in.product_id).with_for_update().first()
     if not product or product.quantity < res_in.quantity:

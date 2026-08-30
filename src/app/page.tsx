@@ -181,34 +181,35 @@ export default function Home() {
               </Link>
             </MagneticButton>
             
-            <div className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-600">
-              <Link href="#" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">For shoppers</Link>
-              <Link href="#" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">For shops</Link>
-              <Link href="#" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">How it works</Link>
-              <Link href="#" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">Impact</Link>
+            <div className="hidden lg:flex items-center gap-6 text-sm font-bold text-slate-700">
+              <Link href="/deals" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">Deals</Link>
+              <Link href="/map" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                Live Map
+              </Link>
+              <Link href="/pantry" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">AI Pantry</Link>
+              <Link href="/shop" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">Store Portal</Link>
+              <Link href="/admin" onClick={playPopSound} className="hover:text-amber-600 text-amber-700 bg-amber-500/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer">Admin</Link>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
             <MagneticButton>
-              <Link href="/auth?tab=login" onClick={playPopSound} className="text-xs md:text-sm font-semibold text-emerald-700 px-3 md:px-5 py-2 md:py-2.5 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer">
+              <Link href="/auth?tab=login" onClick={playPopSound} className="text-xs md:text-sm font-bold text-emerald-700 px-3 md:px-5 py-2 md:py-2.5 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer">
                 Sign in
               </Link>
             </MagneticButton>
             <MagneticButton>
-              <Link href="/auth?tab=signup" onClick={playPopSound} className="text-xs md:text-sm font-bold text-white bg-emerald-600 px-3 md:px-5 py-2 md:py-2.5 rounded-xl hover:bg-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-all duration-300 cursor-pointer">
-                Get started
+              <Link href="/auth?tab=signup" onClick={playPopSound} className="text-xs md:text-sm font-black text-white bg-emerald-600 px-3 md:px-5 py-2 md:py-2.5 rounded-xl hover:bg-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-all duration-300 cursor-pointer">
+                Get Started
               </Link>
             </MagneticButton>
-            <button onClick={playPopSound} className="p-2.5 text-slate-500 hover:text-emerald-600 bg-emerald-50/40 border border-emerald-100/30 rounded-xl ml-1 hover:bg-emerald-100/40 transition-colors cursor-pointer">
-              <MoreHorizontal size={20} />
-            </button>
           </div>
         </nav>
       </div>
 
       {/* Hero Section */}
-      <main className="max-w-5xl mx-auto px-4 pt-20 md:pt-32 pb-24 flex flex-col items-center text-center relative z-10">
+      <main className="max-w-5xl mx-auto px-4 pt-16 md:pt-24 pb-24 flex flex-col items-center text-center relative z-10">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9, y: 20 }} 
           animate={{ opacity: 1, scale: 1, y: 0 }} 
@@ -233,7 +234,7 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.8 }}
-          className="text-lg md:text-xl text-slate-600 max-w-2xl mb-12 font-medium leading-relaxed"
+          className="text-lg md:text-xl text-slate-600 max-w-2xl mb-10 font-medium leading-relaxed"
         >
           Near-expiry products from local shops — at up to 70% off. Save money, fight food waste, shop smarter.
         </motion.p>
@@ -242,20 +243,26 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.6 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full mb-20"
+          className="flex flex-wrap items-center justify-center gap-3.5 w-full mb-16"
         >
           <MagneticButton className="w-full sm:w-auto">
-            <Link href="/deals" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 hover:shadow-[0_8px_24px_rgba(16,185,129,0.25)] transition-all duration-300 transform cursor-pointer text-lg">
-              <MapPin size={22} />
-              Browse deals near me
+            <Link href="/deals" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-3.5 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 hover:shadow-[0_8px_24px_rgba(16,185,129,0.25)] transition-all duration-300 transform cursor-pointer text-base">
+              <MapPin size={20} />
+              Browse Deals
             </Link>
           </MagneticButton>
           <MagneticButton className="w-full sm:w-auto">
-            <Link href="/shop/setup" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-8 py-4 bg-white border border-emerald-200 text-slate-800 rounded-2xl font-bold hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer text-lg shadow-sm">
-              List your shop <ArrowRight size={22} />
+            <Link href="/map" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-3.5 bg-[#FF5B26] text-white rounded-2xl font-bold hover:bg-[#E54B18] hover:shadow-[0_8px_24px_rgba(255,91,38,0.25)] transition-all duration-300 transform cursor-pointer text-base">
+              🏪 Live Radar Map
+            </Link>
+          </MagneticButton>
+          <MagneticButton className="w-full sm:w-auto">
+            <Link href="/shop/setup" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-3.5 bg-white border border-emerald-200 text-slate-800 rounded-2xl font-bold hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer text-base shadow-sm">
+              List your shop <ArrowRight size={18} />
             </Link>
           </MagneticButton>
         </motion.div>
+
 
         {/* Interactive Map */}
         <motion.div 

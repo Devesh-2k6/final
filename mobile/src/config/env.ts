@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 
 export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
-export const CURRENT_LAN_IP = "10.239.12.184";
+export const CURRENT_LAN_IP = "192.168.1.7";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
 export const TUNNEL_API_URL = "https://good-queens-tap.loca.lt";
 
@@ -24,7 +24,7 @@ export function getDefaultApiBaseUrl(): string {
 
   if (hostUri && typeof hostUri === "string") {
     const hostIp = hostUri.split(":")[0];
-    if (hostIp && hostIp !== "localhost" && hostIp !== "127.0.0.1") {
+    if (hostIp && hostIp !== "localhost" && hostIp !== "127.0.0.1" && !hostIp.includes("exp.direct")) {
       return `http://${hostIp}:8000`;
     }
   }
@@ -33,7 +33,7 @@ export function getDefaultApiBaseUrl(): string {
   if (Constants.linkingUri && typeof Constants.linkingUri === "string") {
     try {
       const match = Constants.linkingUri.match(/^[a-zA-Z]+:\/\/([^:/]+)/);
-      if (match && match[1] && match[1] !== "localhost" && match[1] !== "127.0.0.1") {
+      if (match && match[1] && match[1] !== "localhost" && match[1] !== "127.0.0.1" && !match[1].includes("exp.direct")) {
         return `http://${match[1]}:8000`;
       }
     } catch {}

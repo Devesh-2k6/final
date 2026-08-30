@@ -69,6 +69,10 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
   useFocusEffect(
     useCallback(() => {
       loadData();
+      const interval = setInterval(() => {
+        loadData();
+      }, 4000);
+      return () => clearInterval(interval);
     }, [loadData])
   );
 

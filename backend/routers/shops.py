@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from fastapi_cache.decorator import cache
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -9,6 +9,8 @@ import schemas
 from auth_service import get_current_shop_owner
 from db.models import Shop, User, Product, Reservation, Order
 from db.session import get_db
+from services.location_verifier import verify_shop_location
+from storage import upload_shop_document
 
 router = APIRouter(prefix="/shops", tags=["Shops"])
 
@@ -20,30 +22,105 @@ def _serialize_shop(shop: Shop) -> dict:
         "latitude": shop.latitude,
         "longitude": shop.longitude,
         "description": shop.description,
+        "owner_id": shop.owner_id,
         "owner_uid": shop.owner_id,
         "average_rating": shop.average_rating,
         "rating_count": shop.rating_count,
+        "is_active": getattr(shop, "is_active", False),
+        "location_verified": getattr(shop, "location_verified", False),
+        "location_verified_at": getattr(shop, "location_verified_at", None),
+        "location_verification_provider": getattr(shop, "location_verification_provider", None),
+        "location_verification_name": getattr(shop, "location_verification_name", None),
+        "location_verification_address": getattr(shop, "location_verification_address", None),
+        "location_verification_distance_meters": getattr(shop, "location_verification_distance_meters", None),
+        "location_verification_category": getattr(shop, "location_verification_category", None),
+        "approval_status": getattr(shop, "approval_status", "PENDING"),
+        "approval_reason": getattr(shop, "approval_reason", None),
+        "approved_at": getattr(shop, "approved_at", None),
+        "approved_by": getattr(shop, "approved_by", None),
+        "rejected_at": getattr(shop, "rejected_at", None),
+        "verification_document_url": getattr(shop, "verification_document_url", None),
+        "verification_document_name": getattr(shop, "verification_document_name", None),
     }
 
-def _get_owner_shop(user: User, db: Session) -> Shop:
+def _get_owner_shop(user: User, db: Session, require_active: bool = True) -> Shop:
     shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
     if not shop:
-        user_name = (user.name or "Partner").strip()
-        shop_name = user_name if any(w in user_name.lower() for w in ["store", "shop", "bakery", "mart", "grocery", "cafe"]) else f"{user_name}'s Store"
-        shop = Shop(
-            owner_id=user.id,
-            name=shop_name,
-            address="Partner Store Location",
-            latitude=28.6139,
-            longitude=77.2090,
-            description="Verified ExpiryGo Partner Store rescuing surplus quality food.",
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No shop registered for this merchant account. Please complete shop setup and location verification.",
         )
-        db.add(shop)
-        if not user.is_shop_owner:
-            user.is_shop_owner = True
-        db.commit()
-        db.refresh(shop)
+    if require_active:
+        if not getattr(shop, "location_verified", False) or not getattr(shop, "is_active", False) or getattr(shop, "approval_status", "") != "APPROVED":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: Your shop is not yet approved and active. Product management is currently locked.",
+            )
     return shop
+
+
+@router.post("/upload-document", response_model=schemas.ShopDocumentUploadResponse)
+async def upload_shop_verification_document(
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_shop_owner),
+):
+    """
+    Uploads a merchant business verification document (FSSAI, GST, Trade Certificate, Store Photo).
+    Accepts PDF, JPEG, PNG, WEBP files up to 10MB.
+    """
+    valid_content_types = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+    ]
+    ct = (file.content_type or "").lower()
+    if ct not in valid_content_types and not file.filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.webp')):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file format. Please upload a PDF, PNG, JPG, or WEBP document.",
+        )
+
+    # 10MB limit check
+    file_bytes = await file.read()
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds 10MB limit.",
+        )
+
+    file.file.seek(0)
+    doc_url, orig_name = upload_shop_document(file, request)
+    return schemas.ShopDocumentUploadResponse(document_url=doc_url, filename=orig_name)
+
+
+@router.post("/verify-location", response_model=schemas.ShopLocationVerifyResponse)
+def verify_shop_location_precheck(
+    payload: schemas.ShopLocationVerifyRequest,
+    user: Annotated[User, Depends(get_current_shop_owner)],
+):
+    """
+    Pre-check location verification against OpenStreetMap / Nominatim.
+    Does NOT create or activate a shop.
+    """
+    result = verify_shop_location(
+        name=payload.name,
+        address=payload.address,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+    )
+    return schemas.ShopLocationVerifyResponse(
+        verified=result.verified,
+        is_error=result.is_error,
+        provider=result.provider,
+        matched_business_name=result.matched_business_name,
+        matched_address=result.matched_address,
+        distance_meters=result.distance_meters,
+        category=result.category,
+        message=result.message,
+    )
 
 
 @router.get("/")
@@ -58,8 +135,10 @@ def list_shops(db: Annotated[Session, Depends(get_db)]):
         .subquery()
     )
 
+    # Customers only see fully active, location-verified, and approved shops
     shops_with_counts = (
         db.query(Shop, func.coalesce(deal_count_subq.c.count, 0))
+        .filter(Shop.is_active == True, Shop.approval_status == "APPROVED", Shop.location_verified == True)
         .outerjoin(deal_count_subq, Shop.id == deal_count_subq.c.shop_id)
         .all()
     )
@@ -78,6 +157,23 @@ def create_shop(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    # Server-side food business location verification against real OpenStreetMap / Nominatim data
+    v_res = verify_shop_location(
+        name=shop_in.name,
+        address=shop_in.address,
+        latitude=shop_in.latitude,
+        longitude=shop_in.longitude,
+    )
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    is_loc_verified = bool(v_res.verified)
+    provider = v_res.provider if is_loc_verified else "manual_submission"
+    matched_name = v_res.matched_business_name if is_loc_verified else shop_in.name
+    matched_addr = v_res.matched_address if is_loc_verified else shop_in.address
+    dist_meters = v_res.distance_meters if is_loc_verified else 0.0
+    category = v_res.category if is_loc_verified else "food_retail"
+    approval_reason = None if is_loc_verified else f"Location pending admin review: {v_res.message}"
+
     shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
     if shop:
         shop.name = shop_in.name
@@ -85,6 +181,21 @@ def create_shop(
         shop.latitude = shop_in.latitude
         shop.longitude = shop_in.longitude
         shop.description = shop_in.description
+        if shop_in.verification_document_url is not None:
+            shop.verification_document_url = shop_in.verification_document_url
+        if shop_in.verification_document_name is not None:
+            shop.verification_document_name = shop_in.verification_document_name
+        shop.location_verified = is_loc_verified
+        shop.location_verified_at = now if is_loc_verified else None
+        shop.location_verification_provider = provider
+        shop.location_verification_name = matched_name
+        shop.location_verification_address = matched_addr
+        shop.location_verification_distance_meters = dist_meters
+        shop.location_verification_category = category
+        shop.approval_status = "PENDING"
+        shop.approval_reason = approval_reason
+        shop.rejected_at = None
+        shop.is_active = False
     else:
         shop = Shop(
             owner_id=user.id,
@@ -93,6 +204,18 @@ def create_shop(
             latitude=shop_in.latitude,
             longitude=shop_in.longitude,
             description=shop_in.description,
+            verification_document_url=shop_in.verification_document_url,
+            verification_document_name=shop_in.verification_document_name,
+            is_active=False,
+            location_verified=is_loc_verified,
+            location_verified_at=now if is_loc_verified else None,
+            location_verification_provider=provider,
+            location_verification_name=matched_name,
+            location_verification_address=matched_addr,
+            location_verification_distance_meters=dist_meters,
+            location_verification_category=category,
+            approval_status="PENDING",
+            approval_reason=approval_reason,
         )
         db.add(shop)
 
@@ -101,12 +224,13 @@ def create_shop(
     return _serialize_shop(shop)
 
 
+
 @router.get("/me")
 def read_my_shop(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    shop = _get_owner_shop(user, db)
+    shop = _get_owner_shop(user, db, require_active=False)
     return _serialize_shop(shop)
 
 
@@ -115,8 +239,7 @@ def get_shop_reservations(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    shop = _get_owner_shop(user, db)
-    # Optimized query to load Product and Shop in one go
+    shop = _get_owner_shop(user, db, require_active=True)
     return db.query(Reservation).filter(Reservation.shop_id == shop.id)\
         .options(joinedload(Reservation.product).joinedload(Product.shop))\
         .order_by(Reservation.created_at.desc()).all()
@@ -127,8 +250,7 @@ def get_shop_orders(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    shop = _get_owner_shop(user, db)
-    # Optimized query to load Product, Shop, and Customer in one go
+    shop = _get_owner_shop(user, db, require_active=True)
     return db.query(Order).filter(Order.shop_id == shop.id)\
         .options(
             joinedload(Order.product).joinedload(Product.shop),
@@ -158,11 +280,42 @@ def update_shop(
     if shop.owner_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this shop")
 
+    # If location or name changes, re-verify location against OpenStreetMap
+    if (
+        shop.latitude != shop_in.latitude
+        or shop.longitude != shop_in.longitude
+        or shop.name != shop_in.name
+        or shop.address != shop_in.address
+    ):
+        v_res = verify_shop_location(
+            name=shop_in.name,
+            address=shop_in.address,
+            latitude=shop_in.latitude,
+            longitude=shop_in.longitude,
+        )
+        now = datetime.now(UTC).replace(tzinfo=None)
+        is_loc_verified = bool(v_res.verified)
+        shop.location_verified = is_loc_verified
+        shop.location_verified_at = now if is_loc_verified else None
+        shop.location_verification_provider = v_res.provider if is_loc_verified else "manual_submission"
+        shop.location_verification_name = v_res.matched_business_name if is_loc_verified else shop_in.name
+        shop.location_verification_address = v_res.matched_address if is_loc_verified else shop_in.address
+        shop.location_verification_distance_meters = v_res.distance_meters if is_loc_verified else 0.0
+        shop.location_verification_category = v_res.category if is_loc_verified else "food_retail"
+        if not is_loc_verified:
+            shop.approval_status = "PENDING"
+            shop.approval_reason = f"Location pending admin review: {v_res.message}"
+            shop.is_active = False
+
     shop.name = shop_in.name
     shop.address = shop_in.address
     shop.latitude = shop_in.latitude
     shop.longitude = shop_in.longitude
     shop.description = shop_in.description
+    if shop_in.verification_document_url is not None:
+        shop.verification_document_url = shop_in.verification_document_url
+    if shop_in.verification_document_name is not None:
+        shop.verification_document_name = shop_in.verification_document_name
 
     db.commit()
     db.refresh(shop)

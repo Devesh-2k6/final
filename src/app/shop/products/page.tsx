@@ -44,9 +44,13 @@ export default function ProductList() {
     hideExpired: activeTab === "active",
   });
 
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter((product) => {
+    if (!product.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    // The Expired tab requests all products (hide_expired=false); keep only the
+    // genuinely expired ones here so it doesn't also list still-active deals.
+    if (activeTab === "expired") return formatExpiryDisplay(product.expiry_date).isExpired;
+    return true;
+  });
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this deal?")) return;
@@ -238,7 +242,7 @@ export default function ProductList() {
                           </button>
                           
                           <Link
-                            href={`/shop/products/edit/${product.id}`}
+                            href={`/shop/products/edit?id=${product.id}`}
                             className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
                             title="Edit Deal"
                           >

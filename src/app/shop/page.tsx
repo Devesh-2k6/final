@@ -9,6 +9,7 @@ import { getProductForecast, updateProduct, getProductAiInsight, getShopAiInvent
 import type { ApiShopAiInventory } from "@/services/products";
 import type { ShopWithDescription } from "@/services/shops";
 import type { ApiAnalytics } from "@/types/product";
+import { useAuth } from "@/contexts/AuthenticationContext";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -263,33 +264,119 @@ export default function ShopDashboardOverview() {
     );
   }
 
+  const { user } = useAuth();
+
   if (!shop) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center">
-        <Store size={48} className="mx-auto text-emerald-500 mb-4" />
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Set up your shop</h2>
-        <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-          Create your store profile before adding deals.
+      <div className="p-8 max-w-lg mx-auto text-center space-y-4">
+        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 rounded-3xl mx-auto flex items-center justify-center">
+          <Store size={36} />
+        </div>
+        <h2 className="text-2xl font-black text-gray-900 dark:text-white">
+          {!user?.email_verified ? "Verify Email to Setup Your Shop" : "Set up your Food Store"}
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md mx-auto">
+          {!user?.email_verified
+            ? "Your merchant email is not yet verified. Please complete verification to unlock store setup & location verification."
+            : "Configure your commercial store location and details to activate your selling privileges."}
         </p>
-        <Link
-          href="/shop/setup"
-          className="inline-flex bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl"
-        >
-          Go to setup
-        </Link>
+        <div className="pt-2">
+          <Link
+            href="/shop/setup"
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-3.5 rounded-2xl transition shadow-lg shadow-emerald-500/20 cursor-pointer text-sm"
+          >
+            Go to Shop Setup <ArrowRight size={16} />
+          </Link>
+        </div>
       </div>
     );
   }
 
+  const isPending = shop.approval_status === "PENDING";
+  const isApproved = shop.approval_status === "APPROVED" && shop.is_active && shop.location_verified;
+  const isRejected = shop.approval_status === "REJECTED";
+  const isSuspended = shop.approval_status === "SUSPENDED";
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      {/* Moderation Status Banners */}
+      {isPending && (
+        <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-amber-500 text-white flex-shrink-0 mt-0.5">
+              <Clock size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-black tracking-tight text-amber-950 dark:text-amber-100">
+                Shop Approval Pending Administrator Review
+              </h3>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-0.5 max-w-2xl">
+                Your store location has been verified via OpenStreetMap ({shop.location_verification_name || shop.name}, {shop.location_verification_category || "Food"}). Our Trust & Safety team is reviewing your application. Product listings will unlock automatically upon approval.
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 uppercase tracking-wider flex-shrink-0">
+            Pending Moderation
+          </span>
+        </div>
+      )}
+
+      {isRejected && (
+        <div className="p-5 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-900 dark:text-red-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-red-600 text-white flex-shrink-0 mt-0.5">
+              <XCircle size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-black tracking-tight text-red-950 dark:text-red-100">
+                Shop Application Not Approved
+              </h3>
+              <p className="text-xs text-red-800/90 dark:text-red-300/90 mt-0.5 max-w-2xl">
+                Reason: <strong>{shop.approval_reason || "Did not meet marketplace food listing criteria."}</strong>
+              </p>
+              <p className="text-xs text-red-700/80 dark:text-red-400/80 mt-1">
+                You can update your shop location and business details in Shop Setup to request a fresh review.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/shop/setup"
+            className="px-4 py-2 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-black transition shadow-md shadow-red-600/25 flex-shrink-0"
+          >
+            Update in Shop Setup
+          </Link>
+        </div>
+      )}
+
+      {isSuspended && (
+        <div className="p-5 rounded-3xl bg-slate-500/10 border border-slate-500/30 text-slate-900 dark:text-slate-200 flex items-start gap-3.5">
+          <div className="p-2.5 rounded-2xl bg-slate-700 text-white flex-shrink-0 mt-0.5">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="text-base font-black tracking-tight">Shop Temporarily Suspended</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+              Reason: {shop.approval_reason || "Account is under administrative review."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Shop Header Card */}
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-900/50 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
             <Store size={32} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{shop.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{shop.name}</h1>
+              {isApproved && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                  <Check size={10} /> Verified Seller
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500 dark:text-gray-400">
               <MapPin size={14} />
               {shop.address}
@@ -297,26 +384,58 @@ export default function ShopDashboardOverview() {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full sm:w-auto">
-          <button
-            onClick={handleOpenDiagnostics}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-bold transition shadow-md shadow-purple-500/10"
-          >
-            <Sparkles size={18} />
-            <span>AI Diagnostics</span>
-          </button>
-          <Link
-            href="/shop/products/add"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition shadow-md shadow-emerald-500/10"
-          >
-            <Plus size={18} />
-            <span>Add a Deal</span>
-          </Link>
+          {isApproved && (
+            <button
+              onClick={handleOpenDiagnostics}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-bold transition shadow-md shadow-purple-500/10 cursor-pointer"
+            >
+              <Sparkles size={18} />
+              <span>AI Diagnostics</span>
+            </button>
+          )}
+
+          {isApproved ? (
+            <Link
+              href="/shop/products/add"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition shadow-md shadow-emerald-500/10 cursor-pointer"
+            >
+              <Plus size={18} />
+              <span>Add a Deal</span>
+            </Link>
+          ) : (
+            <button
+              disabled
+              title="Product listings unlock once your shop is approved by an administrator."
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-200 dark:bg-gray-700 text-slate-400 dark:text-gray-500 rounded-xl text-sm font-bold cursor-not-allowed opacity-75"
+            >
+              <Plus size={18} />
+              <span>Add a Deal (Locked)</span>
+            </button>
+          )}
+
           <div className="bg-gray-50 dark:bg-gray-900 px-4 py-2 rounded-xl text-sm border border-gray-100 dark:border-gray-700">
             <p className="text-gray-500 dark:text-gray-400 mb-0.5 text-xs font-semibold uppercase tracking-wider">Status</p>
-            <div className="flex items-center gap-2 font-medium text-emerald-600 dark:text-emerald-400">
-              <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-              Accepting Orders
-            </div>
+            {isApproved ? (
+              <div className="flex items-center gap-2 font-medium text-emerald-600 dark:text-emerald-400">
+                <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+                Live on Marketplace
+              </div>
+            ) : isPending ? (
+              <div className="flex items-center gap-2 font-medium text-amber-600 dark:text-amber-400">
+                <div className="h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
+                Pending Review
+              </div>
+            ) : isRejected ? (
+              <div className="flex items-center gap-2 font-medium text-red-600 dark:text-red-400">
+                <div className="h-2 w-2 bg-red-500 rounded-full" />
+                Application Rejected
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 font-medium text-slate-500">
+                <div className="h-2 w-2 bg-slate-400 rounded-full" />
+                Inactive
+              </div>
+            )}
           </div>
         </div>
       </div>

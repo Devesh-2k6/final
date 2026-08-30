@@ -10,6 +10,7 @@ import { ShopProductsScreen } from "../screens/shop/ShopProductsScreen";
 import { AddEditProductScreen } from "../screens/shop/AddEditProductScreen";
 import { ShopOrdersScreen } from "../screens/shop/ShopOrdersScreen";
 import { ShopSettingsScreen } from "../screens/shop/ShopSettingsScreen";
+import { ScannerScreen } from "../screens/ScannerScreen";
 import { useLanguage } from "../contexts/LanguageContext";
 
 const Tab = createBottomTabNavigator();
@@ -20,6 +21,7 @@ function ShopProductsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ShopProductsList" component={ShopProductsScreen} />
       <Stack.Screen name="AddProduct" component={AddEditProductScreen} />
+      <Stack.Screen name="Scanner" component={ScannerScreen} />
     </Stack.Navigator>
   );
 }
@@ -29,6 +31,7 @@ function ShopDashboardStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ShopDashboardMain" component={ShopDashboardScreen} />
       <Stack.Screen name="AddProduct" component={AddEditProductScreen} />
+      <Stack.Screen name="Scanner" component={ScannerScreen} />
     </Stack.Navigator>
   );
 }

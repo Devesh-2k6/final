@@ -9,6 +9,16 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 BASE_URL = "http://127.0.0.1:8000"
 
+def _verify_user(email: str):
+    import sqlite3
+    from pathlib import Path
+    db_file = Path(__file__).resolve().parent / "expirygo_local_dev.db"
+    conn = sqlite3.connect(str(db_file))
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET email_verified=1 WHERE email=?", (email,))
+    conn.commit()
+    conn.close()
+
 def generate_random_string(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
@@ -30,7 +40,8 @@ def run_e2e_verification():
     if register_res.status_code not in [200, 201]:
         print(f"❌ Shopkeeper registration failed: {register_res.text}")
         sys.exit(1)
-    
+        
+    _verify_user(email)
     reg_data = register_res.json()
     token = reg_data["access_token"]
     user_id = reg_data["user"]["id"]
@@ -70,7 +81,7 @@ def run_e2e_verification():
     # 4. Add product/deal with details (MFG, Expiry, MRP, Stock, Description)
     print("Step 4: Uploading product deal...")
     mfg_date = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%dT00:00:00")
-    expiry_date = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%dT23:59:59") # 2 days left -> High discount (50%)
+    expiry_date = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%dT23:59:59") # 2 days left -> 30% discount
     
     product_payload = {
         "name": "Fresh Strawberry Pack 250g",
@@ -98,9 +109,9 @@ def run_e2e_verification():
     
     # 5. Verify product saves in backend database and discount is correct
     print("Step 5: Verifying product properties and auto-calculated discount...")
-    # 2 days left must map to 70% discount -> discount price should be 60.0
+    # 2 days left maps to 30% discount tier -> discount price should be 140.0
     assert prod_data["original_price"] == 200.0, f"Expected 200.0 original price, got {prod_data['original_price']}"
-    assert prod_data["discount_price"] == 60.0, f"Expected 60.0 discount price (70% off), got {prod_data['discount_price']}"
+    assert prod_data["discount_price"] == 140.0, f"Expected 140.0 discount price (30% off), got {prod_data['discount_price']}"
     assert prod_data["description"] == product_payload["description"], "Description mismatch"
     assert prod_data["shop_id"] == shop_id, "Shop ID mismatch"
     print("✅ Backend database checks passed. Discount and description verified.")

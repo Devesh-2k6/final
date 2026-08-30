@@ -11,6 +11,21 @@ export type ApiShopSummary = {
   average_rating: number;
   rating_count: number;
   phone_number?: string;
+  is_active?: boolean;
+  location_verified?: boolean;
+  location_verified_at?: string | null;
+  location_verification_provider?: string | null;
+  location_verification_name?: string | null;
+  location_verification_address?: string | null;
+  location_verification_distance_meters?: number | null;
+  location_verification_category?: string | null;
+  approval_status?: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED" | string;
+  approval_reason?: string | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
+  rejected_at?: string | null;
+  verification_document_url?: string | null;
+  verification_document_name?: string | null;
 };
 
 export type ProductCategory = "BAKERY" | "DAIRY" | "PRODUCE" | "MEAT" | "PANTRY" | "PREPARED_FOOD" | "OTHER";

@@ -59,7 +59,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             returnKeyType="search"
             autoCapitalize="none"
           />
-          {query.length > 0 && (
+          {query.length > 0 ? (
             <TouchableOpacity
               onPress={() => onChangeQuery("")}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -67,7 +67,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             >
               <X size={14} color={Colors.textSecondary} />
             </TouchableOpacity>
-          )}
+          ) : onOpenQrScanner ? (
+            <TouchableOpacity
+              onPress={onOpenQrScanner}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.clearBtn}
+            >
+              <QrCode size={17} color={Colors.primary} />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Orange Accent Action Button */}

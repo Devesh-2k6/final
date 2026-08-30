@@ -61,6 +61,34 @@ requests = SmartClient()
 def generate_random_string(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
+def _verify_user(email: str):
+    import sqlite3
+    from pathlib import Path
+    db_file = Path(__file__).resolve().parent / "expirygo_local_dev.db"
+    conn = sqlite3.connect(str(db_file))
+    cur = conn.cursor()
+    # Mark email as verified and ensure role is correct
+    cur.execute("UPDATE users SET email_verified=1 WHERE email=?", (email,))
+    conn.commit()
+    conn.close()
+
+def _approve_shop(owner_id: str):
+    import sqlite3
+    from pathlib import Path
+    db_file = Path(__file__).resolve().parent / "expirygo_local_dev.db"
+    conn = sqlite3.connect(str(db_file))
+    cur = conn.cursor()
+    # Mark shop as location verified and approved
+    cur.execute("""
+        UPDATE shops
+        SET location_verified=1,
+            approval_status='APPROVED',
+            is_active=1
+        WHERE owner_id=?
+    """, (owner_id,))
+    conn.commit()
+    conn.close()
+
 def run_complete_testing():
     print("=" * 70)
     print("[TEST] STARTING EXPIRYGO FINAL COMPREHENSIVE AUTOMATED TESTING")
@@ -81,6 +109,7 @@ def run_complete_testing():
         "is_shop_owner": False
     })
     assert reg_res.status_code in [200, 201], f"Customer registration failed: {reg_res.text}"
+    _verify_user(cust_email)
     cust_token = reg_res.json()["access_token"]
     cust_id = reg_res.json()["user"]["id"]
     print(f"  [OK] Customer registered successfully. ID: {cust_id}")
@@ -107,6 +136,7 @@ def run_complete_testing():
         "is_shop_owner": True
     })
     assert reg_res.status_code in [200, 201], f"Shopkeeper registration failed: {reg_res.text}"
+    _verify_user(shop_email)
     shop_token = reg_res.json()["access_token"]
     shop_owner_id = reg_res.json()["user"]["id"]
     print(f"  [OK] Shopkeeper registered successfully. ID: {shop_owner_id}")
@@ -125,6 +155,7 @@ def run_complete_testing():
     })
     assert shop_setup_res.status_code in [200, 201], f"Shop setup failed: {shop_setup_res.text}"
     shop_id = shop_setup_res.json()["id"]
+    _approve_shop(shop_owner_id)
     print(f"  [OK] Shop created. ID: {shop_id}, Name: {shop_setup_res.json()['name']}")
 
     # -------------------------------------------------------------
@@ -198,8 +229,8 @@ def run_complete_testing():
     prod_data = prod_valid_res.json()
     prod_id = prod_data["id"]
     print(f"  [OK] Product added successfully. ID: {prod_id}")
-    print(f"  [OK] Smart Auto-Discount Verified: MRP: 200.0, Discounted Price: {prod_data['discount_price']} (70% Off!)")
-    assert prod_data["discount_price"] == 60.0, f"Expected 60.0 discount price, got {prod_data['discount_price']}"
+    print(f"  [OK] Smart Auto-Discount Verified: MRP: 200.0, Discounted Price: {prod_data['discount_price']} (30% Off!)")
+    assert prod_data["discount_price"] == 140.0, f"Expected 140.0 discount price, got {prod_data['discount_price']}"
 
     # -------------------------------------------------------------
     # 5. Product Editing & Active Status Toggle Flow
@@ -208,7 +239,7 @@ def run_complete_testing():
     edit_res = requests.put(f"{BASE_URL}/products/{prod_id}", headers=headers, json={
         "name": "Supermarket Fresh Strawberries (Premium Pack)",
         "category": "PRODUCE",
-        "original_price": 250.0, # changed from 200.0 to 250.0 -> 70% of 250 = 75.0
+        "original_price": 250.0, # changed from 200.0 to 250.0 -> 30% off of 250 = 175.0
         "quantity": 8,           # changed from 10 to 8
         "manufacturing_date": mfg_date,
         "expiry_date": exp_date,
@@ -222,10 +253,10 @@ def run_complete_testing():
     print(f"  [OK] Product Edited successfully: {edit_data['name']}")
     print(f"  [OK] Updated Quantity: {edit_data['quantity']} (expected 8)")
     print(f"  [OK] Updated MRP: {edit_data['original_price']} (expected 250.0)")
-    print(f"  [OK] Updated Discount Price: {edit_data['discount_price']} (70% off of 250 is 75.0)")
+    print(f"  [OK] Updated Discount Price: {edit_data['discount_price']} (30% off of 250 is 175.0)")
     print(f"  [OK] Active Status Toggle: {edit_data['is_active']} (expected False)")
     assert edit_data["quantity"] == 8
-    assert edit_data["discount_price"] == 75.0
+    assert edit_data["discount_price"] == 175.0
     assert edit_data["is_active"] == False
 
     # Toggle Active Status Back to True so customers can see it

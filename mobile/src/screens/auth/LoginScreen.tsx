@@ -21,6 +21,9 @@ import {
   RefreshCw,
   X,
   Zap,
+  ShoppingBag,
+  Store,
+  Sparkles,
 } from "lucide-react-native";
 import { Colors, Radius, Spacing, Typography, Shadows } from "../../theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -40,8 +43,9 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"customer" | "shop">("customer");
+  const [email, setEmail] = useState("customer@test.com");
+  const [password, setPassword] = useState("password123");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -98,21 +102,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     setServerModalVisible(false);
   };
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError("Please enter your email and password.");
-      return;
-    }
+  const executeLogin = async (loginEmail: string, loginPass: string) => {
     setError(null);
     setLoading(true);
     try {
-      await login({ email: email.trim(), password });
+      await login({ email: loginEmail.trim(), password: loginPass });
     } catch (err: any) {
       const errMsg = err.message || "Failed to log in. Please check your credentials.";
       setError(errMsg);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    await executeLogin(email, password);
+  };
+
+  const handleQuickDemo = (demoEmail: string, demoRole: "customer" | "shop") => {
+    setSelectedRole(demoRole);
+    setEmail(demoEmail);
+    setPassword("password123");
+    executeLogin(demoEmail, "password123");
   };
 
   return (
@@ -128,15 +143,162 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           </View>
           <Text style={styles.title}>Welcome to ExpiryGo</Text>
           <Text style={styles.subtitle}>
-            Sign in to rescue surplus deals or manage your store inventory.
+            {selectedRole === "customer"
+              ? "Sign in as Shopper to rescue surplus food & get up to 70% discounts."
+              : "Sign in as Shopkeeper to list surplus deals, manage stock & track AI sales."}
           </Text>
+        </View>
+
+        {/* Role Switcher Tabs */}
+        <View style={styles.roleToggleContainer}>
+          <TouchableOpacity
+            style={[
+              styles.roleToggleBtn,
+              selectedRole === "customer" && styles.roleToggleBtnActive,
+            ]}
+            onPress={() => {
+              setSelectedRole("customer");
+              setEmail("customer@test.com");
+              setPassword("password123");
+            }}
+            activeOpacity={0.8}
+          >
+            <ShoppingBag
+              size={17}
+              color={selectedRole === "customer" ? Colors.primaryBright : Colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.roleToggleText,
+                selectedRole === "customer" && styles.roleToggleTextActive,
+              ]}
+            >
+              Shopper / Customer
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.roleToggleBtn,
+              selectedRole === "shop" && styles.roleToggleBtnActive,
+            ]}
+            onPress={() => {
+              setSelectedRole("shop");
+              setEmail("shop1@test.com");
+              setPassword("password123");
+            }}
+            activeOpacity={0.8}
+          >
+            <Store
+              size={17}
+              color={selectedRole === "shop" ? Colors.primaryBright : Colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.roleToggleText,
+                selectedRole === "shop" && styles.roleToggleTextActive,
+              ]}
+            >
+              Shopkeeper
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick 1-Tap Demo Logins Section */}
+        <View style={styles.demoSection}>
+          <View style={styles.demoHeaderRow}>
+            <Sparkles size={14} color={Colors.primaryBright} />
+            <Text style={styles.demoSectionTitle}>
+              {selectedRole === "customer"
+                ? "⚡ Instant 1-Tap Shopper Demo"
+                : "⚡ Instant 1-Tap Shopkeeper Demos"}
+            </Text>
+          </View>
+
+          {selectedRole === "customer" ? (
+            <TouchableOpacity
+              style={styles.quickDemoCard}
+              onPress={() => handleQuickDemo("customer@test.com", "customer")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.quickDemoIconWrap}>
+                <ShoppingBag size={18} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quickDemoName}>Verified Shopper Account</Text>
+                <Text style={styles.quickDemoEmail}>customer@test.com</Text>
+              </View>
+              <View style={styles.quickDemoBadge}>
+                <Text style={styles.quickDemoBadgeText}>Tap to Log In</Text>
+                <ArrowRight size={13} color={Colors.primaryBright} />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.merchantGrid}>
+              <TouchableOpacity
+                style={styles.quickDemoCard}
+                onPress={() => handleQuickDemo("shop1@test.com", "shop")}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickDemoIconWrap, { backgroundColor: "#10B981" }]}>
+                  <Store size={18} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.quickDemoName}>Green Valley Supermarket</Text>
+                  <Text style={styles.quickDemoEmail}>shop1@test.com (Milk, Bread, Yogurt)</Text>
+                </View>
+                <View style={styles.quickDemoBadge}>
+                  <Text style={styles.quickDemoBadgeText}>Shop 1</Text>
+                  <ArrowRight size={13} color={Colors.primaryBright} />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickDemoCard}
+                onPress={() => handleQuickDemo("shop2@test.com", "shop")}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickDemoIconWrap, { backgroundColor: "#3B82F6" }]}>
+                  <Store size={18} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.quickDemoName}>Fresh Mart Express</Text>
+                  <Text style={styles.quickDemoEmail}>shop2@test.com (Bananas, Juice, Cheese)</Text>
+                </View>
+                <View style={styles.quickDemoBadge}>
+                  <Text style={styles.quickDemoBadgeText}>Shop 2</Text>
+                  <ArrowRight size={13} color={Colors.primaryBright} />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickDemoCard}
+                onPress={() => handleQuickDemo("shop3@test.com", "shop")}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.quickDemoIconWrap, { backgroundColor: "#F59E0B" }]}>
+                  <Store size={18} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.quickDemoName}>Daily Bazaar</Text>
+                  <Text style={styles.quickDemoEmail}>shop3@test.com (Croissants, Nuts, Butter)</Text>
+                </View>
+                <View style={styles.quickDemoBadge}>
+                  <Text style={styles.quickDemoBadgeText}>Shop 3</Text>
+                  <ArrowRight size={13} color={Colors.primaryBright} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Error Alert */}
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            {error.toLowerCase().includes("timeout") || error.toLowerCase().includes("network") || error.toLowerCase().includes("server") ? (
+            {error.toLowerCase().includes("timeout") ||
+            error.toLowerCase().includes("network") ||
+            error.toLowerCase().includes("server") ? (
               <TouchableOpacity
                 style={styles.errorActionBtn}
                 onPress={() => {
@@ -154,7 +316,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         {/* Form Inputs */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={styles.label}>
+              {selectedRole === "shop" ? "Merchant Email" : "Shopper Email"}
+            </Text>
             <View style={styles.inputContainer}>
               <Mail size={18} color={Colors.textMuted} />
               <TextInput
@@ -195,7 +359,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               <ActivityIndicator color={Colors.textInverse} />
             ) : (
               <>
-                <Text style={styles.submitButtonText}>Sign In</Text>
+                <Text style={styles.submitButtonText}>
+                  {selectedRole === "shop" ? "Sign In as Shopkeeper" : "Sign In as Shopper"}
+                </Text>
                 <ArrowRight size={18} color={Colors.textInverse} />
               </>
             )}
@@ -384,7 +550,109 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     textAlign: "center",
     color: Colors.textSecondary,
-    maxWidth: 290,
+    maxWidth: 320,
+    lineHeight: 18,
+  },
+  roleToggleContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    marginBottom: Spacing.md,
+    gap: 6,
+  },
+  roleToggleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: Radius.sm,
+    gap: 6,
+  },
+  roleToggleBtnActive: {
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1,
+    borderColor: Colors.primaryGlow,
+  },
+  roleToggleText: {
+    ...Typography.caption,
+    fontWeight: "700",
+    color: Colors.textMuted,
+  },
+  roleToggleTextActive: {
+    color: Colors.primaryBright,
+    fontWeight: "800",
+  },
+  demoSection: {
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    marginBottom: Spacing.md,
+    gap: 10,
+  },
+  demoHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  demoSectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: Colors.primaryBright,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  merchantGrid: {
+    gap: 8,
+  },
+  quickDemoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.cardElevated,
+    borderRadius: Radius.sm,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    gap: 10,
+  },
+  quickDemoIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickDemoName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.textPrimary,
+  },
+  quickDemoEmail: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  quickDemoBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Colors.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.primaryGlow,
+  },
+  quickDemoBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.primaryBright,
   },
   errorBox: {
     backgroundColor: Colors.roseLight,

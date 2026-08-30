@@ -8,7 +8,7 @@ from fastapi_cache.decorator import cache
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
 import schemas
-from auth_service import get_current_user, get_current_shop_owner
+from auth_service import get_current_user, get_current_shop_owner, get_current_active_shop_owner
 from db.models import Product, Shop, User, Follower, Notification, ProductCategory
 from db.session import get_db
 from storage import upload_product_image
@@ -105,7 +105,6 @@ def _serialize_product(product: Product, shop: Optional[Shop] = None) -> dict:
 
 
 @router.get("/")
-@cache(expire=60)
 def read_products(
     db: Annotated[Session, Depends(get_db)],
     shop_id: Optional[str] = None,
@@ -492,7 +491,7 @@ def lookup_product_by_barcode(
 @router.get("/{product_id}/forecast")
 def get_product_forecast(
     product_id: str,
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)]
 ):
     product = db.get(Product, product_id)
@@ -511,7 +510,7 @@ def get_product_forecast(
 @router.get("/{product_id}/ai-insight")
 def get_product_ai_insight(
     product_id: str,
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)]
 ):
     product = db.get(Product, product_id)
@@ -531,7 +530,7 @@ def get_product_ai_insight(
 def upload_image(
     request: Request,
     file: UploadFile = File(...),
-    user: User = Depends(get_current_shop_owner)
+    user: User = Depends(get_current_active_shop_owner)
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be an image")
@@ -542,7 +541,7 @@ def upload_image(
 @router.post("/scan-dates")
 async def scan_product_dates(
     file: UploadFile = File(...),
-    user: User = Depends(get_current_shop_owner)
+    user: User = Depends(get_current_active_shop_owner)
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be an image")
@@ -555,7 +554,7 @@ async def scan_product_dates(
 @router.post("/optimize", response_model=schemas.ProductOptimizeResponse)
 async def optimize_product(
     opt_in: schemas.ProductOptimizeRequest,
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
 ):
     result = await optimize_product_details(
         name=opt_in.name,
@@ -570,7 +569,7 @@ async def optimize_product(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_product(
     product_in: schemas.ProductCreate,
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -663,11 +662,19 @@ async def create_product(
     return serialized
 
 
+@router.get("/{product_id}", response_model=schemas.ProductWithShop)
+def read_product(product_id: str, db: Annotated[Session, Depends(get_db)]):
+    product = db.query(Product).options(joinedload(Product.shop)).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    return _serialize_product(product, product.shop)
+
+
 @router.put("/{product_id}")
 def update_product(
     product_id: str,
     product_in: schemas.ProductCreate,
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -707,7 +714,7 @@ def update_product(
 @router.delete("/{product_id}")
 def delete_product(
     product_id: str,
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)

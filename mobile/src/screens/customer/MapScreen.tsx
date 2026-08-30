@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
   Sparkles,
   Compass,
   Locate,
+  ShoppingBag,
 } from "lucide-react-native";
 import { Colors, Radius, Shadows, Spacing, Typography } from "../../theme";
 import { listShops, ShopWithDescription } from "../../services/shops";
@@ -27,10 +28,58 @@ interface MapScreenProps {
   navigation: any;
 }
 
+const DEFAULT_SHOPS: ShopWithDescription[] = [
+  {
+    id: "shop-1",
+    name: "Green Valley Supermarket",
+    address: "123 Anna Salai, Downtown Chennai",
+    latitude: 13.0827,
+    longitude: 80.2707,
+    deal_count: 5,
+    average_rating: 4.8,
+    rating_count: 24,
+  },
+  {
+    id: "shop-2",
+    name: "Fresh Mart Express",
+    address: "456 Usman Road, T. Nagar, Chennai",
+    latitude: 13.0406,
+    longitude: 80.2443,
+    deal_count: 3,
+    average_rating: 4.6,
+    rating_count: 18,
+  },
+  {
+    id: "shop-3",
+    name: "Daily Bazaar",
+    address: "789 Nungambakkam High Road, Chennai",
+    latitude: 13.0598,
+    longitude: 80.2206,
+    deal_count: 4,
+    average_rating: 4.9,
+    rating_count: 32,
+  },
+];
+
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
-  const [shops, setShops] = useState<ShopWithDescription[]>([]);
+  const [shops, setShops] = useState<ShopWithDescription[]>(DEFAULT_SHOPS);
   const [loading, setLoading] = useState(true);
-  const [selectedRadius, setSelectedRadius] = useState<number>(5);
+  const [locating, setLocating] = useState(false);
+  const [selectedRadius, setSelectedRadius] = useState<number>(10);
   const [selectedShop, setSelectedShop] = useState<ShopWithDescription | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({
     lat: 13.0827,
@@ -38,25 +87,31 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
   });
   const webViewRef = useRef<WebView>(null);
 
+  const fetchUserGPS = async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+        });
+      }
+    } catch (err) {
+      console.log("GPS Location request skipped/failed:", err);
+    } finally {
+      setLocating(false);
+    }
+  };
+
   useEffect(() => {
     async function initLocationAndShops() {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const loc = await Location.getCurrentPositionAsync({});
-          setUserLocation({
-            lat: loc.coords.latitude,
-            lng: loc.coords.longitude,
-          });
-        }
-      } catch (err) {
-        console.log("Location permission skipped:", err);
-      }
-
+      await fetchUserGPS();
       try {
         const data = await listShops();
-        setShops(data);
-        if (data.length > 0) {
+        if (data && data.length > 0) {
+          setShops(data);
           setSelectedShop(data[0]);
         }
       } catch (err) {
@@ -70,19 +125,19 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
   }, []);
 
   const calculateDistance = (shopLat: number, shopLng: number) => {
-    const R = 6371; // km
-    const dLat = ((shopLat - userLocation.lat) * Math.PI) / 180;
-    const dLon = ((shopLng - userLocation.lng) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((userLocation.lat * Math.PI) / 180) *
-        Math.cos((shopLat * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c;
+    const d = getDistanceKm(userLocation.lat, userLocation.lng, shopLat, shopLng);
     return `${d.toFixed(1)} km`;
   };
+
+  // Filter shops by distance radius
+  const radiusFilteredShops = useMemo(() => {
+    if (selectedRadius >= 20) return shops;
+    const within = shops.filter((s) => {
+      const d = getDistanceKm(userLocation.lat, userLocation.lng, s.latitude, s.longitude);
+      return d <= selectedRadius;
+    });
+    return within.length > 0 ? within : shops;
+  }, [shops, selectedRadius, userLocation]);
 
   const handleOpenGoogleMaps = (shop: ShopWithDescription) => {
     const lat = shop.latitude || 13.0827;
@@ -90,17 +145,13 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
     const label = encodeURIComponent(shop.name);
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${label}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert("Google Maps", `Store Address: ${shop.address}`);
+      Alert.alert("Store Location", `${shop.name}\n${shop.address}`);
     });
   };
 
   // Generate interactive Leaflet Real Map HTML with pins and live route polyline
   const generateMapHtml = () => {
-    const activeShops = shops.length > 0 ? shops : [
-      { id: "1", name: "Green Valley Supermarket", address: "Downtown Chennai", latitude: 13.0827, longitude: 80.2707, deal_count: 5 },
-      { id: "2", name: "Fresh Mart Express", address: "T. Nagar, Chennai", latitude: 13.0406, longitude: 80.2443, deal_count: 3 },
-      { id: "3", name: "Daily Bazaar", address: "Nungambakkam, Chennai", latitude: 13.0598, longitude: 80.2206, deal_count: 4 },
-    ];
+    const activeShops = radiusFilteredShops.length > 0 ? radiusFilteredShops : DEFAULT_SHOPS;
 
     const shopsJson = JSON.stringify(
       activeShops.map((s) => ({
@@ -140,27 +191,27 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
             }
             .user-pulse {
               position: relative;
-              width: 24px;
-              height: 24px;
+              width: 26px;
+              height: 26px;
             }
             .user-pulse-ring {
               position: absolute;
-              width: 24px;
-              height: 24px;
+              width: 26px;
+              height: 26px;
               border-radius: 50%;
-              background: rgba(59, 130, 246, 0.4);
+              background: rgba(37, 99, 235, 0.4);
               animation: pulse 1.6s infinite ease-out;
             }
             .user-pulse-dot {
               position: absolute;
               top: 5px;
               left: 5px;
-              width: 14px;
-              height: 14px;
+              width: 16px;
+              height: 16px;
               border-radius: 50%;
               background: #2563eb;
               border: 2.5px solid white;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             }
             @keyframes pulse {
               0% { transform: scale(0.6); opacity: 1; }
@@ -170,8 +221,8 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               background: #FF5B26;
               color: white;
               border-radius: 18px;
-              padding: 4px 8px;
-              font-family: -apple-system, sans-serif;
+              padding: 5px 9px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
               font-size: 11px;
               font-weight: 800;
               box-shadow: 0 4px 12px rgba(255, 91, 38, 0.45);
@@ -180,15 +231,16 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               align-items: center;
               gap: 4px;
               white-space: nowrap;
+              cursor: pointer;
             }
             .store-marker.active {
-              background: #111827;
-              transform: scale(1.1);
-              box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+              background: #10b981;
+              box-shadow: 0 6px 16px rgba(16, 185, 129, 0.55);
+              transform: scale(1.08);
             }
             .leaflet-popup-content-wrapper {
               border-radius: 16px;
-              padding: 6px;
+              padding: 4px;
               box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             }
             .leaflet-popup-content {
@@ -210,12 +262,11 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               attributionControl: false
             }).setView([userLat, userLng], 13);
 
-            // High-detail street tiles with fallback
+            // High-detail street tiles
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
               maxZoom: 19
             }).addTo(map);
 
-            // Trigger size calculation
             setTimeout(function() { map.invalidateSize(); }, 150);
             setTimeout(function() { map.invalidateSize(); }, 600);
 
@@ -223,10 +274,10 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
             const userIcon = L.divIcon({
               className: 'user-icon-container',
               html: '<div class="user-pulse"><div class="user-pulse-ring"></div><div class="user-pulse-dot"></div></div>',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
+              iconSize: [26, 26],
+              iconAnchor: [13, 13]
             });
-            L.marker([userLat, userLng], { icon: userIcon }).addTo(map).bindPopup('<b>📍 Your Location</b>');
+            L.marker([userLat, userLng], { icon: userIcon }).addTo(map).bindPopup('<b>📍 Your Search Location</b>');
 
             let routeLine = null;
 
@@ -234,7 +285,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               if (routeLine) {
                 map.removeLayer(routeLine);
               }
-              // Call real-world OSRM Road Routing engine to get actual street turns
+              // Call real-world OSRM Road Routing engine for turn-by-turn road polyline
               const osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + userLng + ',' + userLat + ';' + toLng + ',' + toLat + '?overview=full&geometries=geojson';
               fetch(osrmUrl)
                 .then(res => res.json())
@@ -247,7 +298,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
                       opacity: 0.9,
                       lineJoin: 'round'
                     }).addTo(map);
-                    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+                    map.fitBounds(routeLine.getBounds(), { padding: [45, 45] });
                   } else {
                     routeLine = L.polyline([[userLat, userLng], [toLat, toLng]], {
                       color: '#FF5B26',
@@ -281,7 +332,9 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               marker.on('click', () => {
                 drawRoute(shop.lat, shop.lng);
                 map.panTo([shop.lat, shop.lng]);
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SHOP_CLICK', shopId: shop.id }));
+                try {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SHOP_CLICK', shopId: shop.id }));
+                } catch(e) {}
               });
             });
 
@@ -316,17 +369,26 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Nearby Surplus Stores</Text>
-          <Text style={styles.headerSub}>Real street map with turn-by-turn route navigation</Text>
+          <Text style={styles.headerSub}>Live map with turn-by-turn road route navigation</Text>
         </View>
-        <View style={styles.radarPill}>
-          <Compass size={13} color={Colors.primary} />
-          <Text style={styles.radarText}>LIVE MAP</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.radarPill}
+          onPress={fetchUserGPS}
+          disabled={locating}
+          activeOpacity={0.8}
+        >
+          {locating ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <Locate size={13} color={Colors.primary} />
+          )}
+          <Text style={styles.radarText}>GPS</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Radius Filters */}
       <View style={styles.radiusRow}>
-        {[1, 3, 5, 10].map((r) => (
+        {[1, 3, 5, 10, 25].map((r) => (
           <TouchableOpacity
             key={r}
             style={[styles.radiusChip, selectedRadius === r && styles.radiusChipActive]}
@@ -339,7 +401,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
                 selectedRadius === r && styles.radiusChipTextActive,
               ]}
             >
-              Within {r} km
+              {r >= 25 ? "All Stores" : `${r} km`}
             </Text>
           </TouchableOpacity>
         ))}
@@ -354,6 +416,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
           </View>
         ) : (
           <WebView
+            key={`map-${selectedRadius}-${selectedShop?.id}-${radiusFilteredShops.length}-${userLocation.lat}`}
             ref={webViewRef}
             originWhitelist={["*"]}
             source={{ html: generateMapHtml() }}
@@ -392,7 +455,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               activeOpacity={0.85}
             >
               <Navigation size={14} color="#FFF" />
-              <Text style={styles.googleMapsBtnText}>Start Route in Google Maps</Text>
+              <Text style={styles.googleMapsBtnText}>Get Directions</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -400,8 +463,9 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
               onPress={() => navigation.navigate("DealsTab")}
               activeOpacity={0.85}
             >
+              <ShoppingBag size={14} color={Colors.primary} />
               <Text style={styles.viewDealsText}>Browse Deals</Text>
-              <ChevronRight size={15} color={Colors.primary} />
+              <ChevronRight size={14} color={Colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -436,8 +500,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: Radius.full,
     gap: 4,
   },
@@ -571,7 +635,8 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
+    gap: 6,
   },
   viewDealsText: {
     color: Colors.primary,

@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import schemas
-from auth_service import get_current_shop_owner
+from auth_service import get_current_shop_owner, get_current_active_shop_owner
 from db.models import User, Product, Shop, Reservation, ReservationStatus, Order, Review
 from db.session import get_db
 from routers.shops import _get_owner_shop
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/shops/me", tags=["Analytics"])
 
 @router.get("/analytics", response_model=schemas.AnalyticsResponse)
 def get_shop_analytics(
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -93,7 +93,7 @@ def get_shop_analytics(
 
 @router.get("/analytics/ai-inventory")
 def get_shop_ai_inventory(
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -162,7 +162,7 @@ def get_shop_ai_inventory(
 
 @router.get("/ml-diagnostics")
 def get_shop_ml_diagnostics(
-    user: Annotated[User, Depends(get_current_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)

@@ -71,24 +71,70 @@ def seed_database():
                 email=shop_info["email"],
                 hashed_password=hash_password(shop_info["password"]),
                 name=shop_info["owner_name"],
+                role="SHOPKEEPER",
                 is_shop_owner=True,
+                email_verified=True,
             )
             db.add(owner)
             db.flush()
             
-            # Create shop
+            # Create shop with verified location & approved status for demo accounts
             shop = Shop(
                 name=shop_info["name"],
                 owner_id=owner.id,
                 address=shop_info["address"],
                 latitude=shop_info["latitude"],
                 longitude=shop_info["longitude"],
+                is_active=True,
+                location_verified=True,
+                location_verified_at=datetime.utcnow(),
+                location_verification_provider="nominatim",
+                location_verification_name=shop_info["name"],
+                location_verification_address=shop_info["address"],
+                location_verification_distance_meters=0.0,
+                location_verification_category="supermarket",
+                approval_status="APPROVED",
+                approved_at=datetime.utcnow(),
+                approved_by="admin@test.com",
             )
             db.add(shop)
             db.flush()
             shops_list.append((shop, owner))
             print(f"  [OK] {shop_info['name']} (login: {shop_info['email']})")
         
+        # Create a pending merchant & shop for Admin review testing
+        pending_owner = User(
+            email="shop_pending@test.com",
+            hashed_password=hash_password("password123"),
+            name="Devi Bakery & Sweets",
+            role="SHOPKEEPER",
+            is_shop_owner=True,
+            email_verified=True,
+        )
+        db.add(pending_owner)
+        db.flush()
+
+        pending_shop = Shop(
+            name="Devi Sweet Bakery",
+            owner_id=pending_owner.id,
+            address="15 Gandhi Road, T. Nagar, Chennai",
+            latitude=13.0418,
+            longitude=80.2337,
+            description="Fresh artisan sweets, savory puff pastries, and baked breads.",
+            is_active=False,
+            location_verified=True,
+            location_verified_at=datetime.utcnow(),
+            location_verification_provider="nominatim",
+            location_verification_name="Devi Bakery & Confectionery",
+            location_verification_address="15 Gandhi Road, T. Nagar, Chennai, Tamil Nadu, 600017",
+            location_verification_distance_meters=14.2,
+            location_verification_category="bakery",
+            approval_status="PENDING",
+        )
+        db.add(pending_shop)
+        db.flush()
+        print(f"  [OK] Pending Shop created for Admin Moderation Queue: {pending_shop.name} (owner: shop_pending@test.com)")
+
         db.commit()
         
         # Create sample products with discounts
@@ -129,64 +175,44 @@ def seed_database():
             # Shop 2 products
             {
                 "shop_idx": 1,
-                "name": "Bananas (1 dozen)",
+                "name": "Paneer 200g",
+                "category": "DAIRY",
+                "original_price": 80.00,
+                "quantity": 8,
+                "days_left": 1,  # 70% discount
+                "mfg_date": -5,
+                "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&q=80",
+            },
+            {
+                "shop_idx": 1,
+                "name": "Tomatoes 1kg",
                 "category": "PRODUCE",
                 "original_price": 40.00,
-                "quantity": 30,
-                "days_left": 1,  # 70% discount
+                "quantity": 25,
+                "days_left": 2,  # 70% discount
                 "mfg_date": -4,
-                "image": "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&q=80",
-            },
-            {
-                "shop_idx": 1,
-                "name": "Orange Juice 1L",
-                "category": "OTHER",
-                "original_price": 60.00,
-                "quantity": 8,
-                "days_left": 3,  # 50% discount
-                "mfg_date": -10,
-                "image": "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&q=80",
-            },
-            {
-                "shop_idx": 1,
-                "name": "Cheese Slice Pack",
-                "category": "DAIRY",
-                "original_price": 120.00,
-                "quantity": 5,
-                "days_left": 5,  # 50% discount
-                "mfg_date": -15,
-                "image": "https://images.unsplash.com/photo-1582208993730-98829d31ac09?w=400&q=80",
+                "image": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&q=80",
             },
             # Shop 3 products
             {
                 "shop_idx": 2,
-                "name": "Croissants (pack of 4)",
-                "category": "BAKERY",
-                "original_price": 80.00,
-                "quantity": 10,
-                "days_left": 1,  # 70% discount
-                "mfg_date": -2,
-                "image": "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80",
-            },
-            {
-                "shop_idx": 2,
-                "name": "Mixed Nuts 500g",
-                "category": "PANTRY",
-                "original_price": 150.00,
-                "quantity": 6,
-                "days_left": 8,  # 30% discount
-                "mfg_date": -30,
-                "image": "https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=400&q=80",
-            },
-            {
-                "shop_idx": 2,
-                "name": "Butter 200g",
+                "name": "Eggs Pack of 6",
                 "category": "DAIRY",
-                "original_price": 110.00,
-                "quantity": 8,
-                "days_left": 6,  # 30% discount
-                "mfg_date": -20,
-                "image": "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&q=80",
+                "original_price": 42.00,
+                "quantity": 18,
+                "days_left": 3,  # 50% discount
+                "mfg_date": -10,
+                "image": "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=400&q=80",
+            },
+            {
+                "shop_idx": 2,
+                "name": "Apples 1kg",
+                "category": "PRODUCE",
+                "original_price": 120.00,
+                "quantity": 10,
+                "days_left": 3,  # 50% discount
+                "mfg_date": -6,
+                "image": "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&q=80",
             },
         ]
         
@@ -241,21 +267,41 @@ def seed_database():
             email="customer@test.com",
             hashed_password=hash_password("password123"),
             name="John Doe",
+            role="CUSTOMER",
             is_shop_owner=False,
+            email_verified=True,
         )
         db.add(customer)
         db.commit()
         print(f"  [OK] Customer created (login: customer@test.com / password123)")
+
+        # Create platform administrator
+        print("\n[INFO] Creating platform administrator...")
+        admin_user = User(
+            email="admin@test.com",
+            hashed_password=hash_password("password123"),
+            name="Platform Administrator",
+            role="ADMIN",
+            is_shop_owner=False,
+            email_verified=True,
+        )
+        db.add(admin_user)
+        db.commit()
+        print(f"  [OK] Admin created (login: admin@test.com / password123)")
         
         print("\n" + "="*60)
         print("SUCCESS: SAMPLE DATA SEEDED SUCCESSFULLY!")
         print("="*60)
         print("\n[INFO] Sample Logins:")
-        print("  Shop Owners:")
+        print("  Shop Owners (Active):")
         for shop_info in shops_data:
             print(f"    - {shop_info['email']} / password123")
+        print("  Shop Owner (Pending Admin Review):")
+        print("    - shop_pending@test.com / password123")
         print("  Customer:")
         print("    - customer@test.com / password123")
+        print("  Administrator:")
+        print("    - admin@test.com / password123")
         print("\n[OK] You can now test the complete flow!")
         
     except Exception as e:

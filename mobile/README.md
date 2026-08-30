@@ -1,6 +1,6 @@
 # ExpiryGo - Native React Native (Expo) Mobile App
 
-This is the 100% native React Native mobile application for **ExpiryGo**, built with Expo SDK 52, React Navigation, and TypeScript.
+This is the 100% native React Native mobile application for **ExpiryGo**, built with Expo SDK 54, React Navigation, and TypeScript.
 
 ---
 

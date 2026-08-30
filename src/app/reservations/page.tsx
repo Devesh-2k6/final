@@ -214,7 +214,7 @@ export default function MyReservations() {
                   </div>
                   {item.payment_status === "UNPAID" && (
                     <div className="mt-3">
-                      <Link href={`/checkout/${item.id}`} className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold shadow-sm">
+                      <Link href={`/checkout?rid=${item.id}`} className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold shadow-sm">
                         <CreditCard size={14} /> Pay Online Now
                       </Link>
                     </div>

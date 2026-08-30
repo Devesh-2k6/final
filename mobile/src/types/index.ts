@@ -9,6 +9,14 @@ export type ApiShopSummary = {
   phone_number?: string;
   description?: string | null;
   deal_count?: number;
+  is_active?: boolean;
+  location_verified?: boolean;
+  approval_status?: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED" | string;
+  approval_reason?: string | null;
+  location_verification_name?: string | null;
+  location_verification_address?: string | null;
+  location_verification_category?: string | null;
+  location_verification_distance_meters?: number | null;
 };
 
 export type ProductCategory =
@@ -149,17 +157,65 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
+  role?: "CUSTOMER" | "SHOPKEEPER" | "ADMIN" | string;
   is_shop_owner: boolean;
+  email_verified?: boolean;
   phone_number?: string;
   total_money_saved?: number;
   total_items_saved?: number;
   co2_saved_kg?: number;
 };
 
+export type AdminShop = {
+  id: string;
+  name: string;
+  owner_id: string;
+  owner_name?: string | null;
+  owner_email?: string | null;
+  owner_phone?: string | null;
+  address: string;
+  latitude: number;
+  longitude: number;
+  description?: string | null;
+  is_active: boolean;
+  location_verified: boolean;
+  location_verified_at?: string | null;
+  location_verification_provider?: string | null;
+  location_verification_name?: string | null;
+  location_verification_address?: string | null;
+  location_verification_distance_meters?: number | null;
+  location_verification_category?: string | null;
+  approval_status: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED" | string;
+  approval_reason?: string | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
+  rejected_at?: string | null;
+  created_at?: string | null;
+};
+
+export type AdminStats = {
+  total_users: number;
+  total_customers: number;
+  total_merchants: number;
+  active_shops: number;
+  pending_shops: number;
+  rejected_shops: number;
+  suspended_shops: number;
+  total_products: number;
+  total_deals: number;
+};
+
 export type AuthResponse = {
   access_token: string;
   token_type: string;
   user: AuthUser;
+};
+
+export type VerifyEmailResponse = {
+  success: boolean;
+  message: string;
+  email?: string;
+  user?: AuthUser;
 };
 
 export type ApiProductForecast = {

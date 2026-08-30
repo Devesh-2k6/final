@@ -25,6 +25,8 @@ from routers import (
     interactions,
     analytics,
     translation,
+    pantry,
+    admin,
 )
 from routers.errors import register_error_handlers
 
@@ -85,7 +87,7 @@ app.add_middleware(
 # In-Memory Token Bucket / Sliding Window Rate Limiter for sensitive endpoints
 _rate_limit_store: dict[str, list[float]] = {}
 RATE_LIMIT_WINDOW = 60.0 # 1 minute
-MAX_AUTH_REQUESTS_PER_WINDOW = 20 # 20 requests per minute
+MAX_AUTH_REQUESTS_PER_WINDOW = int(os.getenv("MAX_AUTH_REQUESTS_PER_WINDOW", "5000"))
 
 @app.middleware("http")
 async def security_and_rate_limit_middleware(request: Request, call_next):
@@ -163,6 +165,8 @@ app.include_router(orders.router)
 app.include_router(interactions.router)
 app.include_router(analytics.router)
 app.include_router(translation.router)
+app.include_router(pantry.router)
+app.include_router(admin.router)
 
 # Serve local static uploads fallback
 os.makedirs("static/uploads", exist_ok=True)

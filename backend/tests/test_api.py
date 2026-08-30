@@ -6,14 +6,61 @@ from sqlalchemy.orm import Session
 
 from db.base import Base
 from db.models import Product, Shop, User  # noqa: F401
-from db.session import engine
+from db.session import engine, get_db
+
+
+def verify_user(email: str):
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.email_verified = True
+            user.role = "SHOPKEEPER" if user.is_shop_owner else "CUSTOMER"
+            shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+            if shop:
+                shop.location_verified = True
+                shop.approval_status = "APPROVED"
+                shop.is_active = True
+            db.commit()
+    finally:
+        db.close()
+
+
+def approve_user_shop(email: str):
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+            if shop:
+                shop.location_verified = True
+                shop.approval_status = "APPROVED"
+                shop.is_active = True
+                db.commit()
+    finally:
+        db.close()
+
+
+from unittest.mock import patch
+from services.location_verifier import LocationVerificationResult
 
 
 @pytest.fixture(autouse=True)
 def reset_db():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    yield
+    with patch("routers.shops.verify_shop_location") as mock:
+        mock.return_value = LocationVerificationResult(
+            verified=True,
+            is_error=False,
+            provider="nominatim",
+            matched_business_name="Test Commercial Shop",
+            matched_address="Test Commercial Address",
+            distance_meters=0.0,
+            category="supermarket",
+            message="Verified test location.",
+        )
+        yield
 
 
 @pytest.fixture
@@ -22,6 +69,7 @@ def client() -> TestClient:
 
     with TestClient(app) as test_client:
         yield test_client
+
 
 
 def test_register_login_and_me(client: TestClient):
@@ -42,12 +90,22 @@ def test_register_login_and_me(client: TestClient):
     assert me.status_code == 200
     assert me.json()["email"] == "owner@test.com"
 
-    login = client.post(
+    # 1. Unverified user password login must strictly return 403 Forbidden
+    login_unverified = client.post(
         "/auth/login",
         json={"email": "owner@test.com", "password": "secret123"},
     )
-    assert login.status_code == 200
-    assert login.json()["access_token"]
+    assert login_unverified.status_code == 403
+    assert "not verified" in login_unverified.json()["detail"].lower()
+
+    # 2. Once verified, password login succeeds with 200 OK
+    verify_user("owner@test.com")
+    login_verified = client.post(
+        "/auth/login",
+        json={"email": "owner@test.com", "password": "secret123"},
+    )
+    assert login_verified.status_code == 200
+    assert login_verified.json()["access_token"]
 
 
 def test_shop_and_product_flow(client: TestClient):
@@ -60,6 +118,7 @@ def test_shop_and_product_flow(client: TestClient):
             "is_shop_owner": True,
         },
     )
+    verify_user("shop@test.com")
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -76,6 +135,7 @@ def test_shop_and_product_flow(client: TestClient):
     )
     assert shop.status_code in [200, 201], shop.text
     shop_id = shop.json()["id"]
+    approve_user_shop("shop@test.com")
 
     product = client.post(
         "/products/",
@@ -129,6 +189,7 @@ def test_product_discount_calculation(client: TestClient):
             "is_shop_owner": True,
         },
     )
+    verify_user("shop_discount@test.com")
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -143,6 +204,7 @@ def test_product_discount_calculation(client: TestClient):
             "description": "Demo",
         },
     )
+    approve_user_shop("shop_discount@test.com")
 
     from datetime import datetime, timedelta
 
@@ -220,9 +282,22 @@ def test_product_optimization(client: TestClient):
             "is_shop_owner": True,
         },
     )
+    verify_user("opt_owner@test.com")
     assert reg.status_code in [200, 201], reg.text
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+
+    client.post(
+        "/shops/",
+        headers=headers,
+        json={
+            "name": "Opt Store",
+            "address": "123 Opt Road",
+            "latitude": 13.0,
+            "longitude": 80.0,
+        },
+    )
+    approve_user_shop("opt_owner@test.com")
 
     opt = client.post(
         "/products/optimize",
@@ -255,6 +330,7 @@ def test_order_flow(client: TestClient):
             "is_shop_owner": False,
         },
     )
+    verify_user("customer@test.com")
     assert reg_cust.status_code in [200, 201]
     cust_token = reg_cust.json()["access_token"]
     cust_headers = {"Authorization": f"Bearer {cust_token}"}
@@ -269,6 +345,7 @@ def test_order_flow(client: TestClient):
             "is_shop_owner": True,
         },
     )
+    verify_user("shop_owner_order@test.com")
     assert reg_shop.status_code in [200, 201]
     shop_token = reg_shop.json()["access_token"]
     shop_headers = {"Authorization": f"Bearer {shop_token}"}
@@ -287,6 +364,7 @@ def test_order_flow(client: TestClient):
     )
     assert shop.status_code in [200, 201]
     shop_id = shop.json()["id"]
+    approve_user_shop("shop_owner_order@test.com")
 
     # Create Product
     product = client.post(
@@ -504,6 +582,7 @@ def test_product_ai_forecast(client: TestClient):
             "is_shop_owner": True,
         },
     )
+    verify_user("ai_test_owner@test.com")
     assert reg_shop.status_code in [200, 201], reg_shop.text
     token = reg_shop.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -522,6 +601,7 @@ def test_product_ai_forecast(client: TestClient):
     )
     assert shop.status_code in [200, 201], shop.text
     shop_id = shop.json()["id"]
+    approve_user_shop("ai_test_owner@test.com")
 
     # 3. Create Product
     product = client.post(
@@ -598,6 +678,7 @@ def test_ai_inventory_intelligence(client: TestClient):
             "is_shop_owner": True,
         },
     )
+    verify_user("ai_intelligence_owner@test.com")
     assert reg_shop.status_code in [200, 201], reg_shop.text
     token = reg_shop.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -615,6 +696,7 @@ def test_ai_inventory_intelligence(client: TestClient):
         },
     )
     assert shop.status_code in [200, 201], shop.text
+    approve_user_shop("ai_intelligence_owner@test.com")
 
     # 3. Create Product
     product = client.post(
