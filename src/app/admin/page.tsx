@@ -34,9 +34,19 @@ import {
 } from "@/services/admin";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { getErrorMessage } from "@/api/errors";
+import { getPublicApiBaseUrl } from "@/config/env";
 import Link from "next/link";
 
 type TabFilter = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED" | "ALL";
+
+function getFullMediaUrl(url?: string | null): string {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  const base = getPublicApiBaseUrl();
+  return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 
 export default function AdminDashboardPage() {
   const { user: currentUser } = useAuth();
@@ -544,35 +554,49 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Verification Document Card */}
-                    <div className="p-3.5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-900/50 space-y-1 text-xs md:col-span-2">
+                    {/* Storefront Photo & Verification Document Card */}
+                    <div className="p-3.5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-900/50 space-y-2 text-xs md:col-span-2">
                       <div className="flex items-center justify-between text-purple-800 dark:text-purple-400 font-bold uppercase tracking-wider text-[10px]">
-                        <span className="flex items-center gap-1"><FileText size={12} /> Food License / Business Verification Proof</span>
-                        {shop.verification_document_url && (
-                          <a
-                            href={shop.verification_document_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-purple-700 dark:text-purple-300 hover:underline flex items-center gap-0.5 font-bold"
-                          >
-                            Inspect Document <ExternalLink size={10} />
-                          </a>
-                        )}
+                        <span className="flex items-center gap-1"><FileText size={12} /> Vendor Store Photo & Business License</span>
                       </div>
-                      {shop.verification_document_url ? (
-                        <div className="flex items-center justify-between pt-0.5">
-                          <p className="font-bold text-slate-900 dark:text-white">
-                            📄 {shop.verification_document_name || "Business Credential Document"}
-                          </p>
-                          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                            <CheckCircle2 size={12} /> File Attached
-                          </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        {/* Storefront Photo */}
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-purple-100 dark:border-gray-700">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">📸 Storefront Photo</p>
+                          {shop.photo_url ? (
+                            <div className="space-y-1">
+                              <img src={getFullMediaUrl(shop.photo_url)} alt="Storefront" className="w-full h-24 object-cover rounded-lg border" />
+                              <a href={getFullMediaUrl(shop.photo_url)} target="_blank" rel="noreferrer" className="text-[11px] text-purple-600 font-bold hover:underline flex items-center gap-1">
+                                View Full Photo <ExternalLink size={10} />
+                              </a>
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-slate-400 italic py-4 text-center">No storefront photo uploaded</p>
+                          )}
                         </div>
-                      ) : (
-                        <p className="text-[11px] text-slate-500 italic">
-                          No business verification document uploaded by merchant.
-                        </p>
-                      )}
+
+                        {/* Business Document */}
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-purple-100 dark:border-gray-700">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">📄 Business License / GST / FSSAI</p>
+                          {(shop.document_url || shop.verification_document_url) ? (
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                📎 {shop.verification_document_name || "Business License Document"}
+                              </p>
+                              <a
+                                href={getFullMediaUrl(shop.document_url || shop.verification_document_url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-200 transition"
+                              >
+                                Inspect Document <ExternalLink size={11} />
+                              </a>
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-slate-400 italic py-4 text-center">No license document attached</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 

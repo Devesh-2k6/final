@@ -43,13 +43,13 @@ def clear_all_demo_data():
         db.commit()
         print("  ✓ All demo products and previous test data wiped clean.")
 
-        print("[2/4] Creating Verified Real-World Merchant Accounts...")
-        # Merchant 1
+        print("[2/4] Creating Verified Real-World Vendor Accounts...")
+        # Vendor 1
         merchant_1 = User(
             email="shop1@test.com",
             hashed_password=hash_password("password123"),
             name="Rajesh Patel",
-            role="SHOPKEEPER",
+            role="VENDOR",
             is_shop_owner=True,
             email_verified=True,
             phone_number="+919876543210"
@@ -78,12 +78,12 @@ def clear_all_demo_data():
         )
         db.add(shop_1)
 
-        # Merchant 2
+        # Vendor 2
         merchant_2 = User(
             email="shop2@test.com",
             hashed_password=hash_password("password123"),
             name="Priya Sharma",
-            role="SHOPKEEPER",
+            role="VENDOR",
             is_shop_owner=True,
             email_verified=True,
             phone_number="+919876543211"
@@ -142,14 +142,14 @@ def clear_all_demo_data():
         print("🎉 CLEAN SLATE READY FOR REAL-WORLD TESTING!")
         print("=" * 60)
         print("\nLogin Credentials for Testing:")
-        print("  🏪 Shopkeeper (Add real products from Web):")
+        print("  🏪 Vendor (Add real products from Web):")
         print("     Email:    shop1@test.com")
         print("     Password: password123")
         print("     Web URL:  http://localhost:3000/shop/products/add")
         print("\n  📱 Customer (View live products in Expo Go App):")
         print("     Email:    customer@test.com")
         print("     Password: password123")
-        print("     Expo App: Expo Go (Host: http://192.168.1.7:8000)")
+        print("     Expo App: Expo Go (Host: http://10.43.177.184:8000)")
         print("=" * 60)
 
     except Exception as e:

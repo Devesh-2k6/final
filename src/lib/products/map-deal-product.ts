@@ -91,5 +91,6 @@ export function buildDealProductCardProps(
     expiryDate: product.expiry_date,
     description: product.description,
     distance,
+    category: product.category,
   };
 }

@@ -73,22 +73,27 @@ export async function sendOtp(identifier: string, name?: string): Promise<SendOt
   });
 }
 
-export async function verifyOtp(
-  identifier: string,
-  otp: string,
-  name?: string,
-  is_shop_owner: boolean = false
-): Promise<AuthResponse> {
-  return apiRequest<AuthResponse>("/auth/verify-otp", {
+export async function customerSignup(data: { name: string; email: string }): Promise<SendOtpResponse> {
+  return apiRequest<SendOtpResponse>("/auth/customer/register", {
     method: "POST",
-    json: {
-      identifier: identifier.trim().toLowerCase(),
-      otp: otp.trim(),
-      name: name?.trim(),
-      is_shop_owner,
-    },
+    json: data,
     skipAuth: true,
   });
 }
+
+export async function vendorSignup(data: {
+  shop_name: string;
+  email: string;
+  phone_number: string;
+  photo_url?: string;
+  document_url?: string;
+}): Promise<SendOtpResponse> {
+  return apiRequest<SendOtpResponse>("/auth/vendor/register", {
+    method: "POST",
+    json: data,
+    skipAuth: true,
+  });
+}
+
 
 

@@ -199,7 +199,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 selectedRole === "shop" && styles.roleToggleTextActive,
               ]}
             >
-              Shopkeeper
+              Vendor
             </Text>
           </TouchableOpacity>
         </View>
@@ -210,8 +210,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <Sparkles size={14} color={Colors.primaryBright} />
             <Text style={styles.demoSectionTitle}>
               {selectedRole === "customer"
-                ? "⚡ Instant 1-Tap Shopper Demo"
-                : "⚡ Instant 1-Tap Shopkeeper Demos"}
+                ? "⚡ Instant 1-Tap Customer Demo"
+                : "⚡ Instant 1-Tap Vendor Demos"}
             </Text>
           </View>
 
@@ -225,7 +225,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 <ShoppingBag size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.quickDemoName}>Verified Shopper Account</Text>
+                <Text style={styles.quickDemoName}>Verified Customer Account</Text>
                 <Text style={styles.quickDemoEmail}>customer@test.com</Text>
               </View>
               <View style={styles.quickDemoBadge}>
@@ -280,8 +280,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   <Store size={18} color="#FFFFFF" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.quickDemoName}>Daily Bazaar</Text>
-                  <Text style={styles.quickDemoEmail}>shop3@test.com (Croissants, Nuts, Butter)</Text>
+                  <Text style={styles.quickDemoName}>Devi Sweets & Bakery</Text>
+                  <Text style={styles.quickDemoEmail}>shop3@test.com (Cakes, Cookies)</Text>
                 </View>
                 <View style={styles.quickDemoBadge}>
                   <Text style={styles.quickDemoBadgeText}>Shop 3</Text>
@@ -292,11 +292,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Error Alert */}
+        {/* Error Notification Banner */}
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            {error.toLowerCase().includes("timeout") ||
+            {error.toLowerCase().includes("connect") ||
+            error.toLowerCase().includes("failed to reach") ||
             error.toLowerCase().includes("network") ||
             error.toLowerCase().includes("server") ? (
               <TouchableOpacity
@@ -317,7 +318,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              {selectedRole === "shop" ? "Merchant Email" : "Shopper Email"}
+              {selectedRole === "shop" ? "Vendor Email" : "Customer Email"}
             </Text>
             <View style={styles.inputContainer}>
               <Mail size={18} color={Colors.textMuted} />
@@ -360,7 +361,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             ) : (
               <>
                 <Text style={styles.submitButtonText}>
-                  {selectedRole === "shop" ? "Sign In as Shopkeeper" : "Sign In as Shopper"}
+                  {selectedRole === "shop" ? "Sign In as Vendor" : "Sign In as Customer"}
                 </Text>
                 <ArrowRight size={18} color={Colors.textInverse} />
               </>

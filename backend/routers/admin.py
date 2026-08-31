@@ -8,7 +8,7 @@ import schemas
 from auth_service import get_current_admin
 from db.models import Shop, User, Product, ShopApprovalStatus, UserRole
 from db.session import get_db
-from services.email import send_email_notification
+from services.email import send_email_notification, send_vendor_approval_email, send_vendor_rejection_email
 
 router = APIRouter(prefix="/admin", tags=["Admin Moderation"])
 
@@ -26,6 +26,8 @@ def _serialize_admin_shop(shop: Shop) -> dict:
         "latitude": shop.latitude,
         "longitude": shop.longitude,
         "description": shop.description,
+        "photo_url": getattr(shop, "photo_url", None),
+        "document_url": getattr(shop, "document_url", None) or getattr(shop, "verification_document_url", None),
         "is_active": getattr(shop, "is_active", False),
         "location_verified": getattr(shop, "location_verified", False),
         "location_verified_at": getattr(shop, "location_verified_at", None),
@@ -39,7 +41,7 @@ def _serialize_admin_shop(shop: Shop) -> dict:
         "approved_at": getattr(shop, "approved_at", None),
         "approved_by": getattr(shop, "approved_by", None),
         "rejected_at": getattr(shop, "rejected_at", None),
-        "verification_document_url": getattr(shop, "verification_document_url", None),
+        "verification_document_url": getattr(shop, "verification_document_url", None) or getattr(shop, "document_url", None),
         "verification_document_name": getattr(shop, "verification_document_name", None),
         "created_at": getattr(owner, "created_at", None) if owner else None,
     }
@@ -107,6 +109,23 @@ def approve_shop(
             detail="Cannot approve shop: The shop location has not passed OpenStreetMap / Nominatim verification.",
         )
 
+    # Check for mandatory storefront photo
+    if not getattr(shop, "photo_url", None) or not str(shop.photo_url).strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot approve shop: Storefront photo is missing. An admin cannot approve a shop without a storefront photo.",
+        )
+
+    # Check for mandatory business verification document
+    has_doc = (getattr(shop, "document_url", None) and str(shop.document_url).strip()) or (
+        getattr(shop, "verification_document_url", None) and str(shop.verification_document_url).strip()
+    )
+    if not has_doc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot approve shop: Business license document is missing. An admin cannot approve a shop without verification documents.",
+        )
+
     now = datetime.now(UTC).replace(tzinfo=None)
     shop.approval_status = "APPROVED"
     shop.is_active = True
@@ -118,23 +137,13 @@ def approve_shop(
     db.commit()
     db.refresh(shop)
 
-    # Send approval email notification to merchant
+    # Send approval email notification to vendor
     try:
         if shop.owner and shop.owner.email:
-            send_email_notification(
+            send_vendor_approval_email(
                 to_email=shop.owner.email,
-                subject=f"🎉 Congratulations! {shop.name} has been APPROVED on ExpiryGo",
-                html_content=f"""
-                <div style="font-family: Arial, sans-serif; padding: 24px; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
-                    <h2 style="color: #10b981;">Your Shop is Approved & Live!</h2>
-                    <p>Hello <strong>{shop.owner.name}</strong>,</p>
-                    <p>Great news! Your shop <strong>{shop.name}</strong> has been reviewed and approved by the ExpiryGo Trust & Moderation team.</p>
-                    <p>You can now log in to your Merchant Dashboard, add surplus food items, publish discount deals, and start rescuing food!</p>
-                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                    <p style="font-size: 12px; color: #64748b;">ExpiryGo Marketplace Team</p>
-                </div>
-                """,
-                text_fallback=f"Hello {shop.owner.name},\n\nYour shop '{shop.name}' has been APPROVED on ExpiryGo! You can now list and sell surplus food items.\n\nExpiryGo Team",
+                vendor_name=shop.owner.name,
+                shop_name=shop.name,
             )
     except Exception:
         pass
@@ -150,7 +159,7 @@ def reject_shop(
     db: Annotated[Session, Depends(get_db)],
 ):
     """
-    Rejects a shop application with a required reason (e.g. non-food business, location mismatch).
+    Rejects a shop application with a required reason and sends resubmission instructions.
     """
     shop = db.query(Shop).options(joinedload(Shop.owner)).filter(Shop.id == shop_id).first()
     if not shop:
@@ -172,30 +181,19 @@ def reject_shop(
     db.commit()
     db.refresh(shop)
 
-    # Send rejection notification to merchant
+    # Send rejection notification to vendor with resubmission guidance
     try:
         if shop.owner and shop.owner.email:
-            send_email_notification(
+            send_vendor_rejection_email(
                 to_email=shop.owner.email,
-                subject=f"Update regarding your ExpiryGo shop application: {shop.name}",
-                html_content=f"""
-                <div style="font-family: Arial, sans-serif; padding: 24px; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
-                    <h2 style="color: #ef4444;">Shop Application Status Update</h2>
-                    <p>Hello <strong>{shop.owner.name}</strong>,</p>
-                    <p>Thank you for your interest in ExpiryGo. After reviewing your application for <strong>{shop.name}</strong>, our team was unable to approve your shop at this time.</p>
-                    <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 8px; margin: 16px 0;">
-                        <p style="margin: 0; color: #991b1b; font-weight: 600;">Reason for Rejection:</p>
-                        <p style="margin: 8px 0 0 0; color: #7f1d1d;">{reason}</p>
-                    </div>
-                    <p>If you believe this is an error or would like to submit corrected location and food business documentation, please update your shop profile in Shop Setup.</p>
-                    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-                    <p style="font-size: 12px; color: #64748b;">ExpiryGo Marketplace Team</p>
-                </div>
-                """,
-                text_fallback=f"Hello {shop.owner.name},\n\nYour shop application for '{shop.name}' was not approved.\nReason: {reason}\n\nYou can update your location details in Shop Setup.\n\nExpiryGo Team",
+                vendor_name=shop.owner.name,
+                shop_name=shop.name,
+                reason=reason,
             )
     except Exception:
         pass
+
+    return _serialize_admin_shop(shop)
 
     return _serialize_admin_shop(shop)
 
@@ -262,7 +260,7 @@ def get_admin_stats(
     """
     total_users = db.query(func.count(User.id)).scalar() or 0
     total_customers = db.query(func.count(User.id)).filter(User.role == "CUSTOMER").scalar() or 0
-    total_merchants = db.query(func.count(User.id)).filter(User.role == "SHOPKEEPER").scalar() or 0
+    total_merchants = db.query(func.count(User.id)).filter(User.role == "VENDOR").scalar() or 0
     
     active_shops = db.query(func.count(Shop.id)).filter(Shop.is_active == True, Shop.approval_status == "APPROVED").scalar() or 0
     pending_shops = db.query(func.count(Shop.id)).filter(Shop.approval_status == "PENDING").scalar() or 0
@@ -288,3 +286,23 @@ def get_admin_stats(
         total_products=total_products,
         total_deals=total_deals,
     )
+
+
+@router.post("/shops/{shop_id}/allow-resubmit", response_model=schemas.AdminShopResponse)
+def allow_vendor_resubmit(
+    shop_id: str,
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Resets a rejected shop to PENDING to allow the vendor to upload corrected documents and photos.
+    """
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found.")
+    shop.approval_status = "PENDING"
+    shop.approval_reason = None
+    shop.rejected_at = None
+    db.commit()
+    db.refresh(shop)
+    return _serialize_admin_shop(shop)

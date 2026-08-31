@@ -4,7 +4,7 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
-  role?: "CUSTOMER" | "SHOPKEEPER" | "ADMIN" | string;
+  role?: "CUSTOMER" | "VENDOR" | "ADMIN" | string;
   is_shop_owner: boolean;
   email_verified?: boolean;
   phone_number?: string;
@@ -30,15 +30,54 @@ export type VerifyEmailResponse = {
 export type RegisterInput = {
   name: string;
   email: string;
-  password: string;
+  password?: string;
   is_shop_owner: boolean;
   phone_number?: string;
+};
+
+export type CustomerSignupInput = {
+  name: string;
+  email: string;
+};
+
+export type VendorSignupInput = {
+  shop_name: string;
+  email: string;
+  phone_number: string;
+  photo_url?: string;
+  document_url?: string;
 };
 
 export type LoginInput = {
   email: string;
   password: string;
 };
+
+export async function customerSignup(data: CustomerSignupInput): Promise<SendOtpResponse> {
+  return apiRequest<SendOtpResponse>("/auth/customer/register", {
+    method: "POST",
+    json: data,
+    skipAuth: true,
+  });
+}
+
+export async function vendorSignup(data: VendorSignupInput): Promise<SendOtpResponse> {
+  return apiRequest<SendOtpResponse>("/auth/vendor/register", {
+    method: "POST",
+    json: data,
+    skipAuth: true,
+  });
+}
+
+export async function uploadAuthFile(file: File): Promise<{ url: string; filename: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiRequest<{ url: string; filename: string }>("/auth/upload", {
+    method: "POST",
+    body: formData,
+    skipAuth: true,
+  });
+}
 
 export async function register(data: RegisterInput): Promise<AuthResponse> {
   return apiRequest<AuthResponse>("/auth/register", {

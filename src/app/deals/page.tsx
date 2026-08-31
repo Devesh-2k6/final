@@ -30,6 +30,7 @@ import {
   ChefHat,
   Sparkles
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -40,6 +41,7 @@ import { getErrorMessage } from "@/api/errors";
 import { useProducts } from "@/hooks/useProducts";
 import { buildDealProductCardProps } from "@/lib/products/map-deal-product";
 import { createOrder } from "@/services/orders";
+import { createReservation } from "@/services/reservations";
 import { addFavorite, removeFavorite, getFavorites, getRecommendedProducts, getDeepSearchResults, generateRecipe, type ApiRecipeSearchResponse, type ApiRecipeResponse } from "@/services/products";
 import { getMyFollowing, followShop, unfollowShop } from "@/services/shops";
 import { BottomNav } from "@/components/BottomNav";
@@ -56,7 +58,15 @@ export default function CustomerDealsPage() {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showGoTop, setShowGoTop] = useState(false);
-  const [orderSuccessDetails, setOrderSuccessDetails] = useState<{ name: string; shopName: string; price: number; type: "PICKUP" | "DELIVERY" } | null>(null);
+  const [orderSuccessDetails, setOrderSuccessDetails] = useState<{
+    id: string;
+    name: string;
+    shopName: string;
+    shopAddress?: string;
+    price: number;
+    pickupCode: string;
+    type: "PICKUP" | "DELIVERY";
+  } | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setShowGoTop(window.scrollY > 400);
@@ -279,29 +289,19 @@ export default function CustomerDealsPage() {
     e.preventDefault();
     if (!selectedProductForOrder) return;
     
-    if (orderType === "DELIVERY") {
-      if (!deliveryName.trim() || !deliveryPhone.trim() || !deliveryAddress.trim()) {
-        alert("Please fill in all delivery details.");
-        return;
-      }
-    }
-    
     setIsPlacingOrder(true);
     try {
-      await createOrder({
-        product_id: selectedProductForOrder.id,
-        order_type: orderType,
-        quantity: 1,
-        delivery_fee: orderType === "DELIVERY" ? 45.0 : 0.0,
-        customer_name: orderType === "DELIVERY" ? deliveryName.trim() : user?.name,
-        customer_phone: orderType === "DELIVERY" ? deliveryPhone.trim() : undefined,
-        delivery_address: orderType === "DELIVERY" ? deliveryAddress.trim() : undefined,
-      });
+      const price = selectedProductForOrder.current_price || selectedProductForOrder.discount_price || 0;
+      const res = await createReservation(selectedProductForOrder.id, 1);
+
       setOrderSuccessDetails({
+        id: res.id,
         name: selectedProductForOrder.name,
-        shopName: selectedProductForOrder.shop?.name ?? "Local Shop",
-        price: (selectedProductForOrder.current_price || selectedProductForOrder.discount_price) + (orderType === "DELIVERY" ? 45.0 : 0.0),
-        type: orderType
+        shopName: res.product?.shop?.name ?? selectedProductForOrder.shop?.name ?? "Local Shop",
+        shopAddress: res.product?.shop?.address ?? selectedProductForOrder.shop?.address ?? "Store Counter",
+        price: res.total_price || price,
+        pickupCode: res.pickup_code,
+        type: "PICKUP"
       });
       setSelectedProductForOrder(null);
       void refetchStandard();
@@ -309,9 +309,29 @@ export default function CustomerDealsPage() {
         void mutateDeepSearch();
       }
     } catch (err) {
-      alert("Failed to place order: " + getErrorMessage(err));
+      alert("Failed to confirm reservation: " + getErrorMessage(err));
     } finally {
       setIsPlacingOrder(false);
+    }
+  };
+
+  const handleQuickRecipe = async (productId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const product = (isDeepSearchActive && deepSearchData ? (deepSearchData.recipe_mode ? deepSearchData.matched_deals : deepSearchData.products) : standardProducts).find(p => p.id === productId);
+    if (!product) return;
+    
+    setIsGeneratingRecipe(true);
+    setShowRecipeModal(true);
+    setGeneratedRecipe(null);
+    try {
+      const recipe = await generateRecipe([{ name: product.name, category: product.category }]);
+      setGeneratedRecipe(recipe);
+    } catch (err) {
+      alert("Failed to generate recipe: " + getErrorMessage(err));
+      setShowRecipeModal(false);
+    } finally {
+      setIsGeneratingRecipe(false);
     }
   };
 
@@ -523,38 +543,7 @@ export default function CustomerDealsPage() {
               );
             })}
           </div>
-        {/* Flash Surplus Rescue Featured Hero Card */}
-        <div className="relative rounded-[2rem] overflow-hidden bg-slate-900 text-white shadow-xl shadow-slate-900/15 p-5 flex flex-col justify-end min-h-[170px]">
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-900/40 z-10" />
-          <div className="absolute top-4 left-4 z-20">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FF5B26] text-white shadow-md shadow-orange-500/30">
-              🔥 FLASH SURPLUS RESCUE
-            </span>
-          </div>
-
-          <div className="relative z-20 mt-10">
-            <h2 className="text-lg font-black text-white tracking-tight leading-tight">
-              Artisan Butter Croissant (Pack of 4)
-            </h2>
-            <p className="text-xs text-slate-300 font-semibold mt-1">
-              Save up to 70% &bull; Verified Store Freshness
-            </p>
-          </div>
-        </div>
-
-        {/* Popular Surplus Deals Section Title */}
-        <div className="flex items-center justify-between pt-2">
-          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-            Popular Surplus Deals
-          </h3>
-          <button
-            onClick={() => setActiveFilter("All")}
-            className="text-xs font-bold text-[#FF5B26] hover:underline"
-          >
-            See All
-          </button>
-        </div>
-
+          
           {/* Advanced Collapsible Filter Drawer */}
           <AnimatePresence>
             {showFilters && (
@@ -811,7 +800,39 @@ export default function CustomerDealsPage() {
       </div>
 
       {/* ── Main content ────────────────────────────────────────────── */}
-      <main className="p-4 max-w-2xl mx-auto">
+      <main className="p-4 max-w-2xl mx-auto space-y-4">
+        {/* Flash Surplus Rescue Featured Hero Card */}
+        <div className="relative rounded-[2rem] overflow-hidden bg-slate-900 text-white shadow-xl shadow-slate-900/15 p-5 flex flex-col justify-end min-h-[170px]">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&auto=format&fit=crop&q=80')] bg-cover bg-center opacity-60 mix-blend-luminosity" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-900/40 z-10" />
+          <div className="absolute top-4 left-4 z-20">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FF5B26] text-white shadow-md shadow-orange-500/30">
+              🔥 FLASH SURPLUS RESCUE
+            </span>
+          </div>
+
+          <div className="relative z-20 mt-10">
+            <h2 className="text-lg font-black text-white tracking-tight leading-tight">
+              Artisan Butter Croissant (Pack of 4)
+            </h2>
+            <p className="text-xs text-slate-300 font-semibold mt-1">
+              Save up to 70% &bull; Verified Store Freshness
+            </p>
+          </div>
+        </div>
+
+        {/* Popular Surplus Deals Section Title */}
+        <div className="flex items-center justify-between pt-2">
+          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+            Popular Surplus Deals
+          </h3>
+          <button
+            onClick={() => setActiveFilter("All")}
+            className="text-xs font-bold text-[#FF5B26] hover:underline"
+          >
+            See All
+          </button>
+        </div>
         {/* AI Recipe Ingredient Matcher Card */}
         {isRecipeResult && deepSearchData && (() => {
           const recipeData = deepSearchData as ApiRecipeSearchResponse;
@@ -998,20 +1019,26 @@ export default function CustomerDealsPage() {
                 onToggleFollow={handleToggleFollow}
                 isInRecipeBasket={recipeBasket.has(product.id)}
                 onToggleRecipeBasket={handleToggleRecipeBasket}
+                onQuickRecipe={handleQuickRecipe}
               />
             ))}
           </div>
         )}
       </main>
 
-      {/* Order Options Modal */}
+      {/* Store Pickup Reservation Modal */}
       {selectedProductForOrder && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                {paymentStep === "upi" ? "Scan to Pay" : "Order Options"}
-              </h2>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center text-[#FF5B26]">
+                  <QrCode size={18} />
+                </div>
+                <h2 className="text-base font-black text-gray-900 dark:text-white">
+                  Store Pickup Reservation
+                </h2>
+              </div>
               <button
                 type="button"
                 onClick={() => setSelectedProductForOrder(null)}
@@ -1021,107 +1048,82 @@ export default function CustomerDealsPage() {
               </button>
             </div>
 
-            {paymentStep === "upi" ? (
-              <div className="p-6 text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
-                <div className="bg-emerald-50 dark:bg-emerald-500/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 inline-block mx-auto">
-                  <QrCode size={180} className="text-emerald-600 dark:text-emerald-400" />
+            <form onSubmit={handleConfirmOrder} className="p-6 space-y-5">
+              {/* Product preview */}
+              <div className="flex items-center gap-3 p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selectedProductForOrder.front_image_url}
+                  className="w-14 h-14 rounded-xl object-cover border border-slate-200/80 dark:border-gray-700 shrink-0"
+                  alt=""
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-gray-900 dark:text-white text-xs truncate">
+                    {selectedProductForOrder.name}
+                  </h4>
+                  <p className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1 truncate">
+                    <span>🏪</span> {selectedProductForOrder.shop?.name}
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">Pay ₹{((selectedProductForOrder.current_price || selectedProductForOrder.discount_price) + (orderType === "DELIVERY" ? 45.0 : 0.0)).toFixed(2)} to {selectedProductForOrder.shop?.name}</p>
-                  <p className="text-xs text-gray-500">Scan this QR code using any UPI app (GPay, PhonePe, Paytm)</p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentStep("options")}
-                    className="flex-1 py-3 rounded-xl border font-bold text-xs text-gray-600 dark:text-gray-400"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleConfirmOrder}
-                    disabled={isPlacingOrder}
-                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
-                  >
-                    {isPlacingOrder ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-                    I have paid
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                setPaymentStep("upi");
-              }} className="p-6 space-y-5">
-                {/* Product preview */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={selectedProductForOrder.front_image_url}
-                    className="w-12 h-12 rounded-xl object-cover border"
-                    alt=""
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-gray-900 dark:text-white text-xs truncate">
-                      {selectedProductForOrder.name}
-                    </h4>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
-                      {selectedProductForOrder.shop?.name}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-black text-[#FF5B26]">
-                      ₹{(selectedProductForOrder.current_price || selectedProductForOrder.discount_price).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Pickup Instructions Banner */}
-                <div className="p-4 bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-800/40 rounded-2xl flex items-start gap-3 text-xs text-orange-900 dark:text-orange-200">
-                  <QrCode size={20} className="text-[#FF5B26] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block font-black text-slate-900 dark:text-white uppercase tracking-wider text-[10px] mb-1">
-                      Store Pickup Only &bull; Instant QR Pass
-                    </strong>
-                    You will receive a <strong>scannable QR code & 6-digit PIN</strong> to show the merchant when collecting:
-                    <p className="mt-1 font-bold text-[#FF5B26]">
-                      📍 {selectedProductForOrder.shop?.name} &bull; {selectedProductForOrder.shop?.address}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Order total */}
-                <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-4 text-sm">
-                  <span className="font-bold text-gray-500">Total Price</span>
-                  <span className="text-xl font-black text-[#FF5B26]">
+                <div className="text-right">
+                  <span className="text-sm font-black text-[#FF5B26]">
                     ₹{(selectedProductForOrder.current_price || selectedProductForOrder.discount_price).toFixed(2)}
                   </span>
                 </div>
+              </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProductForOrder(null)}
-                    className="flex-1 py-3 rounded-xl border font-bold text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-center cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 rounded-xl bg-[#FF5B26] hover:bg-[#E54B18] text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/25 cursor-pointer"
-                  >
-                    <QrCode size={15} />
-                    Reserve & Get QR Pass
-                  </button>
+              {/* Pickup Instructions Banner */}
+              <div className="p-4 bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-800/40 rounded-2xl space-y-2 text-xs text-orange-900 dark:text-orange-200">
+                <div className="flex items-center gap-2">
+                  <QrCode size={18} className="text-[#FF5B26] shrink-0" />
+                  <strong className="font-black text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
+                    Instant QR Pass &amp; 6-Digit PIN
+                  </strong>
                 </div>
-              </form>
-            )}
+                <p className="text-[11px] leading-relaxed text-slate-600 dark:text-gray-300">
+                  Reserving locks in your surplus discount immediately. You will receive a <strong>Scannable Store QR Pass &amp; 6-Digit PIN</strong> to show the merchant upon in-store collection.
+                </p>
+                <div className="pt-1 text-[11px] font-bold text-[#FF5B26] flex items-start gap-1">
+                  <MapPin size={13} className="shrink-0 mt-0.5" />
+                  <span>{selectedProductForOrder.shop?.name} &bull; {selectedProductForOrder.shop?.address}</span>
+                </div>
+              </div>
+
+              {/* Order total */}
+              <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-800 pt-3 text-sm">
+                <div>
+                  <span className="font-bold text-gray-500 text-xs block">Pay at Store Counter</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Zero online fee &bull; Pay when collecting</span>
+                </div>
+                <span className="text-xl font-black text-[#FF5B26]">
+                  ₹{(selectedProductForOrder.current_price || selectedProductForOrder.discount_price).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProductForOrder(null)}
+                  className="flex-1 py-3.5 rounded-xl border font-bold text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition text-center cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPlacingOrder}
+                  className="flex-[2] py-3.5 rounded-xl bg-[#FF5B26] hover:bg-[#E54B18] text-white font-black text-xs transition flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/25 cursor-pointer disabled:opacity-50"
+                >
+                  {isPlacingOrder ? <Loader2 size={16} className="animate-spin" /> : <QrCode size={16} />}
+                  <span>{isPlacingOrder ? "Generating Pass..." : "Reserve & Get QR Pass"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Premium Order Success Modal */}
+      {/* Live Store Pickup QR Pass & 6-Digit PIN Modal */}
       <AnimatePresence>
         {orderSuccessDetails && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1129,64 +1131,75 @@ export default function CustomerDealsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl border border-emerald-100/50 dark:border-gray-800 overflow-hidden p-6 text-center space-y-4"
+              className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl border border-orange-200/50 dark:border-gray-800 overflow-hidden p-6 text-center space-y-4"
             >
-              {/* Animated checkmark circle */}
-              <div className="flex justify-center mt-2">
-                <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
-                  <svg className="w-10 h-10 text-emerald-600 dark:text-emerald-450" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3.5">
-                    <motion.path
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-                      className="animate-draw-checkmark"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
+              {/* Header Status Badge */}
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-black">
+                <ShieldCheck size={14} />
+                <span>STORE PICKUP PASS READY</span>
               </div>
 
-              <div className="space-y-1.5">
-                <h3 className="text-xl font-black text-gray-950 dark:text-white">Order Confirmed!</h3>
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-gray-950 dark:text-white">Reservation Confirmed!</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {orderSuccessDetails.type === "DELIVERY" 
-                    ? "Delivery request placed! The store will review it shortly."
-                    : "Reservation confirmed! Collect your items at the store."}
+                  Show this QR code or 6-digit PIN to the shopkeeper at the counter to collect your item.
                 </p>
               </div>
 
-              {/* Order specifications card */}
-              <div className="p-4 bg-emerald-500/[0.02] border border-emerald-100/40 dark:border-gray-800 rounded-2xl text-left text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">Item Reserved</span>
-                  <span className="font-bold text-gray-900 dark:text-white text-right max-w-[200px] truncate">{orderSuccessDetails.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">Store Location</span>
-                  <span className="font-bold text-gray-900 dark:text-white text-right max-w-[200px] truncate">{orderSuccessDetails.shopName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">Fulfillment</span>
-                  <span className="font-bold text-gray-900 dark:text-white">{orderSuccessDetails.type === "DELIVERY" ? "🚚 Home Delivery" : "🛍️ Store Pickup"}</span>
-                </div>
-                <div className="border-t border-emerald-100/20 dark:border-gray-800 my-1 pt-2 flex justify-between items-center text-sm font-black">
-                  <span className="text-slate-700 dark:text-gray-300">
-                    {orderSuccessDetails.type === "DELIVERY" ? "Total Paid" : "Pay at Store"}
-                  </span>
-                  <span className="text-emerald-600 dark:text-emerald-400">₹{orderSuccessDetails.price.toFixed(2)}</span>
+              {/* Big High-Contrast QR Code Card */}
+              <div className="bg-gradient-to-b from-slate-900 to-slate-950 text-white p-5 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+                <div className="bg-white p-4 rounded-2xl inline-block shadow-md mx-auto">
+                  {/* High contrast dynamic QR code */}
+                  <div className="w-36 h-36 bg-white flex flex-col items-center justify-center relative p-1 rounded-xl">
+                    <QRCodeSVG
+                      value={`EXPIRYGO:${orderSuccessDetails.pickupCode}`}
+                      size={136}
+                      level="H"
+                      includeMargin={false}
+                      fgColor="#020617"
+                    />
+                  </div>
                 </div>
 
+                {/* 6-Digit PIN Display */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    6-Digit Pickup PIN
+                  </span>
+                  <div className="font-mono text-2xl font-black tracking-[0.35em] text-orange-400 bg-slate-800/90 py-2.5 px-5 rounded-xl border border-slate-700/60 inline-block shadow-inner">
+                    {orderSuccessDetails.pickupCode.split("").join(" ")}
+                  </div>
+                </div>
+
+                {/* Store Details Box */}
+                <div className="text-left text-xs bg-slate-800/50 p-3.5 rounded-2xl border border-slate-700/40 space-y-1.5">
+                  <div className="flex justify-between items-center text-slate-200 font-bold">
+                    <span className="truncate max-w-[210px]">{orderSuccessDetails.name}</span>
+                    <span className="text-orange-400 font-black text-sm">₹{orderSuccessDetails.price.toFixed(2)}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                    <MapPin size={12} className="text-orange-400 shrink-0" />
+                    <span className="truncate">{orderSuccessDetails.shopName} {orderSuccessDetails.shopAddress ? `• ${orderSuccessDetails.shopAddress}` : ""}</span>
+                  </div>
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setOrderSuccessDetails(null)}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3.5 rounded-xl transition shadow-md shadow-emerald-500/10 cursor-pointer"
-              >
-                Back to Feed
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setOrderSuccessDetails(null)}
+                  className="flex-1 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 font-bold text-xs py-3.5 rounded-xl transition cursor-pointer"
+                >
+                  Done / Deals
+                </button>
+                <Link
+                  href="/cart"
+                  className="flex-1 bg-[#FF5B26] hover:bg-[#E54B18] text-white font-black text-xs py-3.5 rounded-xl transition shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>My Pickups 🛍️</span>
+                </Link>
+              </div>
             </motion.div>
           </div>
         )}

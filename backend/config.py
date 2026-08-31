@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = Field(default=24)
     EMAIL_RESEND_COOLDOWN_SECONDS: int = Field(default=60)
 
+    # Admin Settings
+    ADMIN_EMAIL: str = Field(default="")
+    ADMIN_PASSWORD_HASH: str = Field(default="")
+
     # Shop Location Verification Settings
     SHOP_LOCATION_VERIFICATION_ENABLED: bool = Field(default=True)
     SHOP_LOCATION_PROVIDER: str = Field(default="nominatim")

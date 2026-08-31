@@ -1,13 +1,28 @@
 "use client";
 
-import { MapPin, Pause, Play, Package, Clock, Tag, Heart, TrendingDown, Sparkles, Brain, MessageCircle, ChefHat } from "lucide-react";
+import { 
+  MapPin, 
+  Pause, 
+  Play, 
+  Package, 
+  Clock, 
+  Tag, 
+  Heart, 
+  TrendingDown, 
+  Sparkles, 
+  Brain, 
+  MessageCircle, 
+  ChefHat,
+  ArrowUpRight,
+  ChevronDown,
+  Volume2
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import React from "react";
 import type { FreshnessInfo, UrgencyBadgeInfo } from "@/lib/products/formatters";
 import { getSafeImageUrl } from "@/lib/images";
 import { calculateAiForecast } from "@/lib/products/forecast";
-
 
 export type DealProductCardProps = {
   index: number;
@@ -30,7 +45,6 @@ export type DealProductCardProps = {
   isFavorite?: boolean;
   isFollowing?: boolean;
   shopId?: string;
-  // ── New urgency/freshness props ──
   freshness: FreshnessInfo;
   urgencyBadge: UrgencyBadgeInfo | null;
   expiryCountdown: string;
@@ -38,10 +52,12 @@ export type DealProductCardProps = {
   expiryDate: string;
   description: string | null;
   distance: number | null;
+  category?: string;
   onTogglePlay: (id: string, e: React.MouseEvent) => void;
   onReserve?: (id: string) => void;
   onToggleFavorite?: (id: string, isFav: boolean, e: React.MouseEvent) => void;
   onToggleFollow?: (shopId: string, isFollowing: boolean, e: React.MouseEvent) => void;
+  onQuickRecipe?: (id: string, e: React.MouseEvent) => void;
   isInRecipeBasket?: boolean;
   onToggleRecipeBasket?: (id: string, e: React.MouseEvent) => void;
 };
@@ -73,10 +89,12 @@ export const DealProductCard = React.memo(function DealProductCardBase({
   expiryDate,
   description,
   distance,
+  category,
   onTogglePlay,
   onReserve,
   onToggleFavorite,
   onToggleFollow,
+  onQuickRecipe,
   isInRecipeBasket = false,
   onToggleRecipeBasket,
 }: DealProductCardProps) {
@@ -88,464 +106,194 @@ export const DealProductCard = React.memo(function DealProductCardBase({
     return calculateAiForecast(originalPrice, currentPrice, quantity, expiryDate);
   }, [originalPrice, currentPrice, quantity, expiryDate]);
 
-  const timeFraction = React.useMemo(() => {
-    const nowMs = Date.now();
-    const expiryMs = new Date(expiryDate).getTime();
-    const timeLeft = Math.max(0, expiryMs - nowMs);
-    const totalDuration = 48 * 3600 * 1000; // 48 hours reference
-    return Math.min(1, timeLeft / totalDuration);
-  }, [expiryDate]);
-
   React.useEffect(() => {
     setImgSrc(getSafeImageUrl(imageUrl));
   }, [imageUrl]);
 
-  // Determine card border glow animation based on freshness
-  const borderGlowClass =
-    freshness.level === "urgent"
-      ? "animate-border-glow-red"
-      : freshness.level === "near-expiry"
-      ? "animate-border-glow-orange"
-      : "";
-
-  const handleWhatsApp = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const phone = shopPhoneNumber || "919876543210"; // Fallback for demo
-    const text = encodeURIComponent(`Hi ${shopSubtitle}! I'm interested in the "${name}" deal on ExpiryGo. Is it still available?`);
-    window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
-  };
-
+  const displayCategory = (category || "SURPLUS").toUpperCase();
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4 }}
-      className={`glass-card rounded-[2.25rem] shadow-[0_8px_30px_rgba(16,185,129,0.03)] border transition-all duration-300 hover:shadow-[0_20px_40px_rgba(16,185,129,0.07)] ${
-        isSurpriseBag
-          ? "border-purple-200 shadow-purple-500/20"
-          : freshness.level === "urgent" || freshness.level === "near-expiry"
-          ? `${freshness.borderColor} ${borderGlowClass}`
-          : "border-emerald-100/50"
-      } overflow-hidden flex flex-col sm:flex-row gap-4 p-4 ${isDynamicPricing ? "pulse-glow" : ""} relative`}
+      transition={{ delay: index * 0.04, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="bg-white dark:bg-gray-900 rounded-[2rem] border border-slate-200/80 dark:border-gray-800 p-3.5 shadow-sm hover:shadow-md transition-all duration-300 relative flex flex-col gap-3 group"
     >
-      {/* ── Urgency Badge (top-left overlay) ── */}
-      <AnimatePresence>
-        {(urgencyBadge || quantity <= 2) && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.7, x: -8 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.7 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20, delay: index * 0.05 + 0.15 }}
-            className={`absolute top-3 left-3 z-10 flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold ${
-              quantity <= 2 ? "text-white bg-red-600" : (urgencyBadge?.color + " " + urgencyBadge?.bgColor)
-            } backdrop-blur-md shadow-sm border border-emerald-500/10 ${
-              (urgencyBadge?.pulse || quantity <= 2) ? "animate-urgency-pulse" : ""
-            }`}
+      {/* ── Top Hero Image Container ── */}
+      <div className="relative w-full aspect-[16/10] rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-gray-800">
+        <Image
+          src={imgSrc}
+          alt={name}
+          fill
+          sizes="(max-width: 768px) 100vw, 400px"
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={() =>
+            setImgSrc(
+              `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 24 24" fill="none" stroke="%23ff5b26" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background-color:%23fff5f0"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 8h.01"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`
+            )
+          }
+        />
+
+        {/* Top-Left: Discount Badge */}
+        <div className="absolute top-3 left-3 z-10">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-[#FF5B26] text-white shadow-md shadow-orange-500/30 tracking-tight">
+            🔥 {discountPercent}% OFF
+          </span>
+        </div>
+
+        {/* Top-Right: Favorite Heart Button */}
+        {onToggleFavorite && (
+          <button
+            type="button"
+            onClick={(e) => onToggleFavorite(id, isFavorite, e)}
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 dark:bg-gray-900/90 shadow-md flex items-center justify-center text-slate-400 hover:text-red-500 transition active:scale-90"
+            title={isFavorite ? "Remove from Favorites" : "Save Deal"}
           >
-            {(urgencyBadge?.pulse || quantity <= 2) && (
-              <span className="absolute inset-0 rounded-full bg-red-500/20 animate-ping pointer-events-none" />
-            )}
-            <span className="text-xs leading-none relative z-10">{quantity <= 2 ? "⚡" : urgencyBadge?.icon}</span>
-            <span className="relative z-10">{quantity <= 2 ? `ONLY ${quantity} LEFT!` : urgencyBadge?.label}</span>
-          </motion.div>
+            <Heart size={18} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
+          </button>
         )}
-      </AnimatePresence>
 
-      <div className="flex gap-4 flex-1 min-w-0">
-        {/* ── Image ── */}
-        <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-emerald-100/40 relative">
-          <Image 
-            src={imgSrc} 
-            alt={name} 
-            fill 
-            sizes="96px" 
-            className="object-cover" 
-            onError={() => setImgSrc(`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 24 24" fill="none" stroke="%2310b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background-color:%23f4fbf7"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 8h.01"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`)}
-          />
-          {isSurpriseBag && (
-            <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 to-transparent flex items-end justify-center pb-1">
-              <span className="text-[10px] font-bold text-white flex items-center gap-1">
-                <Package size={10} /> Surprise
-              </span>
-            </div>
-          )}
-
-          {/* Freshness dot indicator (bottom-right of image) */}
-          <div className="absolute bottom-1.5 right-1.5 z-10">
-            <div
-              className={`w-2.5 h-2.5 rounded-full ${freshness.dotColor} ring-2 ring-white ${
-                freshness.level === "urgent" ? "animate-freshness-breath" : ""
-              }`}
-              title={freshness.label}
-            />
+        {/* Bottom-Left: Time Remaining Pill */}
+        <div className="absolute bottom-3 left-3 z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-slate-950/75 text-white backdrop-blur-md border border-white/10 shadow-sm">
+            <Clock size={12} className="text-orange-400" />
+            <span>{expiryCountdown}</span>
           </div>
         </div>
 
-        {/* ── Content ── */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between">
-          <div>
-            {/* Row 1: Name + Discount badge + Favorite */}
-            <div className="flex justify-between items-start gap-2">
-              <div className="min-w-0">
-                {/* Dynamic Trending / Fast Selling / Saved Badges */}
-                <div className="flex gap-1.5 flex-wrap mb-1">
-                  {quantity <= 3 && (
-                    <span className="inline-flex items-center gap-0.5 bg-red-500/15 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider animate-pulse">
-                      ⚡ Fast Selling
-                    </span>
-                  )}
-                  {discountPercent >= 60 && (
-                    <span className="inline-flex items-center gap-0.5 bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      🔥 Hot Deal
-                    </span>
-                  )}
-                  {isFavorite && (
-                    <span className="inline-flex items-center gap-0.5 bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      ⭐ Saved Deal
-                    </span>
-                  )}
-                </div>
-                <h2 className="font-bold text-slate-900 dark:text-white truncate text-base">{name}</h2>
-              </div>
-
-              <div className="flex gap-2 items-center flex-shrink-0">
-                {onToggleRecipeBasket && (
-                  <button
-                    onClick={(e) => onToggleRecipeBasket(id, e)}
-                    className={`flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-xl transition cursor-pointer ${
-                      isInRecipeBasket 
-                        ? "bg-orange-500 text-white shadow-md shadow-orange-500/25 scale-105" 
-                        : "bg-orange-50 dark:bg-orange-950/40 text-[#FF5B26] border border-orange-200/80 hover:bg-orange-100"
-                    }`}
-                    title={isInRecipeBasket ? "Remove from AI Recipe Basket" : "Add to AI Recipe Basket"}
-                  >
-                    <ChefHat size={14} className={isInRecipeBasket ? "text-white" : "text-[#FF5B26]"} />
-                    <span>{isInRecipeBasket ? "In Recipe 👨‍🍳" : "+ Cook"}</span>
-                  </button>
-                )}
-                {onToggleFavorite && (
-                  <button
-                    onClick={(e) => onToggleFavorite(id, isFavorite, e)}
-                    className="p-1 text-slate-400 hover:text-red-500 transition ml-1"
-                  >
-                    <Heart size={16} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
-                  </button>
-                )}
-                {/* Discount percentage badge */}
-                <motion.span
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 + 0.2, duration: 0.35 }}
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full animate-slide-in-right ${
-                    discountPercent >= 50
-                      ? "bg-emerald-50 text-emerald-700"
-                      : isSurpriseBag
-                      ? "bg-purple-50 text-purple-700"
-                      : "text-emerald-700 bg-emerald-50"
-                  }`}
-                >
-                  -{discountPercent}%
-                </motion.span>
-              </div>
-            </div>
-
-            {/* Description */}
-            {description && (
-              <p className="text-xs text-slate-600 dark:text-gray-400 mt-1 line-clamp-2" title={description}>
-                {description}
-              </p>
-            )}
-
-            {/* Row 2: Shop name + Freshness label + Follow */}
-            <div className="flex flex-wrap items-center gap-2 mt-1.5 max-w-full">
-              <p className="text-xs text-slate-500 dark:text-gray-400 flex items-center gap-1 min-w-0 max-w-full">
-                <MapPin size={12} className="text-emerald-600 flex-shrink-0" />
-                <span className="font-bold text-slate-800 dark:text-white flex-shrink-0">{shopSubtitle}</span>
-                {shopAddress && <span className="text-slate-400 truncate min-w-0">({shopAddress})</span>}
-                {distance !== null && distance !== undefined && (
-                  <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-455 px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0">
-                    {distance.toFixed(1)} km
-                  </span>
-                )}
-              </p>
-
-              {/* Freshness indicator pill */}
-              <span
-                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${freshness.color} ${freshness.bgColor}`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${freshness.dotColor} ${
-                    freshness.level === "urgent" ? "animate-freshness-breath" : ""
-                  }`}
-                />
-                {freshness.label}
-              </span>
-
-              {onToggleFollow && shopId && (
-                <button
-                  onClick={(e) => onToggleFollow(shopId, isFollowing, e)}
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition ${
-                    isFollowing
-                      ? "bg-slate-100 text-slate-600"
-                      : "bg-blue-50 text-blue-700"
-                  }`}
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </button>
-              )}
-            </div>
-          </div>
-
-            {/* Row 3: Enhanced Price Display */}
-          <div className="flex items-end justify-between mt-2">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <motion.span
-                  key={currentPrice}
-                  initial={{ y: -4, opacity: 0.6 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className={`text-2xl font-black ${
-                    isDynamicPricing
-                      ? "text-orange-500"
-                      : freshness.level === "urgent"
-                      ? "text-red-600"
-                      : "text-emerald-600 dark:text-emerald-400"
-                  }`}
-                >
-                  ₹{currentPrice.toFixed(2)}
-                </motion.span>
-                <span className="text-sm text-slate-400 line-through">₹{originalPrice.toFixed(2)}</span>
-              </div>
-              {isDynamicPricing && (
-                <motion.p
-                  initial={{ opacity: 0, x: -6 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-[10px] text-orange-500 font-bold flex items-center gap-1.5 mt-1 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 rounded-full"
-                >
-                  <TrendingDown size={12} className="animate-bounce" />
-                  Price is dropping LIVE!
-                </motion.p>
-              )}
-            </div>
-
-            {/* Savings badge */}
-            {discountPercent >= 30 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.05 + 0.25, type: "spring", stiffness: 350, damping: 18 }}
-                className="flex flex-col items-end gap-1"
-              >
-                <div className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                  Save ₹{(originalPrice - currentPrice).toFixed(0)}
-                </div>
-                {forecast.rescueProbability >= 80 && (
-                  <div className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 uppercase tracking-tighter">
-                    <Sparkles size={8} className="animate-pulse" /> AI Choice
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </div>
-
-          {/* Row 4: MFG date, expiry date, countdown + stock */}
-          <div className="flex flex-col gap-1.5 mt-3 pt-2 border-t border-emerald-100/30">
-            <div className="flex flex-wrap items-center gap-2 text-[9px] font-bold text-slate-500 dark:text-gray-400">
-              <span className="bg-slate-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
-                MFG: {new Date(mfgDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-              <span className="bg-slate-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
-                EXP: {new Date(expiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded-md flex items-center gap-1.5 ${
-                  expiryIsExpired
-                    ? "bg-slate-100 text-slate-500"
-                    : freshness.level === "urgent"
-                    ? "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
-                    : freshness.level === "near-expiry"
-                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400"
-                    : isDynamicPricing
-                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400"
-                    : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
-                }`}
-              >
-                {/* SVG circular expiry progress ring */}
-                {!expiryIsExpired && (
-                  <svg className="w-3.5 h-3.5 transform -rotate-90 flex-shrink-0" viewBox="0 0 20 20">
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r="8"
-                      className="stroke-slate-200/50 dark:stroke-gray-700/50"
-                      strokeWidth="2.5"
-                      fill="transparent"
-                    />
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r="8"
-                      className={`transition-all duration-500 ${
-                        freshness.level === "urgent"
-                          ? "stroke-red-500"
-                          : freshness.level === "near-expiry"
-                          ? "stroke-orange-500"
-                          : freshness.level === "good"
-                          ? "stroke-amber-500"
-                          : "stroke-emerald-500"
-                      }`}
-                      strokeWidth="2.5"
-                      fill="transparent"
-                      strokeDasharray="50.26"
-                      strokeDashoffset={50.26 * (1 - timeFraction)}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                )}
-                {expiryCountdown}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              {/* Low stock bar and description */}
-              <div className="flex flex-col gap-1 w-full max-w-[180px]">
-                <span
-                  className={`text-[10px] font-bold ${
-                    quantity <= 3
-                      ? "text-red-600 animate-pulse"
-                      : quantity <= 5
-                      ? "text-amber-600"
-                      : "text-slate-500 dark:text-gray-455"
-                  }`}
-                >
-                  {quantity <= 3 ? `🔥 Only ${quantity} left!` : `${quantity} left`}
-                </span>
-                {quantity <= 5 && (
-                  <div className="w-full bg-slate-100 dark:bg-gray-800 h-1 rounded-full overflow-hidden mt-0.5">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        quantity <= 3 ? "bg-red-500 animate-pulse" : "bg-amber-500"
-                      }`}
-                      style={{ width: `${(quantity / 10) * 100}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 flex-wrap mt-2.5">
-            {hasVoiceNote && (
-              <button
-                type="button"
-                onClick={(e) => onTogglePlay(id, e)}
-                className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1.5 rounded-xl hover:bg-emerald-100/50 transition cursor-pointer"
-              >
-                {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-                Voice note
-              </button>
-            )}
-            
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowForecast(!showForecast);
-              }}
-              className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl border transition cursor-pointer ${
-                showForecast
-                  ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/20"
-                  : "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-100 hover:border-emerald-300 text-emerald-700 dark:text-emerald-400"
-              }`}
-            >
-              <Sparkles size={14} className={showForecast ? "animate-spin" : ""} />
-              AI Forecast
-            </button>
-
-            <button
-              type="button"
-              onClick={handleWhatsApp}
-              className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1.5 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition cursor-pointer"
-            >
-              <MessageCircle size={14} className="text-emerald-600" />
-              Chat
-            </button>
-          </div>
-
-          {/* AI Forecast expandable subsection */}
-          <AnimatePresence>
-            {showForecast && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden mt-2"
-              >
-                <div className="p-3.5 bg-emerald-500/[0.03] dark:bg-emerald-950/10 border border-emerald-100/60 dark:border-emerald-900/30 rounded-2xl space-y-2.5 shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-355 flex items-center gap-1">
-                      <Brain size={12} className="text-emerald-650" /> AI Forecast Insights
-                    </span>
-                    <span className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md tracking-wider">
-                      CONFIDENCE {forecast.confidenceScore}%
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded-xl border border-emerald-100/30 dark:border-gray-700/50 shadow-sm flex flex-col items-center">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Rescue Prob.</span>
-                      <span className="text-sm font-black text-emerald-600 dark:text-emerald-450 mt-0.5">{forecast.rescueProbability}%</span>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded-xl border border-emerald-100/30 dark:border-gray-700/50 shadow-sm flex flex-col items-center">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Est. Sellout</span>
-                      <span className="text-sm font-black text-orange-500 mt-0.5">~{forecast.selloutHours}h</span>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded-xl border border-emerald-100/30 dark:border-gray-700/50 shadow-sm flex flex-col items-center">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">AI Suggested</span>
-                      <span className="text-sm font-black text-emerald-700 dark:text-emerald-450 mt-0.5">₹{forecast.optimalPrice}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[9px] text-slate-500 dark:text-gray-400 leading-relaxed font-semibold">
-                    {discountPercent >= forecast.optimalDiscountPercent ? (
-                      <span>
-                        ✅ Current discount of <strong className="text-emerald-700 dark:text-emerald-450 font-bold">{discountPercent}% off</strong> is already optimized to maximize rescues given the high stock and remaining time.
-                      </span>
-                    ) : (
-                      <span>
-                        💡 Suggested discount is <strong className="text-emerald-700 dark:text-emerald-450 font-bold">{forecast.optimalDiscountPercent}% off</strong> to improve rescue probability.
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Bottom-Right: Voice Note Audio Player if present */}
+        {hasVoiceNote && (
+          <button
+            type="button"
+            onClick={(e) => onTogglePlay(id, e)}
+            className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-full bg-orange-500/90 text-white backdrop-blur-md flex items-center justify-center shadow-md active:scale-90"
+            title="Listen to Shopkeeper Voice Note"
+          >
+            {isPlaying ? <Pause size={14} /> : <Volume2 size={14} />}
+          </button>
+        )}
       </div>
 
-      {/* Reservation Section */}
-      {onReserve && !expiryIsExpired && quantity > 0 && (
-        <div className="w-full sm:w-40 sm:min-w-[160px] flex-shrink-0 flex flex-col justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-emerald-100/40 sm:pl-4">
+      {/* ── Content & Details ── */}
+      <div className="px-1 flex flex-col gap-2">
+        {/* Row 1: Category Tag (Orange) + Shop Name */}
+        <div className="flex items-center justify-between text-xs font-bold">
+          <span className="text-[#FF5B26] uppercase tracking-wider font-black text-[11px]">
+            {displayCategory}
+          </span>
+          <div className="flex items-center gap-1 text-slate-400 dark:text-gray-400 text-xs font-semibold truncate max-w-[55%]">
+            <span>🏪</span>
+            <span className="truncate">{shopSubtitle}</span>
+            {distance !== null && (
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-1">
+                &bull; {distance.toFixed(1)}km
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Product Title */}
+        <h3 className="font-black text-slate-900 dark:text-white text-base leading-snug line-clamp-1">
+          {name}
+        </h3>
+
+        {/* Row 3: Stock Quantity & AI Insights toggle */}
+        <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+          <span className="flex items-center gap-1">
+            <span className={`w-2 h-2 rounded-full ${quantity <= 3 ? "bg-red-500 animate-pulse" : "bg-emerald-500"}`} />
+            {quantity} left in stock
+          </span>
           <button
-            onClick={() => onReserve(id)}
-            className={`w-full font-bold text-sm py-2 rounded-xl transition shadow-sm active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              freshness.level === "urgent"
-                ? "bg-red-500 hover:bg-red-600 text-white shadow-sm"
-                : "bg-emerald-600 hover:bg-emerald-500 hover:shadow-md hover:shadow-emerald-950/10 text-white"
-            }`}
+            type="button"
+            onClick={() => setShowForecast(!showForecast)}
+            className="text-[10px] font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-0.5"
           >
-            <Tag size={14} />
-            {freshness.level === "urgent" ? "Grab Now" : "Reserve"}
+            <Sparkles size={10} />
+            AI Insights
+            <ChevronDown size={10} className={`transition-transform duration-200 ${showForecast ? "rotate-180" : ""}`} />
           </button>
         </div>
-      )}
+
+        {/* Expandable AI Forecast Card */}
+        <AnimatePresence>
+          {showForecast && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-800/40 rounded-2xl p-3 text-xs space-y-2 mt-1"
+            >
+              <div className="flex justify-between items-center text-[10px] font-black text-orange-800 dark:text-orange-300">
+                <span>RESCUE PROBABILITY: {forecast.rescueProbability}%</span>
+                <span>EST. SELLOUT: ~{forecast.selloutHours}h</span>
+              </div>
+              <p className="text-[10px] text-slate-600 dark:text-gray-300 leading-tight">
+                Floor: ₹{forecast.optimalPrice} &bull; Save ₹{(originalPrice - currentPrice).toFixed(0)} before expiry!
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Row 4: Price & Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-gray-800 mt-1">
+          {/* Price Block */}
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              ₹ {currentPrice.toFixed(0)}
+            </span>
+            {originalPrice > currentPrice && (
+              <span className="text-sm font-bold text-slate-400 line-through">
+                ₹{originalPrice.toFixed(0)}
+              </span>
+            )}
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="flex items-center gap-1.5">
+            {/* 1. Multi-Item AI Recipe Basket Toggle */}
+            {onToggleRecipeBasket && (
+              <button
+                type="button"
+                onClick={(e) => onToggleRecipeBasket(id, e)}
+                className={`h-9 px-2.5 rounded-xl flex items-center gap-1 text-[11px] font-black transition active:scale-95 cursor-pointer ${
+                  isInRecipeBasket
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-105"
+                    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 hover:bg-emerald-100"
+                }`}
+                title={isInRecipeBasket ? "In AI Recipe Basket (Tap to remove)" : "Add to AI Recipe Basket to combine dishes"}
+              >
+                <ChefHat size={14} className={isInRecipeBasket ? "text-white" : "text-emerald-600"} />
+                <span>{isInRecipeBasket ? "In Basket ✓" : "+ Cook"}</span>
+              </button>
+            )}
+
+            {/* 2. Direct 1-Tap AI Recipe Generator Modal Button */}
+            {(onQuickRecipe || onToggleRecipeBasket) && (
+              <button
+                type="button"
+                onClick={(e) => (onQuickRecipe ? onQuickRecipe(id, e) : onToggleRecipeBasket?.(id, e))}
+                className="h-9 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-orange-500/20 transition active:scale-95 cursor-pointer"
+                title="1-Click Instant AI Recipe for this item"
+              >
+                <Sparkles size={13} className="text-white" />
+                <span>Recipe</span>
+              </button>
+            )}
+
+            {/* 3. Direct Instant Reserve Button (Orange Arrow) */}
+            {onReserve && !expiryIsExpired && quantity > 0 && (
+              <button
+                type="button"
+                onClick={() => onReserve(id)}
+                className="w-9 h-9 rounded-xl bg-[#FF5B26] hover:bg-[#E54B18] text-white flex items-center justify-center shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer shrink-0"
+                title="Reserve for Instant Pickup"
+              >
+                <ArrowUpRight size={18} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </motion.article>
   );
 }, (prev, next) => {

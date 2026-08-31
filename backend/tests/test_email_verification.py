@@ -30,7 +30,7 @@ def client() -> TestClient:
 
 def test_register_creates_unverified_user_and_token(client: TestClient):
     """Test that registration creates an unverified user with a hashed token and 24h expiration."""
-    with patch("routers.auth.send_verification_email", return_value=True) as mock_send:
+    with patch("routers.auth.send_otp_to_identifier", return_value={"status": "dispatched", "dev_code": "123456"}) as mock_send:
         res = client.post(
             "/auth/register",
             json={

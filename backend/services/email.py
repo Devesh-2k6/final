@@ -307,3 +307,70 @@ ExpiryGo Team
         token=raw_token,
         verification_url=verification_url,
     )
+
+
+def send_vendor_approval_email(to_email: str, vendor_name: str, shop_name: str) -> bool:
+    """Dispatches official approval notification to vendor when approved by Admin."""
+    subject = f"🎉 Your shop '{shop_name}' has been APPROVED on ExpiryGo!"
+    display_name = vendor_name.strip() if vendor_name else "Vendor"
+    
+    html_content = f"""<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; color: #0f172a;">
+    <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #059669; margin-top: 0;">🎉 Your Store is Approved!</h2>
+        <p>Hello <strong>{display_name}</strong>,</p>
+        <p>Great news! Your store <strong>{shop_name}</strong> has been reviewed and verified by our Admin moderation team.</p>
+        <p>You can now log in to your Vendor Dashboard, post surplus food deals, and start selling!</p>
+        <div style="text-align: center; margin: 24px 0;">
+            <a href="http://localhost:3000/shop" style="background-color: #059669; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Open Vendor Dashboard</a>
+        </div>
+        <p style="font-size: 12px; color: #64748b;">ExpiryGo Marketplace Team</p>
+    </div>
+</body>
+</html>"""
+
+    text_fallback = f"Hello {display_name},\n\nYour shop '{shop_name}' has been APPROVED on ExpiryGo! You can now publish surplus food deals.\n\nOpen your Vendor Dashboard: http://localhost:3000/shop\n\nExpiryGo Team"
+    
+    return send_email_notification(
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_fallback=text_fallback,
+    )
+
+
+def send_vendor_rejection_email(to_email: str, vendor_name: str, shop_name: str, reason: str) -> bool:
+    """Dispatches rejection and resubmission instructions to vendor."""
+    subject = f"Update regarding your ExpiryGo shop application: {shop_name}"
+    display_name = vendor_name.strip() if vendor_name else "Vendor"
+    clean_reason = reason.strip() if reason else "Documentation or location verification required."
+    
+    html_content = f"""<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; color: #0f172a;">
+    <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #dc2626; margin-top: 0;">Shop Application Update</h2>
+        <p>Hello <strong>{display_name}</strong>,</p>
+        <p>Thank you for your interest in ExpiryGo. After review, our moderation team was unable to approve your application for <strong>{shop_name}</strong>.</p>
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin: 16px 0;">
+            <p style="margin: 0; color: #991b1b; font-weight: bold;">Reason for Rejection:</p>
+            <p style="margin: 6px 0 0 0; color: #7f1d1d;">{clean_reason}</p>
+        </div>
+        <p><strong>You may resubmit:</strong> Please log in to your account and upload corrected shop documents or photos to request a fresh review.</p>
+        <div style="text-align: center; margin: 24px 0;">
+            <a href="http://localhost:3000/shop/setup" style="background-color: #dc2626; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Resubmit Application</a>
+        </div>
+        <p style="font-size: 12px; color: #64748b;">ExpiryGo Marketplace Team</p>
+    </div>
+</body>
+</html>"""
+
+    text_fallback = f"Hello {display_name},\n\nYour shop application for '{shop_name}' was not approved.\nReason: {clean_reason}\n\nYou may resubmit with corrected documents at http://localhost:3000/shop/setup\n\nExpiryGo Team"
+
+    return send_email_notification(
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_fallback=text_fallback,
+    )

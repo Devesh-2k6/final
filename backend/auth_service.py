@@ -52,9 +52,11 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, role: Optional[str] = None) -> str:
     expire = datetime.now(UTC) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     payload = {"sub": user_id, "exp": expire}
+    if role:
+        payload["role"] = role
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -104,18 +106,18 @@ def get_current_user(
     return user
 
 
-def get_current_shop_owner(
+def get_current_vendor(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
-    # Strict BFLA enforcement: non-shopkeeper users are denied access
-    is_merchant = user.is_shop_owner or getattr(user, "role", "") == "SHOPKEEPER"
-    if not is_merchant:
+    # Strict RBAC enforcement: non-vendor users are denied access
+    is_vendor = getattr(user, "role", "") == "VENDOR" or user.is_shop_owner
+    if not is_vendor:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: This action requires verified merchant privileges.",
+            detail="Access forbidden: This action requires verified vendor privileges.",
         )
-    # Strict Email Verification enforcement: unverified shopkeepers cannot access merchant features
+    # Strict Email Verification enforcement: unverified vendors cannot manage shop
     if not getattr(user, "email_verified", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -124,41 +126,43 @@ def get_current_shop_owner(
     return user
 
 
-def get_current_active_shop_owner(
-    user: Annotated[User, Depends(get_current_shop_owner)],
+def get_current_active_vendor(
+    user: Annotated[User, Depends(get_current_vendor)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
-    # Strict Shop Location Verification & Admin Approval enforcement
+    # Strict Vendor Admin Approval enforcement: role == VENDOR AND status == APPROVED AND is_active == True
     from db.models import Shop
     shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
     if not shop:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: No shop registered for this merchant. Please complete shop setup and location verification.",
+            detail="Access forbidden: No shop registered for this vendor. Please complete vendor onboarding.",
         )
-    if not getattr(shop, "location_verified", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: Your shop location is not verified. Please complete location verification to activate your shop.",
-        )
-    approval_status = getattr(shop, "approval_status", "PENDING")
+    
+    approval_status = getattr(shop, "approval_status", None) or "PENDING"
+    
     if approval_status == "PENDING":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: Your shop is pending administrator review and approval. Product management will unlock once approved.",
+            detail="Access forbidden: Your shop is pending administrator review and approval. Product posting will unlock once approved.",
         )
     if approval_status == "REJECTED":
         reason = getattr(shop, "approval_reason", "") or "Did not meet marketplace listing criteria."
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Access forbidden: Your shop application was rejected ({reason}).",
+            detail=f"Access forbidden: Your shop application was rejected ({reason}). You may resubmit with corrected documents.",
         )
-    if approval_status == "SUSPENDED" or not getattr(shop, "is_active", False):
+    if approval_status != "APPROVED" or not getattr(shop, "is_active", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access forbidden: Your shop is currently inactive or suspended. Please contact support.",
+            detail="Access forbidden: Your shop is not approved or is currently inactive. Please contact administrator.",
         )
     return user
+
+
+# Backwards-compatible aliases
+get_current_shop_owner = get_current_vendor
+get_current_active_shop_owner = get_current_active_vendor
 
 
 def get_current_admin(

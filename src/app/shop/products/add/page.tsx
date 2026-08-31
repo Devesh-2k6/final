@@ -13,14 +13,20 @@ import {
   Sparkles,
   Barcode,
   Scan,
-  X
+  X,
+  Mic,
+  MicOff,
+  Volume2,
+  Languages,
+  CheckCircle2,
+  Play
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { getErrorMessage } from "@/api/errors";
-import { createProduct, uploadImage, optimizeProductDetails, scanProductDates, lookupBarcode } from "@/services/products";
+import { createProduct, uploadImage, optimizeProductDetails, scanProductDates, lookupBarcode, parseVoiceProductListing } from "@/services/products";
 import type { ApiProductCreate, ProductCategory } from "@/types/product";
 
 const CATEGORIES: ProductCategory[] = ["BAKERY", "DAIRY", "PRODUCE", "MEAT", "PANTRY", "PREPARED_FOOD", "OTHER"];
@@ -59,6 +65,108 @@ export default function AddProductPage() {
   const [scanMessage, setScanMessage] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  // AI Multilingual Voice Assistant State
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<"ta-IN" | "hi-IN" | "en-IN" | "te-IN">("ta-IN");
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [isParsingVoice, setIsParsingVoice] = useState(false);
+  const [voiceSuccessMsg, setVoiceSuccessMsg] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const startSpeechRecognition = () => {
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert("Browser speech recognition is not supported in this browser. You can select one of the quick test voice prompts or type the spoken sentence directly.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = voiceLang;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceTranscript("");
+      };
+
+      recognition.onresult = (event: any) => {
+        let current = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          current += event.results[i][0].transcript;
+        }
+        setVoiceTranscript(current);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Speech recognition notice:", event);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.error("Speech recognition startup error:", e);
+      setIsListening(false);
+    }
+  };
+
+  const stopSpeechRecognition = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore
+      }
+      setIsListening(false);
+    }
+  };
+
+  const handleProcessVoice = async (overrideText?: string) => {
+    const textToProcess = (overrideText || voiceTranscript).trim();
+    if (!textToProcess) {
+      alert("Please speak or enter a voice transcript first.");
+      return;
+    }
+
+    setIsParsingVoice(true);
+    setError("");
+    setVoiceSuccessMsg(null);
+
+    try {
+      const res = await parseVoiceProductListing(textToProcess, voiceLang);
+      if (res.name) setProductName(res.name);
+      if (res.category) setCategory(res.category);
+      if (res.quantity) setQuantity(String(res.quantity));
+      if (res.original_price) setOriginalPrice(String(res.original_price));
+      if (res.manufacturing_date) setManufacturingDate(res.manufacturing_date);
+      if (res.expiry_date) setExpiryDate(res.expiry_date);
+      if (res.description) setDescription(res.description);
+      if (res.discount_price) {
+        setAutoDiscountMinPrice(String(res.discount_price));
+        setAutoDiscountEnabled(true);
+      }
+
+      setVoiceSuccessMsg(`✓ ${res.spoken_summary || "Parsed voice listing successfully!"}`);
+      setScanMessage(`🎙️ AI Voice Added: ${res.name} (Qty: ${res.quantity}, ₹${res.discount_price})`);
+
+      setTimeout(() => {
+        setVoiceModalOpen(false);
+        setVoiceSuccessMsg(null);
+      }, 1800);
+    } catch (err: unknown) {
+      setError("Failed to parse voice input: " + getErrorMessage(err));
+    } finally {
+      setIsParsingVoice(false);
+    }
+  };
 
   const handleScanBarcode = async () => {
     setIsScanningBarcode(true);
@@ -154,40 +262,53 @@ export default function AddProductPage() {
   const frontImageInputRef = useRef<HTMLInputElement>(null);
   const expiryImageInputRef = useRef<HTMLInputElement>(null);
 
-  // Live discount calculations based on the selected expiry date
+  // Live dynamic clearance pricing based on MRP, Floor Price, Expiry Time, and Stock Quantity
   const preview = useMemo(() => {
     const mrp = parseFloat(originalPrice);
     if (isNaN(mrp) || mrp <= 0 || !expiryDate) return null;
     
     try {
       const expDate = new Date(expiryDate);
-      expDate.setHours(0, 0, 0, 0);
+      expDate.setHours(23, 59, 59, 999);
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const diffTime = expDate.getTime() - today.getTime();
-      const daysLeft = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      const diffMs = expDate.getTime() - today.getTime();
+      const hoursLeft = Math.max(0, diffMs / (1000 * 60 * 60));
+      const daysLeft = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
       
-      let discountPercent = 0;
-      if (daysLeft <= 2) {
-        discountPercent = 70;
-      } else if (daysLeft <= 5) {
-        discountPercent = 50;
-      } else if (daysLeft <= 10) {
-        discountPercent = 30;
-      } else {
-        discountPercent = 10;
-      }
+      const floorInput = parseFloat(autoDiscountMinPrice);
+      // Floor price: if user provided a valid floor <= mrp, use it; otherwise default to 70% of MRP
+      const minFloor = !isNaN(floorInput) && floorInput > 0 ? Math.min(mrp, floorInput) : Math.round(mrp * 0.7 * 100) / 100;
+      const headroom = mrp - minFloor;
       
-      const discountPrice = mrp * (1 - discountPercent / 100);
+      // 1. Time Factor (concave decay over active 7-day / 168-hr window)
+      const maxWindowHours = 168.0;
+      const normalizedTime = Math.min(1.0, Math.max(0.0, hoursLeft / maxWindowHours));
+      const timeFactor = 1.0 - Math.pow(normalizedTime, 0.65);
+      
+      // 2. Quantity / Stock Velocity Factor
+      const qtyNum = Math.max(1, parseInt(quantity, 10) || 1);
+      const qtyFactor = Math.min(1.20, Math.max(0.85, 0.85 + 0.05 * Math.log(qtyNum + 1)));
+      
+      // Combined clearance progress (0.0 to 1.0)
+      const clearanceProgress = Math.min(1.0, Math.max(0.0, timeFactor * qtyFactor));
+      const calculatedDealPrice = mrp - (headroom * clearanceProgress);
+      const currentDealPrice = Math.max(minFloor, Math.min(mrp, calculatedDealPrice));
+      const discountPercent = Math.round(((mrp - currentDealPrice) / mrp) * 100);
+      
       return {
+        mrp,
+        minFloor,
+        price: parseFloat(currentDealPrice.toFixed(2)),
         percent: discountPercent,
-        price: Math.max(0, parseFloat(discountPrice.toFixed(2))),
         daysLeft,
+        hoursLeft: Math.round(hoursLeft),
+        qtyNum,
+        headroom,
       };
     } catch {
       return null;
     }
-  }, [originalPrice, expiryDate]);
+  }, [originalPrice, expiryDate, autoDiscountMinPrice, quantity]);
 
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -214,6 +335,12 @@ export default function AddProductPage() {
       return;
     }
 
+    const mrpVal = parseFloat(originalPrice);
+    if (isNaN(mrpVal) || mrpVal <= 0) {
+      setError("Please enter a valid MRP price.");
+      return;
+    }
+
     // Validate dates
     const mfgDate = new Date(manufacturingDate);
     const expDate = new Date(expiryDate);
@@ -229,13 +356,13 @@ export default function AddProductPage() {
     }
 
     const minPriceVal = parseFloat(autoDiscountMinPrice);
-    if (autoDiscountEnabled) {
-      if (isNaN(minPriceVal) || minPriceVal <= 0) {
-        setError("Please enter a valid minimum discount price.");
+    if (autoDiscountMinPrice && !isNaN(minPriceVal)) {
+      if (minPriceVal <= 0) {
+        setError("Lowest acceptable price must be greater than 0.");
         return;
       }
-      if (preview && minPriceVal >= preview.price) {
-        setError("Minimum discount price must be strictly less than the initial discounted price.");
+      if (minPriceVal > mrpVal) {
+        setError(`Lowest acceptable price (₹${minPriceVal}) cannot be higher than MRP price (₹${mrpVal}).`);
         return;
       }
     }
@@ -319,12 +446,46 @@ export default function AddProductPage() {
             </motion.div>
           )}
 
+          {/* AI Multilingual Voice Assistant Banner */}
+          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-5 sm:p-6 text-white shadow-xl shadow-emerald-900/10 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-emerald-400/30">
+            <div className="space-y-1.5 relative z-10">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-emerald-100 font-black text-xs uppercase tracking-wider">
+                <Sparkles size={13} className="text-amber-300" /> AI Multilingual Voice Listing
+              </div>
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
+                Speak to Add Deal in 1-Click
+              </h2>
+              <p className="text-xs sm:text-sm text-emerald-100 max-w-lg font-medium">
+                Speak in <span className="font-bold underline decoration-amber-300">Tamil, Hindi, Telugu, or English</span>. AI auto-fills product name, dates, category, and discounts instantly!
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setVoiceModalOpen(true)}
+              className="relative z-10 inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-2xl bg-white text-emerald-900 font-black text-sm hover:bg-emerald-50 active:scale-95 transition shadow-lg shadow-black/10 cursor-pointer self-start sm:self-center shrink-0"
+            >
+              <Mic size={18} className="text-emerald-600 animate-pulse" />
+              Start Voice Listing
+            </button>
+          </div>
+
           {/* Product Info Section */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Plus size={20} className="text-emerald-500" />
-              Product Details
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Plus size={20} className="text-emerald-500" />
+                Product Details
+              </h2>
+              <button
+                type="button"
+                onClick={() => setVoiceModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition"
+              >
+                <Mic size={13} className="text-emerald-600 dark:text-emerald-400" />
+                Voice Input
+              </button>
+            </div>
 
             {/* Product Name */}
             <div>
@@ -413,201 +574,184 @@ export default function AddProductPage() {
               />
             </div>
 
-            {/* MRP Price */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                MRP Price (₹) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                value={originalPrice}
-                onChange={(e) => setOriginalPrice(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Initial discount will be calculated automatically based on expiry date.
-              </p>
-            </div>
+            {/* Price & Quantity Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* MRP Price */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  MRP Price (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={originalPrice}
+                  onChange={(e) => setOriginalPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  Original box / retail price.
+                </p>
+              </div>
 
-            {/* Quantity */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Quantity <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                required
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="1"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+              {/* Lowest Acceptable Price (Floor) */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Lowest Acceptable Price (₹) <span className="text-emerald-500 font-normal text-xs">(Floor)</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={autoDiscountMinPrice}
+                  onChange={(e) => {
+                    setAutoDiscountMinPrice(e.target.value);
+                    setAutoDiscountEnabled(true);
+                  }}
+                  placeholder="e.g. 30.00"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  Your minimum cost floor. Price will <strong className="text-emerald-600 dark:text-emerald-400">never</strong> drop below this.
+                </p>
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Stock Quantity <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="1"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  Units available for rescue.
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Dates & Live Preview Section */}
+          {/* Dates & Live Dynamic Pricing Section */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 shadow-sm">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Calendar size={20} className="text-emerald-500" />
-              Dates & Discount Preview
+              Dates & Dynamic Clearance Pricing
             </h2>
 
-            {/* Manufacturing Date */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Manufacturing Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={manufacturingDate}
-                onChange={(e) => setManufacturingDate(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Manufacturing Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Manufacturing Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={manufacturingDate}
+                  onChange={(e) => setManufacturingDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Expiry Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Expiry Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
             </div>
 
-            {/* Expiry Date */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Expiry Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                required
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            {/* Live Discount Calculator Preview */}
+            {/* Live Dynamic Pricing Preview Card */}
             <AnimatePresence>
               {preview && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="mt-4 p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 space-y-3"
+                  className="mt-4 p-5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 space-y-4"
                 >
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm mb-1">
-                    <Sparkles size={16} className="animate-pulse" />
-                    AI Pricing Advisor
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                      <Sparkles size={16} className="animate-pulse" />
+                      Dynamic Clearance Pricing
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      Time & Stock Adaptive
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white dark:bg-gray-800/40 p-3 rounded-xl border border-emerald-100/30">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Urgency Level</p>
-                      <p className={`text-base font-black mt-0.5 ${preview.daysLeft <= 2 ? "text-red-500" : "text-emerald-600"}`}>
-                        {preview.daysLeft <= 2 ? "Critical" : preview.daysLeft <= 5 ? "High" : "Moderate"}
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white dark:bg-gray-800/60 p-3 rounded-xl border border-emerald-100/40">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Time Left</p>
+                      <p className={`text-sm font-black mt-0.5 ${preview.daysLeft <= 2 ? "text-red-500" : "text-emerald-600"}`}>
+                        {preview.daysLeft === 0 ? "Expiring Today" : `${preview.daysLeft} Days`}
                       </p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800/40 p-3 rounded-xl border border-emerald-100/30">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Rescue Probability</p>
-                      <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                        {preview.percent >= 50 ? "92%" : "65%"}
+                    <div className="bg-white dark:bg-gray-800/60 p-3 rounded-xl border border-emerald-100/40">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Stock Velocity</p>
+                      <p className="text-sm font-black text-gray-800 dark:text-gray-200 mt-0.5">
+                        {preview.qtyNum} {preview.qtyNum === 1 ? "unit" : "units"}
+                      </p>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800/60 p-3 rounded-xl border border-emerald-100/40">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Protected Floor</p>
+                      <p className="text-sm font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                        ₹{preview.minFloor.toFixed(2)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center border-t border-emerald-100/50 dark:border-emerald-500/10 pt-3">
-                    <div className="space-y-1">
-                      <span className="text-sm font-bold text-gray-600 dark:text-gray-300">Suggested Deal Price</span>
-                      <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-tighter">Recommended for 100% Rescue</p>
+
+                  <div className="flex justify-between items-center border-t border-emerald-100/60 dark:border-emerald-500/10 pt-3">
+                    <div>
+                      <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Starting Deal Price (Today)</span>
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        {preview.percent}% discount from MRP ₹{preview.mrp.toFixed(2)}
+                      </p>
                     </div>
                     <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                       ₹{preview.price.toFixed(2)}
                     </span>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
-          {/* Dynamic Price Drop Section */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Sliders size={20} className="text-emerald-500" />
-                  Dynamic Price Drop
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Enable continuous price reduction in the final 24 hours.
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoDiscountEnabled}
-                  onChange={(e) => setAutoDiscountEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-emerald-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
-              </label>
-            </div>
-
-            <AnimatePresence>
-              {autoDiscountEnabled && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 overflow-hidden"
-                >
-                  <div className="pt-2">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Minimum Price at Expiry (₹) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required={autoDiscountEnabled}
-                      value={autoDiscountMinPrice}
-                      onChange={(e) => setAutoDiscountMinPrice(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1">
-                      <Info size={12} className="text-gray-400" />
-                      Must be strictly lower than the initial discounted price.
-                    </p>
-                  </div>
-
-                  {/* Linear Price Drop Timeline Visualization */}
-                  {preview && autoDiscountMinPrice && parseFloat(autoDiscountMinPrice) > 0 && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200/60 dark:border-gray-700/50 rounded-2xl space-y-3">
-                      <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Price Timeline (Final 24 Hours)
+                  {/* Dynamic Timeline Bar */}
+                  <div className="p-3.5 bg-white dark:bg-gray-800/80 border border-emerald-100/60 dark:border-gray-700/60 rounded-xl space-y-2">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex justify-between">
+                      <span>Clearance Price Decay Timeline</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">Never Drops Below ₹{preview.minFloor.toFixed(2)}</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full relative overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 right-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-amber-500 rounded-full" />
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] font-bold mt-1">
+                      <div className="text-left">
+                        <p className="text-gray-400 text-[9px] uppercase">MRP</p>
+                        <p className="text-gray-600 dark:text-gray-300">₹{preview.mrp.toFixed(2)}</p>
                       </div>
-                      <div className="relative pt-6 pb-2 px-1">
-                        <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full relative">
-                          <div className="absolute inset-y-0 left-0 right-0 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full" />
-                        </div>
-                        <div className="flex justify-between items-center text-xs font-bold mt-3">
-                          <div className="text-left">
-                            <p className="text-gray-400 text-[10px] uppercase">24 hrs left</p>
-                            <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">₹{preview.price.toFixed(2)}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-gray-400 text-[10px] uppercase">12 hrs left</p>
-                            <p className="text-gray-700 dark:text-gray-300 mt-0.5">
-                              ₹{((preview.price + parseFloat(autoDiscountMinPrice)) / 2).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-gray-400 text-[10px] uppercase">Expiry (0 hrs)</p>
-                            <p className="text-amber-600 dark:text-amber-500 mt-0.5">
-                              ₹{parseFloat(autoDiscountMinPrice).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
+                      <div className="text-center">
+                        <p className="text-emerald-600 dark:text-emerald-400 text-[9px] uppercase font-bold">Today (Deal Price)</p>
+                        <p className="text-emerald-600 dark:text-emerald-400 font-extrabold">₹{preview.price.toFixed(2)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-amber-500 text-[9px] uppercase font-bold">At Expiry (Floor)</p>
+                        <p className="text-amber-600 dark:text-amber-400 font-extrabold">₹{preview.minFloor.toFixed(2)}</p>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -777,6 +921,215 @@ export default function AddProductPage() {
           </div>
         </form>
       </div>
+      {/* AI Multilingual Voice Assistant Modal */}
+      <AnimatePresence>
+        {voiceModalOpen && (
+          <div className="fixed inset-0 bg-black/65 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative my-8"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <Mic size={22} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                      AI Voice Assistant
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                      Speak in Tamil, Hindi, Telugu, or English
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopSpeechRecognition();
+                    setVoiceModalOpen(false);
+                  }}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Language Selection Pills */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Languages size={13} className="text-emerald-500" /> Select Spoken Language
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { id: "ta-IN" as const, label: "தமிழ்", sub: "Tamil" },
+                    { id: "hi-IN" as const, label: "हिंदी", sub: "Hindi" },
+                    { id: "en-IN" as const, label: "English", sub: "India" },
+                    { id: "te-IN" as const, label: "తెలుగు", sub: "Telugu" },
+                  ].map((lang) => (
+                    <button
+                      key={lang.id}
+                      type="button"
+                      onClick={() => setVoiceLang(lang.id)}
+                      className={`p-2.5 rounded-2xl border text-center transition-all ${
+                        voiceLang === lang.id
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20 font-black"
+                          : "bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-300 font-semibold"
+                      }`}
+                    >
+                      <div className="text-xs sm:text-sm">{lang.label}</div>
+                      <div className={`text-[10px] ${voiceLang === lang.id ? "text-emerald-100" : "text-gray-400"}`}>
+                        {lang.sub}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pulsating Microphone Control */}
+              <div className="flex flex-col items-center justify-center py-4 bg-gradient-to-b from-gray-50 to-emerald-50/30 dark:from-gray-800/40 dark:to-emerald-950/20 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700/80">
+                <button
+                  type="button"
+                  onClick={isListening ? stopSpeechRecognition : startSpeechRecognition}
+                  className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl ${
+                    isListening
+                      ? "bg-red-500 text-white shadow-red-500/40 scale-105 animate-pulse"
+                      : "bg-emerald-500 text-white shadow-emerald-500/30 hover:scale-105 active:scale-95"
+                  }`}
+                >
+                  {isListening && (
+                    <span className="absolute inset-0 rounded-full bg-red-400 opacity-40 animate-ping" />
+                  )}
+                  {isListening ? <MicOff size={32} /> : <Mic size={32} />}
+                </button>
+                <div className="mt-3 text-center">
+                  <div className="text-sm font-bold text-gray-900 dark:text-white">
+                    {isListening ? "Listening... Speak now!" : "Tap microphone to speak"}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {isListening ? "Speak name, quantity, expiry time, and price" : "Or select a test prompt below"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Transcript / Edit Box */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center justify-between uppercase tracking-wider">
+                  <span>Recognized Transcript</span>
+                  {voiceTranscript && (
+                    <button
+                      type="button"
+                      onClick={() => setVoiceTranscript("")}
+                      className="text-[11px] text-gray-400 hover:text-red-500 font-semibold"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </label>
+                <textarea
+                  value={voiceTranscript}
+                  onChange={(e) => setVoiceTranscript(e.target.value)}
+                  placeholder="e.g. 5 packets Aavin milk expiring tomorrow at 5pm original price 40 discount 20..."
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-medium"
+                />
+              </div>
+
+              {/* Quick Sample Prompts (For Instant 1-Tap Judge Demo) */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  ⚡ Quick Demo Presets (1-Tap):
+                </div>
+                <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
+                  {[
+                    {
+                      lang: "ta-IN" as const,
+                      badge: "தமிழ்",
+                      text: "5 பாக்கெட் ஆவின் பால் நாளை மாலை 5 மணிக்கு காலாவதியாகிறது அசல் விலை 40 தள்ளுபடி 20",
+                    },
+                    {
+                      lang: "hi-IN" as const,
+                      badge: "हिंदी",
+                      text: "5 पैकेट दूध कल शाम 5 बजे एक्सपायर हो रहा है असली कीमत 40 रुपये डिस्काउंट 20",
+                    },
+                    {
+                      lang: "en-IN" as const,
+                      badge: "English",
+                      text: "5 packets of Aavin milk expiring tomorrow 5pm original price 40 discount price 20",
+                    },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setVoiceLang(preset.lang);
+                        setVoiceTranscript(preset.text);
+                        handleProcessVoice(preset.text);
+                      }}
+                      className="w-full text-left p-2 rounded-xl bg-gray-50 hover:bg-emerald-50/80 dark:bg-gray-800/70 dark:hover:bg-emerald-950/30 border border-gray-200/70 dark:border-gray-700 transition flex items-center justify-between text-xs group"
+                    >
+                      <span className="truncate pr-2 text-gray-700 dark:text-gray-300 font-medium">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 mr-1.5">[{preset.badge}]</span>
+                        {preset.text}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition">
+                        Run ➔
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Feedback Success Message */}
+              {voiceSuccessMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl p-3 text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2"
+                >
+                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                  <span>{voiceSuccessMsg}</span>
+                </motion.div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopSpeechRecognition();
+                    setVoiceModalOpen(false);
+                  }}
+                  className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition text-xs sm:text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isParsingVoice || !voiceTranscript.trim()}
+                  onClick={() => handleProcessVoice()}
+                  className="flex-1 px-4 py-3 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 text-xs sm:text-sm"
+                >
+                  {isParsingVoice ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      AI Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      Auto-Fill Form
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -153,11 +153,13 @@ export type ApiOrderCreate = {
   delivery_address?: string;
 };
 
+export type UserRole = "CUSTOMER" | "VENDOR" | "ADMIN";
+
 export type AuthUser = {
   id: string;
   email: string;
   name: string;
-  role?: "CUSTOMER" | "SHOPKEEPER" | "ADMIN" | string;
+  role?: "CUSTOMER" | "VENDOR" | "ADMIN" | string;
   is_shop_owner: boolean;
   email_verified?: boolean;
   phone_number?: string;
@@ -177,6 +179,8 @@ export type AdminShop = {
   latitude: number;
   longitude: number;
   description?: string | null;
+  photo_url?: string | null;
+  document_url?: string | null;
   is_active: boolean;
   location_verified: boolean;
   location_verified_at?: string | null;

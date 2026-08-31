@@ -24,6 +24,8 @@ export type AdminShop = {
   approved_at?: string | null;
   approved_by?: string | null;
   rejected_at?: string | null;
+  photo_url?: string | null;
+  document_url?: string | null;
   verification_document_url?: string | null;
   verification_document_name?: string | null;
   created_at?: string | null;

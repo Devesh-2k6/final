@@ -76,8 +76,19 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
     }, [loadData])
   );
 
+  const extractPickupPin = (raw: string): string => {
+    let clean = (raw || "").trim();
+    if (clean.toUpperCase().startsWith("EXPIRYGO:")) {
+      clean = clean.split(":", 2)[1].trim();
+    }
+    if (clean.includes("/")) {
+      clean = clean.split("/").pop() || clean;
+    }
+    return clean.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  };
+
   const performVerification = async (targetCode: string) => {
-    const cleanCode = targetCode.trim();
+    const cleanCode = extractPickupPin(targetCode);
     if (!cleanCode || cleanCode.length < 4) {
       Alert.alert("Invalid Code", "Please enter or scan a valid 6-digit pickup PIN.");
       return;
@@ -130,8 +141,9 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
   };
 
   const handleQrScanned = (scannedCode: string) => {
-    setPinCode(scannedCode);
-    performVerification(scannedCode);
+    const pin = extractPickupPin(scannedCode);
+    setPinCode(pin);
+    performVerification(pin);
   };
 
   const handleUpdateOrderStatus = async (orderId: string, nextStatus: OrderStatus) => {

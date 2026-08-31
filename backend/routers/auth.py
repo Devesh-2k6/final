@@ -12,6 +12,7 @@ from auth_service import (
     user_to_dict,
     verify_password,
     get_current_user,
+    get_current_admin,
     generate_verification_token,
     hash_verification_token,
 )
@@ -178,12 +179,19 @@ def resend_verification(
 @router.post("/instant-verify-dev", response_model=schemas.VerifyEmailResponse)
 def instant_verify_dev(
     body: schemas.ResendVerificationRequest,
-    db: Annotated[Session, Depends(get_db)]
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
-    Development/Demo helper endpoint to instantly verify an email address
-    without needing an external SMTP email server or manual token copy-pasting.
+    Development helper endpoint to instantly verify an email address.
+    Strictly locked to DEBUG=True and requires Administrator privileges.
     """
+    if not settings.DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found",
+        )
+
     email = body.email.strip().lower()
     user = db.query(User).filter(User.email == email).first()
     if not user:
@@ -198,7 +206,7 @@ def instant_verify_dev(
     db.commit()
     db.refresh(user)
 
-    logger.info(f"[DEV VERIFIED] User email instantly verified: {user.email}")
+    logger.info(f"[DEV VERIFIED] User email verified by admin {admin_user.email}: {user.email}")
     return schemas.VerifyEmailResponse(
         success=True,
         message="Email successfully verified via Instant Dev Mode! Full privileges unlocked.",
@@ -208,11 +216,20 @@ def instant_verify_dev(
 
 
 @router.get("/dev-mailbox")
-def read_dev_mailbox(limit: int = 20):
+def read_dev_mailbox(
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    limit: int = 20,
+):
     """
-    Returns the recent outgoing email dispatches stored in the in-memory Dev Mailbox.
-    Useful for local testing, e2e testing, and inspecting activation links without SMTP.
+    Returns recent outgoing email dispatches stored in the in-memory Dev Mailbox.
+    Strictly locked to DEBUG=True and requires Administrator privileges.
     """
+    if not settings.DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found",
+        )
+
     config = get_smtp_config()
     emails = get_dev_mailbox(limit=limit)
     return {
@@ -225,17 +242,173 @@ def read_dev_mailbox(limit: int = 20):
 
 
 @router.delete("/dev-mailbox")
-def purge_dev_mailbox():
-    """Clears all stored emails from the Dev Mailbox."""
+def purge_dev_mailbox(
+    admin_user: Annotated[User, Depends(get_current_admin)],
+):
+    """
+    Clears all stored emails from the Dev Mailbox.
+    Strictly locked to DEBUG=True and requires Administrator privileges.
+    """
+    if not settings.DEBUG:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found",
+        )
+
     clear_dev_mailbox()
     return {"message": "Dev mailbox cleared."}
+
+
+import os
+from fastapi import UploadFile, File
+
+@router.post("/customer/register", response_model=schemas.SendOtpResponse, status_code=status.HTTP_200_OK)
+def customer_register(body: schemas.CustomerRegisterRequest, db: Annotated[Session, Depends(get_db)]):
+    """
+    Step 1 of Customer Signup:
+    Validates name & email, dispatches 6-digit OTP to email (no documents/photos).
+    """
+    clean_email = body.email.strip().lower()
+    clean_name = body.name.strip()
+    
+    existing = db.query(User).filter(User.email == clean_email).first()
+    if existing and existing.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email already exists. Please log in."
+        )
+
+    res = send_otp_to_identifier(clean_email, name=clean_name)
+    if not res.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=res.get("message", "Please wait before requesting another OTP.")
+        )
+    return schemas.SendOtpResponse(
+        success=True,
+        message=f"6-digit verification code sent to {clean_email}.",
+        expires_in_seconds=res.get("expires_in_seconds", 600),
+        cooldown_remaining=res.get("cooldown_remaining"),
+        dev_code=res.get("dev_code"),
+    )
+
+
+@router.post("/vendor/register", response_model=schemas.SendOtpResponse, status_code=status.HTTP_200_OK)
+def vendor_register(body: schemas.VendorRegisterRequest, db: Annotated[Session, Depends(get_db)]):
+    """
+    Step 1 of Vendor Signup:
+    Validates shop details, stores initial photo and license documents on the Shop record, and dispatches 6-digit OTP to email.
+    """
+    clean_email = body.email.strip().lower()
+    clean_shop_name = body.shop_name.strip()
+    clean_phone = body.phone_number.strip() if body.phone_number else None
+    
+    existing = db.query(User).filter(User.email == clean_email).first()
+    if existing and existing.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email already exists. Please log in."
+        )
+
+    # Find or create unverified vendor user
+    if not existing:
+        user = User(
+            email=clean_email,
+            hashed_password=hash_password(f"otp_auth_{clean_email}"),
+            name=clean_shop_name,
+            role="VENDOR",
+            is_shop_owner=True,
+            phone_number=clean_phone,
+            email_verified=False,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        user = existing
+        user.name = clean_shop_name
+        user.role = "VENDOR"
+        user.is_shop_owner = True
+        user.phone_number = clean_phone
+        db.commit()
+
+    # Find or create initial Shop with uploaded photo and documents
+    shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+    if not shop:
+        shop = Shop(
+            owner_id=user.id,
+            name=clean_shop_name,
+            address="Commercial Market Location",
+            latitude=13.0827,
+            longitude=80.2707,
+            approval_status="PENDING",
+            is_active=False,
+            location_verified=True,
+            photo_url=body.photo_url,
+            document_url=body.document_url,
+            verification_document_url=body.document_url,
+        )
+        db.add(shop)
+    else:
+        shop.name = clean_shop_name
+        if body.photo_url:
+            shop.photo_url = body.photo_url
+        if body.document_url:
+            shop.document_url = body.document_url
+            shop.verification_document_url = body.document_url
+    db.commit()
+
+    res = send_otp_to_identifier(clean_email, name=clean_shop_name)
+    if not res.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=res.get("message", "Please wait before requesting another OTP.")
+        )
+    return schemas.SendOtpResponse(
+        success=True,
+        message=f"6-digit verification code sent to {clean_email}.",
+        expires_in_seconds=res.get("expires_in_seconds", 600),
+        cooldown_remaining=res.get("cooldown_remaining"),
+        dev_code=res.get("dev_code"),
+    )
+
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+async def upload_auth_file(file: UploadFile = File(...)):
+    """Uploads shop photo or business document for vendor onboarding."""
+    import uuid
+    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    target_dirs = [
+        os.path.join(backend_dir, "static", "uploads", "documents"),
+        os.path.join(os.path.dirname(backend_dir), "static", "uploads", "documents"),
+        os.path.abspath("static/uploads/documents"),
+    ]
+    for d in target_dirs:
+        try:
+            os.makedirs(d, exist_ok=True)
+        except Exception:
+            pass
+
+    ext = os.path.splitext(file.filename or "")[1] or ".png"
+    unique_name = f"vendor_{uuid.uuid4().hex[:12]}{ext}"
+    contents = await file.read()
+    
+    for d in target_dirs:
+        try:
+            file_path = os.path.join(d, unique_name)
+            with open(file_path, "wb") as f:
+                f.write(contents)
+        except Exception:
+            pass
+    
+    public_url = f"/static/uploads/documents/{unique_name}"
+    return {"url": public_url, "filename": file.filename}
 
 
 @router.post("/send-otp", response_model=schemas.SendOtpResponse)
 def send_otp(body: schemas.SendOtpRequest):
     """
     Generates and dispatches a 6-digit OTP code to the given email or mobile number.
-    Rate limited and securely dispatched via SMTP.
     """
     res = send_otp_to_identifier(body.identifier, name=body.name)
     if not res.get("success"):
@@ -248,15 +421,17 @@ def send_otp(body: schemas.SendOtpRequest):
         message=res["message"],
         expires_in_seconds=res.get("expires_in_seconds", 600),
         cooldown_remaining=res.get("cooldown_remaining"),
+        dev_code=res.get("dev_code"),
     )
 
 
 @router.post("/verify-otp", response_model=schemas.AuthResponse)
 def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(get_db)]):
     """
-    Validates a 6-digit OTP code. If valid:
-    - If user exists: logs in and marks email_verified=True.
-    - If user does not exist: auto-registers user with email_verified=True and issues JWT.
+    Validates 6-digit OTP code:
+    - If CUSTOMER: creates/verifies user with role='CUSTOMER' and issues JWT.
+    - If VENDOR: creates/verifies user with role='VENDOR', ensures Shop in PENDING state.
+      (Product posting is blocked by get_current_active_vendor until Admin approves).
     """
     clean_id = body.identifier.strip().lower()
     is_valid, msg = verify_otp_code(clean_id, body.otp)
@@ -266,7 +441,7 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
     # Find or auto-register user
     user = db.query(User).filter(User.email == clean_id).first()
     if not user:
-        role = "SHOPKEEPER" if body.is_shop_owner else "CUSTOMER"
+        role = "VENDOR" if body.is_shop_owner else "CUSTOMER"
         user_name = body.name.strip() if body.name and body.name.strip() else clean_id.split("@")[0].title()
         user = User(
             email=clean_id,
@@ -274,11 +449,31 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
             name=user_name,
             role=role,
             is_shop_owner=body.is_shop_owner,
+            phone_number=body.phone_number,
             email_verified=True,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
+
+        # If vendor, create initial Shop in PENDING state if not already created
+        if body.is_shop_owner:
+            from db.models import Shop
+            shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+            if not shop:
+                shop = Shop(
+                    owner_id=user.id,
+                    name=user_name if "Shop" in user_name else f"{user_name}'s Store",
+                    address="Commercial Market Location",
+                    latitude=13.0827,
+                    longitude=80.2707,
+                    approval_status="PENDING",
+                    is_active=False,
+                    location_verified=True,
+                )
+                db.add(shop)
+                db.commit()
+                db.refresh(shop)
     else:
         # Mark verified if not already
         if not user.email_verified:
@@ -288,7 +483,28 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
             db.commit()
             db.refresh(user)
 
-    token = create_access_token(user.id)
+        # Ensure vendor role and shop existence
+        if body.is_shop_owner:
+            user.role = "VENDOR"
+            user.is_shop_owner = True
+            db.commit()
+            from db.models import Shop
+            shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+            if not shop:
+                shop = Shop(
+                    owner_id=user.id,
+                    name=user.name if "Shop" in user.name else f"{user.name}'s Store",
+                    address="Commercial Market Location",
+                    latitude=13.0827,
+                    longitude=80.2707,
+                    approval_status="PENDING",
+                    is_active=False,
+                    location_verified=True,
+                )
+                db.add(shop)
+                db.commit()
+
+    token = create_access_token(user.id, role=getattr(user, "role", "CUSTOMER"))
     return schemas.AuthResponse(access_token=token, user=user_to_dict(user))
 
 
@@ -301,7 +517,40 @@ def run_smtp_diagnostic(to_email: str = Query(..., description="Target email add
 
 @router.post("/login", response_model=schemas.AuthResponse)
 def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
+    """
+    Standard Bcrypt login:
+    Supports Customer, Vendor, and Admin login.
+    Admin credentials can be verified against ADMIN_EMAIL & ADMIN_PASSWORD_HASH from .env.
+    """
     email = body.email.strip().lower()
+    
+    # Check .env configured Admin credentials
+    admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    admin_env_hash = os.getenv("ADMIN_PASSWORD_HASH", "").strip()
+    
+    if admin_env_email and email == admin_env_email and admin_env_hash:
+        if not verify_password(body.password, admin_env_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        
+        # Ensure Admin user exists in DB
+        admin_user = db.query(User).filter(User.email == email).first()
+        if not admin_user:
+            admin_user = User(
+                email=email,
+                hashed_password=admin_env_hash,
+                name="Platform Admin",
+                role="ADMIN",
+                is_shop_owner=False,
+                email_verified=True,
+            )
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
+        
+        token = create_access_token(admin_user.id, role="ADMIN")
+        return schemas.AuthResponse(access_token=token, user=user_to_dict(admin_user))
+
+    # Standard DB User lookup
     user = db.query(User).filter(User.email == email).first()
     if not user:
         # Constant time response to prevent user enumeration and feel consistent
@@ -323,7 +572,7 @@ def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
             detail="Email is not verified. Please verify your email with the 6-digit OTP sent to your inbox."
         )
 
-    token = create_access_token(user.id)
+    token = create_access_token(user.id, role=getattr(user, "role", "CUSTOMER"))
     return schemas.AuthResponse(access_token=token, user=user_to_dict(user))
 
 

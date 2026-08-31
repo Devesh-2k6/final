@@ -301,49 +301,52 @@ export default function ShopDashboardOverview() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Moderation Status Banners */}
       {isPending && (
-        <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-3">
           <div className="flex items-start gap-3.5">
             <div className="p-2.5 rounded-2xl bg-amber-500 text-white flex-shrink-0 mt-0.5">
-              <Clock size={20} />
+              <Clock size={22} />
             </div>
-            <div>
-              <h3 className="text-base font-black tracking-tight text-amber-950 dark:text-amber-100">
-                Shop Approval Pending Administrator Review
+            <div className="space-y-1">
+              <h3 className="text-lg font-black tracking-tight text-amber-950 dark:text-amber-100">
+                ⏳ Waiting for Administrator Approval
               </h3>
-              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-0.5 max-w-2xl">
-                Your store location has been verified via OpenStreetMap ({shop.location_verification_name || shop.name}, {shop.location_verification_category || "Food"}). Our Trust & Safety team is reviewing your application. Product listings will unlock automatically upon approval.
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 max-w-3xl leading-relaxed">
+                Your vendor application for <strong>{shop.name}</strong> is under review by the Platform Admin. Uploaded store photos and business license documents are being verified. Product listing and inventory posting will unlock automatically once approved.
               </p>
             </div>
           </div>
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 uppercase tracking-wider flex-shrink-0">
-            Pending Moderation
-          </span>
+          <div className="flex items-center gap-2 pt-1 text-xs font-bold text-amber-800 dark:text-amber-300">
+            <span className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 uppercase tracking-wider text-[11px]">
+              Status: PENDING REVIEW
+            </span>
+            <span className="text-amber-700/80 dark:text-amber-400/80">Product posting is temporarily locked</span>
+          </div>
         </div>
       )}
 
       {isRejected && (
-        <div className="p-5 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-900 dark:text-red-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-6 rounded-3xl bg-red-500/10 border border-red-500/30 text-red-900 dark:text-red-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="p-2.5 rounded-2xl bg-red-600 text-white flex-shrink-0 mt-0.5">
-              <XCircle size={20} />
+              <XCircle size={22} />
             </div>
             <div>
-              <h3 className="text-base font-black tracking-tight text-red-950 dark:text-red-100">
+              <h3 className="text-lg font-black tracking-tight text-red-950 dark:text-red-100">
                 Shop Application Not Approved
               </h3>
               <p className="text-xs text-red-800/90 dark:text-red-300/90 mt-0.5 max-w-2xl">
-                Reason: <strong>{shop.approval_reason || "Did not meet marketplace food listing criteria."}</strong>
+                Reason: <strong>{shop.approval_reason || "Did not meet marketplace vendor criteria."}</strong>
               </p>
               <p className="text-xs text-red-700/80 dark:text-red-400/80 mt-1">
-                You can update your shop location and business details in Shop Setup to request a fresh review.
+                You may update your shop details or upload corrected business documents to submit a fresh application.
               </p>
             </div>
           </div>
           <Link
             href="/shop/setup"
-            className="px-4 py-2 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-black transition shadow-md shadow-red-600/25 flex-shrink-0"
+            className="px-5 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-black transition shadow-md shadow-red-600/25 flex-shrink-0 flex items-center gap-1.5"
           >
-            Update in Shop Setup
+            Resubmit Application <ArrowRight size={14} />
           </Link>
         </div>
       )}

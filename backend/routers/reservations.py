@@ -20,10 +20,10 @@ def create_reservation(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    if not getattr(user, "email_verified", False):
+    if not user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email address before reserving deals."
+            detail="Please verify your email address to make deal reservations."
         )
 
     # Optimized query to load Product and Shop together with a write lock to prevent race conditions
@@ -106,10 +106,15 @@ def verify_reservation_by_code(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    clean_code = pickup_code.strip()
+    if clean_code.upper().startswith("EXPIRYGO:"):
+        clean_code = clean_code.split(":", 1)[1].strip()
+    clean_code = clean_code.split("/").pop().strip()
+
     shop = _get_owner_shop(user, db)
     reservation = db.query(Reservation).options(joinedload(Reservation.product)).filter(
         Reservation.shop_id == shop.id,
-        Reservation.pickup_code.ilike(pickup_code.strip())
+        Reservation.pickup_code.ilike(clean_code)
     ).first()
     if not reservation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reservation with this code not found for your shop.")
@@ -151,7 +156,12 @@ def verify_reservation(
     if reservation.status != ReservationStatus.PENDING:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reservation already processed")
         
-    if reservation.pickup_code.upper() != payload.pickup_code.upper():
+    clean_code = payload.pickup_code.strip()
+    if clean_code.upper().startswith("EXPIRYGO:"):
+        clean_code = clean_code.split(":", 1)[1].strip()
+    clean_code = clean_code.split("/").pop().strip()
+
+    if reservation.pickup_code.upper() != clean_code.upper():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid pickup code")
         
     # Mark as completed

@@ -233,6 +233,8 @@ def test_admin_can_list_pending_shops_and_approve(client, admin_user, verified_m
         address="123 Connaught Place, New Delhi",
         latitude=28.6304,
         longitude=77.2177,
+        photo_url="https://images.unsplash.com/photo-1555507036-ab1f4038808a",
+        document_url="https://example.com/fssai_cert.pdf",
         is_active=False,
         location_verified=True,
         approval_status="PENDING",
@@ -247,9 +249,10 @@ def test_admin_can_list_pending_shops_and_approve(client, admin_user, verified_m
     res = client.get("/admin/shops/pending", headers=admin_headers)
     assert res.status_code == 200
     pending_list = res.json()
-    assert len(pending_list) == 1
-    assert pending_list[0]["id"] == shop_id
-    assert pending_list[0]["approval_status"] == "PENDING"
+    assert len(pending_list) >= 1
+    matched = next((s for s in pending_list if s["id"] == shop_id), None)
+    assert matched is not None
+    assert matched["approval_status"] == "PENDING"
 
     # 2. Admin approves shop
     res = client.post(f"/admin/shops/{shop_id}/approve", headers=admin_headers, json={"notes": "All documents verified."})

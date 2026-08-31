@@ -39,7 +39,7 @@ class ShopApprovalStatus(str, enum.Enum):
 
 class UserRole(str, enum.Enum):
     CUSTOMER = "CUSTOMER"
-    SHOPKEEPER = "SHOPKEEPER"
+    VENDOR = "VENDOR"
     ADMIN = "ADMIN"
 
 def utc_now() -> datetime:
@@ -88,6 +88,10 @@ class Shop(Base):
     latitude: Mapped[float] = mapped_column(Float, index=True, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, index=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Storefront Photo & Verification Documents
+    photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     # Trust Ratings
     average_rating: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)

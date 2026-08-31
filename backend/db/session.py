@@ -9,7 +9,7 @@ from db.base import Base
 from config import settings
 
 _backend_dir = Path(__file__).resolve().parent.parent
-LOCAL_DEV_DB = f"sqlite:///{_backend_dir / 'expirygo_local_dev.db'}"
+LOCAL_DEV_DB = f"sqlite:///{(_backend_dir / 'expirygo_local_dev.db').as_posix()}"
 DEFAULT_URL = LOCAL_DEV_DB
 
 
@@ -17,6 +17,8 @@ def get_database_url() -> str:
     url = settings.DATABASE_URL.strip() if settings.DATABASE_URL else DEFAULT_URL
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
+    if url.startswith("sqlite:///./") or url == "sqlite:///expirygo_local_dev.db":
+        url = LOCAL_DEV_DB
     return url
 
 
@@ -194,20 +196,13 @@ def _auto_migrate_schema() -> None:
                     else:
                         conn.execute(text("ALTER TABLE shops ADD COLUMN rejected_at TIMESTAMP WITHOUT TIME ZONE"))
 
-                # Explicitly activate and approve only configured demo seed shops
-                demo_active_sql = """
-                    UPDATE shops 
-                    SET is_active = (CASE WHEN :is_sqlite = 1 THEN 1 ELSE TRUE END),
-                        location_verified = (CASE WHEN :is_sqlite = 1 THEN 1 ELSE TRUE END),
-                        approval_status = 'APPROVED',
-                        approved_by = 'system_seed',
-                        location_verification_provider = 'nominatim',
-                        location_verification_distance_meters = 0.0
-                    WHERE owner_id IN (
-                        SELECT id FROM users WHERE email IN ('shop1@test.com', 'shop2@test.com', 'shop3@test.com')
-                    ) AND (approval_status IS NULL OR approval_status = 'PENDING' OR is_active = 0 OR is_active = FALSE)
-                """
-                conn.execute(text(demo_active_sql), {"is_sqlite": 1 if dialect == "sqlite" else 0})
+                # photo_url
+                if "photo_url" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN photo_url VARCHAR(500)"))
+
+                # document_url
+                if "document_url" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN document_url VARCHAR(500)"))
 
     except Exception as e:
         print(f"[INFO] Auto-migration check completed with notice: {e}")

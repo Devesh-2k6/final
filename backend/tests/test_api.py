@@ -324,14 +324,14 @@ def test_order_flow(client: TestClient):
     reg_cust = client.post(
         "/auth/register",
         json={
-            "email": "customer@test.com",
+            "email": "cust_order_unique@test.com",
             "password": "customerpass",
             "name": "Customer User",
             "is_shop_owner": False,
         },
     )
-    verify_user("customer@test.com")
-    assert reg_cust.status_code in [200, 201]
+    assert reg_cust.status_code in [200, 201], reg_cust.text
+    verify_user("cust_order_unique@test.com")
     cust_token = reg_cust.json()["access_token"]
     cust_headers = {"Authorization": f"Bearer {cust_token}"}
 
@@ -339,14 +339,14 @@ def test_order_flow(client: TestClient):
     reg_shop = client.post(
         "/auth/register",
         json={
-            "email": "shop_owner_order@test.com",
+            "email": "shop_owner_order_unique@test.com",
             "password": "shopownerpass",
             "name": "Shop Owner Order",
             "is_shop_owner": True,
         },
     )
-    verify_user("shop_owner_order@test.com")
-    assert reg_shop.status_code in [200, 201]
+    assert reg_shop.status_code in [200, 201], reg_shop.text
+    verify_user("shop_owner_order_unique@test.com")
     shop_token = reg_shop.json()["access_token"]
     shop_headers = {"Authorization": f"Bearer {shop_token}"}
 
@@ -362,9 +362,9 @@ def test_order_flow(client: TestClient):
             "description": "Shop for Order testing",
         },
     )
-    assert shop.status_code in [200, 201]
+    assert shop.status_code in [200, 201], shop.text
     shop_id = shop.json()["id"]
-    approve_user_shop("shop_owner_order@test.com")
+    approve_user_shop("shop_owner_order_unique@test.com")
 
     # Create Product
     product = client.post(

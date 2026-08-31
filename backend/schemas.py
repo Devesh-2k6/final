@@ -5,11 +5,11 @@ Pydantic schemas for request/response validation
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import List, Optional, Any, Dict, Union
 from datetime import datetime
-from db.models import ReservationStatus, PaymentStatus, ProductCategory
+from db.models import ReservationStatus, PaymentStatus, ProductCategory, UserRole
 
 
 # =========================
-# USERS
+# USERS & ROLES
 # =========================
 
 class UserBase(BaseModel):
@@ -31,6 +31,60 @@ class User(UserBase):
 # =========================
 # AUTH
 # =========================
+
+class CustomerRegisterRequest(BaseModel):
+    name: str
+    email: str
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean or "." not in v_clean.split("@")[-1]:
+            raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v_clean = v.strip()
+        if not v_clean:
+            raise ValueError("Name cannot be empty.")
+        return v_clean
+
+class VendorRegisterRequest(BaseModel):
+    shop_name: str
+    email: str
+    phone_number: str
+    photo_url: Optional[str] = None
+    document_url: Optional[str] = None
+    address: Optional[str] = "Main Market Location"
+    latitude: Optional[float] = 13.0827
+    longitude: Optional[float] = 80.2707
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean or "." not in v_clean.split("@")[-1]:
+            raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+    @field_validator('shop_name')
+    @classmethod
+    def validate_shop_name(cls, v: str) -> str:
+        v_clean = v.strip()
+        if not v_clean:
+            raise ValueError("Shop name cannot be empty.")
+        return v_clean
+
+    @field_validator('phone_number')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v_clean = v.strip()
+        if not v_clean:
+            raise ValueError("Phone number cannot be empty.")
+        return v_clean
 
 class RegisterRequest(BaseModel):
     email: str
@@ -310,6 +364,27 @@ class ProductBase(BaseModel):
 
 class ProductCreate(ProductBase):
     pass
+
+
+class VoiceProductParseRequest(BaseModel):
+    transcript: str = Field(..., min_length=2, max_length=2000, description="Spoken transcript in Tamil, Hindi, Telugu, or English")
+    language: Optional[str] = "auto"
+
+
+class VoiceProductParseResponse(BaseModel):
+    success: bool
+    name: str
+    category: str
+    quantity: int
+    original_price: float
+    discount_price: float
+    manufacturing_date: str
+    expiry_date: str
+    description: str
+    image_url: Optional[str] = None
+    detected_language: str
+    spoken_summary: str
+    raw_transcript: str
 
 
 class Product(ProductBase):
@@ -624,6 +699,8 @@ class AdminShopResponse(BaseModel):
     latitude: float
     longitude: float
     description: Optional[str] = None
+    photo_url: Optional[str] = None
+    document_url: Optional[str] = None
     is_active: bool = False
     location_verified: bool = False
     location_verified_at: Optional[datetime] = None

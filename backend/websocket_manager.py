@@ -22,13 +22,13 @@ class ConnectionManager:
         if not self.active_connections:
             return
 
-        # Create a list to avoid "Set changed size during iteration" errors
-        # and to track dead sockets
+        import json
+        json_str = json.dumps(message, default=str)
         dead_connections = []
 
         for connection in list(self.active_connections):
             try:
-                await connection.send_json(message)
+                await connection.send_text(json_str)
             except Exception as e:
                 logger.warning(f"Failed to send WS message: {e}")
                 dead_connections.append(connection)

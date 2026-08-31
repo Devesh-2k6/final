@@ -8,12 +8,19 @@ from fastapi_cache.decorator import cache
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
 import schemas
-from auth_service import get_current_user, get_current_shop_owner, get_current_active_shop_owner
+from auth_service import get_current_user, get_current_vendor, get_current_active_vendor
 from db.models import Product, Shop, User, Follower, Notification, ProductCategory
 from db.session import get_db
 from storage import upload_product_image
 from services.email import send_email_notification
-from services.ai import optimize_product_details, scan_date_label_vision, parse_semantic_search, get_recipe_ingredients, generate_recipe_from_deals
+from services.ai import (
+    optimize_product_details,
+    scan_date_label_vision,
+    parse_semantic_search,
+    get_recipe_ingredients,
+    generate_recipe_from_deals,
+    parse_voice_product_listing,
+)
 from services.ml import recommend_deals_for_user, generate_forecast_and_price_recommendation
 from routers.shops import _get_owner_shop, _serialize_shop
 from websocket_manager import manager
@@ -25,51 +32,94 @@ upload_router = APIRouter(tags=["Uploads"])
 
 
 def _calculate_dynamic_price(p: Product, now: datetime) -> float:
-    if not p.discount_price:
-        return p.original_price
-    # By default, strictly respect the shopkeeper's explicit discounted price without unwanted automatic decreases
-    if not p.auto_discount_enabled or not p.auto_discount_min_price or p.auto_discount_min_price >= p.discount_price:
-        return p.discount_price
-    
-    exp = p.expiry_date.replace(tzinfo=None) if p.expiry_date and p.expiry_date.tzinfo else p.expiry_date
+    """
+    Shopkeeper-controlled dynamic clearance pricing engine:
+    Calculates live markdown bounded between MRP (original_price) and the Shopkeeper's Floor (auto_discount_min_price).
+    Factors both:
+    1. Time remaining until expiry (concave decay curve)
+    2. Remaining stock quantity (inventory clearance pressure)
+    GUARANTEE: The price NEVER drops below the shopkeeper's lowest acceptable floor price.
+    """
+    mrp = float(p.original_price or 0.0)
+    if mrp <= 0:
+        return 0.0
+
+    # Floor price explicitly set by the shopkeeper (defaults to discount_price or 70% of MRP)
+    min_floor = float(
+        p.auto_discount_min_price
+        if p.auto_discount_min_price is not None
+        else (p.discount_price if p.discount_price is not None else mrp * 0.7)
+    )
+    if min_floor > mrp:
+        min_floor = mrp
+
+    headroom = mrp - min_floor
+    if headroom <= 0.01:
+        return round(mrp, 2)
+
+    if not p.expiry_date:
+        return round(p.discount_price or mrp, 2)
+
+    exp = p.expiry_date.replace(tzinfo=None) if p.expiry_date.tzinfo else p.expiry_date
     now_naive = now.replace(tzinfo=None) if now.tzinfo else now
-    
-    time_left = (exp - now_naive).total_seconds()
-    if time_left <= 0:
-        return p.auto_discount_min_price
-    
-    hours_left = time_left / 3600
-    if hours_left > 24:
-        return p.discount_price
-    
-    # Only drops if shopkeeper explicitly opted into dynamic clearance markdown
-    drop_range = p.discount_price - p.auto_discount_min_price
-    fraction = (24 - hours_left) / 24.0 # 0 at 24 hours, 1 at 0 hours
-    
-    current = p.discount_price - (drop_range * fraction)
-    return round(current, 2)
+
+    total_seconds_left = (exp - now_naive).total_seconds()
+    if total_seconds_left <= 0:
+        return round(min_floor, 2)
+
+    hours_left = total_seconds_left / 3600.0
+
+    # 1. Time Factor (over an active 7-day / 168-hour window with concave decay)
+    max_window_hours = 168.0  # 7 days
+    normalized_time = min(1.0, max(0.0, hours_left / max_window_hours))
+    # Concave decay factor: 0.0 at 7+ days left, up to 1.0 at 0 hours left
+    time_factor = 1.0 - (normalized_time ** 0.65)
+
+    # 2. Quantity / Inventory Pressure Multiplier
+    qty = max(1, int(p.quantity or 1))
+    qty_factor = min(1.20, max(0.85, 0.85 + 0.05 * math.log(qty + 1)))
+
+    # Combined clearance progress (0.0 to 1.0)
+    clearance_progress = min(1.0, max(0.0, time_factor * qty_factor))
+
+    # Final price strictly clamped between min_floor and mrp
+    current_price = mrp - (headroom * clearance_progress)
+    current_price = max(min_floor, min(mrp, current_price))
+
+    return round(current_price, 2)
 
 
-def _calculate_automatic_discount(original_price: float, days_left: int, hours_left: float = 999.0) -> float:
+def _calculate_automatic_discount(
+    original_price: float,
+    days_left: int,
+    hours_left: float = 999.0,
+    min_floor: Optional[float] = None,
+    quantity: int = 1,
+) -> float:
     """
-    Calculate fair, balanced, and sustainable automatic discount based on days until expiry.
-    Protects the merchant's wholesale cost price while offering compelling customer value.
-    - Same-day / Under 12 hours left → 40% off (Fair Last-Day Markdown)
-    - 1–3 days left → 30% off (Standard Surplus Discount)
-    - 4–7 days left → 20% off (Moderate Clearance)
-    - 8+ days left → 15% off (Early Discount)
+    Calculates initial starting deal price respecting the shopkeeper's floor price, time left, and fair-pricing tiers.
     """
+    mrp = float(original_price or 0.0)
+    if mrp <= 0:
+        return 0.0
+
+    # Standard fair-pricing tiers
     if hours_left <= 12 or days_left <= 1:
-        discount_percent = 40
+        discount_pct = 0.40  # 40% off
     elif days_left <= 3:
-        discount_percent = 30
+        discount_pct = 0.30  # 30% off
     elif days_left <= 7:
-        discount_percent = 20
+        discount_pct = 0.20  # 20% off
     else:
-        discount_percent = 15
-    
-    discount_price = original_price * (1 - discount_percent / 100)
-    return round(discount_price, 2)
+        discount_pct = 0.15  # 15% off
+
+    calc_price = mrp * (1.0 - discount_pct)
+
+    if min_floor is not None and min_floor > 0:
+        floor = min(mrp, float(min_floor))
+        calc_price = max(floor, calc_price)
+
+    return round(calc_price, 2)
 
 
 def _serialize_product(product: Product, shop: Optional[Shop] = None) -> dict:
@@ -134,20 +184,6 @@ def read_products(
         query = query.filter(Product.category == category)
     if q:
         query = query.filter(Product.name.ilike(f"%{q}%"))
-        
-    bypass_geo = False
-    if lat is not None and lng is not None:
-        lat_delta = radius_km / 111.0
-        lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
-        geo_query = query.filter(
-            Shop.latitude.between(lat - lat_delta, lat + lat_delta),
-            Shop.longitude.between(lng - lng_delta, lng + lng_delta)
-        )
-        if geo_query.count() > 0:
-            query = geo_query
-        else:
-            logger.info("No products found within range. Disabling geo-filter to show remote/mock deals for local testing.")
-            bypass_geo = True
 
     products = query.order_by(Product.expiry_date.asc()).all()
 
@@ -156,15 +192,12 @@ def read_products(
     for p in products:
         shop = p.shop
         dist = None
-        # geo filter
-        if lat is not None and lng is not None and not bypass_geo and shop:
+        if lat is not None and lng is not None and shop:
             dist = haversine_distance(lat, lng, shop.latitude, shop.longitude)
-            if dist > radius_km:
-                continue
         products_with_distance.append((p, shop, dist))
 
-    if lat is not None and lng is not None and not bypass_geo:
-        # Sort by distance (closest first)
+    if lat is not None and lng is not None:
+        # Sort by distance (closest first), placing items with known distance first
         products_with_distance.sort(key=lambda item: item[2] if item[2] is not None else 999999)
 
     for p, shop, dist in products_with_distance:
@@ -491,7 +524,7 @@ def lookup_product_by_barcode(
 @router.get("/{product_id}/forecast")
 def get_product_forecast(
     product_id: str,
-    user: Annotated[User, Depends(get_current_active_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_vendor)],
     db: Annotated[Session, Depends(get_db)]
 ):
     product = db.get(Product, product_id)
@@ -510,7 +543,7 @@ def get_product_forecast(
 @router.get("/{product_id}/ai-insight")
 def get_product_ai_insight(
     product_id: str,
-    user: Annotated[User, Depends(get_current_active_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_vendor)],
     db: Annotated[Session, Depends(get_db)]
 ):
     product = db.get(Product, product_id)
@@ -530,7 +563,7 @@ def get_product_ai_insight(
 def upload_image(
     request: Request,
     file: UploadFile = File(...),
-    user: User = Depends(get_current_active_shop_owner)
+    user: User = Depends(get_current_active_vendor)
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be an image")
@@ -541,7 +574,7 @@ def upload_image(
 @router.post("/scan-dates")
 async def scan_product_dates(
     file: UploadFile = File(...),
-    user: User = Depends(get_current_active_shop_owner)
+    user: User = Depends(get_current_active_vendor)
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be an image")
@@ -554,7 +587,7 @@ async def scan_product_dates(
 @router.post("/optimize", response_model=schemas.ProductOptimizeResponse)
 async def optimize_product(
     opt_in: schemas.ProductOptimizeRequest,
-    user: Annotated[User, Depends(get_current_active_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_vendor)],
 ):
     result = await optimize_product_details(
         name=opt_in.name,
@@ -569,7 +602,7 @@ async def optimize_product(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_product(
     product_in: schemas.ProductCreate,
-    user: Annotated[User, Depends(get_current_active_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_vendor)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -581,11 +614,18 @@ async def create_product(
     days_left = (expiry_naive.date() - now.date()).days
     hours_left = max(0.0, (expiry_naive - now).total_seconds() / 3600.0)
     
-    # Auto-calculate discount based on days and hours left (unless override is provided)
-    if product_in.discount_price is not None:
+    # Auto-calculate discount based on days, hours, shopkeeper floor price, and stock quantity
+    auto_enabled = product_in.auto_discount_enabled or (product_in.auto_discount_min_price is not None and product_in.auto_discount_min_price > 0)
+    if product_in.discount_price is not None and product_in.discount_price > 0:
         discount_price = product_in.discount_price
     else:
-        discount_price = _calculate_automatic_discount(product_in.original_price, days_left, hours_left)
+        discount_price = _calculate_automatic_discount(
+            original_price=product_in.original_price,
+            days_left=days_left,
+            hours_left=hours_left,
+            min_floor=product_in.auto_discount_min_price,
+            quantity=product_in.quantity,
+        )
     
     product = Product(
         shop_id=shop.id,
@@ -602,8 +642,8 @@ async def create_product(
         description=product_in.description,
         is_active=product_in.is_active,
         is_surprise_bag=product_in.is_surprise_bag,
-        auto_discount_enabled=product_in.auto_discount_enabled,
-        auto_discount_min_price=product_in.auto_discount_min_price,
+        auto_discount_enabled=auto_enabled,
+        auto_discount_min_price=product_in.auto_discount_min_price if auto_enabled else None,
     )
     db.add(product)
     db.commit()
@@ -674,7 +714,7 @@ def read_product(product_id: str, db: Annotated[Session, Depends(get_db)]):
 def update_product(
     product_id: str,
     product_in: schemas.ProductCreate,
-    user: Annotated[User, Depends(get_current_active_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_vendor)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -714,7 +754,7 @@ def update_product(
 @router.delete("/{product_id}")
 def delete_product(
     product_id: str,
-    user: Annotated[User, Depends(get_current_active_shop_owner)],
+    user: Annotated[User, Depends(get_current_active_vendor)],
     db: Annotated[Session, Depends(get_db)],
 ):
     shop = _get_owner_shop(user, db)
@@ -734,4 +774,16 @@ async def generate_recipe(
     products_list = [{"name": p.name, "category": p.category, "quantity": p.quantity} for p in req.products]
     result = await generate_recipe_from_deals(products_list)
     return result
+
+
+@router.post("/voice-parse", response_model=schemas.VoiceProductParseResponse)
+async def parse_voice_listing(
+    req: schemas.VoiceProductParseRequest,
+):
+    """
+    Multilingual AI Voice Assistant for Merchants:
+    Converts spoken voice input in Tamil, Hindi, Telugu, or English into structured product fields.
+    """
+    result = await parse_voice_product_listing(req.transcript, language=req.language or "auto")
+    return schemas.VoiceProductParseResponse(**result)
 

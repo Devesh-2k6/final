@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 
 export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
-export const CURRENT_LAN_IP = "192.168.1.7";
+export const CURRENT_LAN_IP = "10.43.177.184";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
 export const TUNNEL_API_URL = "https://good-queens-tap.loca.lt";
 

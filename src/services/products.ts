@@ -263,4 +263,32 @@ export async function generateRecipe(products: RecipeProductItem[]): Promise<Api
   });
 }
 
+export type ApiVoiceProductParseResponse = {
+  success: boolean;
+  name: string;
+  category: ProductCategory;
+  quantity: number;
+  original_price: number;
+  discount_price: number;
+  manufacturing_date: string;
+  expiry_date: string;
+  description: string;
+  image_url?: string | null;
+  detected_language: string;
+  spoken_summary: string;
+  raw_transcript: string;
+};
+
+export async function parseVoiceProductListing(
+  transcript: string,
+  language: string = "auto"
+): Promise<ApiVoiceProductParseResponse> {
+  return apiRequest<ApiVoiceProductParseResponse>("/products/voice-parse", {
+    method: "POST",
+    json: { transcript: transcript.trim(), language },
+    skipAuth: true,
+  });
+}
+
+
 

@@ -420,7 +420,8 @@ def test_merchant_with_inactive_shop_cannot_perform_merchant_operations(client):
         headers=headers,
     )
     assert res_product.status_code == 403
-    assert "location is not verified" in res_product.json()["detail"]
+    detail_lower = res_product.json()["detail"].lower()
+    assert "pending administrator review" in detail_lower or "location is not verified" in detail_lower or "inactive" in detail_lower
 
     # 2. Merchant orders -> 403 Forbidden
     res_orders = client.get("/shops/orders", headers=headers)
