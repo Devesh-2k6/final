@@ -19,7 +19,8 @@ import {
   Volume2,
   Languages,
   CheckCircle2,
-  Play
+  Play,
+  Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -65,6 +66,10 @@ export default function AddProductPage() {
   const [scanMessage, setScanMessage] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  // Barcode Lookup Modal State
+  const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
 
   // AI Multilingual Voice Assistant State
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
@@ -168,31 +173,29 @@ export default function AddProductPage() {
     }
   };
 
-  const handleScanBarcode = async () => {
+  const handleLookupBarcode = async (barcodeToSearch?: string) => {
+    const code = (barcodeToSearch || manualBarcode).trim();
+    if (!code) {
+      setError("Please enter a barcode number to lookup.");
+      return;
+    }
     setIsScanningBarcode(true);
-    // Simulate camera open and scan delay
-    setTimeout(async () => {
-      try {
-        // Mocking a barcode scan result for the demo
-        // In reality, this would call Capacitor.Plugins.BarcodeScanner.scan()
-        const mockBarcode = "8901234567890";
-        const result = await lookupBarcode(mockBarcode);
-
-        if (result.name) setProductName(result.name);
-        if (result.category) setCategory(result.category);
-        if (result.description) setDescription(result.description);
-
-        setScanMessage(`Barcode ${mockBarcode} scanned! Product info auto-filled.`);
-      } catch (err) {
-        console.error(err);
-        // Fallback for demo if API fails
-        setProductName("Sample Product");
-        setCategory("DAIRY");
-        setScanMessage("Barcode scanned! (Simulated data filled)");
-      } finally {
-        setIsScanningBarcode(false);
-      }
-    }, 2000);
+    setScanMessage("");
+    setError("");
+    try {
+      const result = await lookupBarcode(code);
+      if (result.name) setProductName(result.name);
+      if (result.category) setCategory(result.category);
+      if (result.description) setDescription(result.description);
+      setBarcodeModalOpen(false);
+      setManualBarcode("");
+      setScanMessage(`Barcode ${code} found: "${result.name || "Product"}". Details auto-filled.`);
+    } catch (err: any) {
+      console.warn("Barcode lookup notice:", err);
+      setError(`No catalog entry found for barcode ${code}. You can enter product details manually.`);
+    } finally {
+      setIsScanningBarcode(false);
+    }
   };
 
   const handleScanDates = async (fileToScan?: File) => {
@@ -495,21 +498,12 @@ export default function AddProductPage() {
                 </label>
                 <button
                   type="button"
-                  onClick={handleScanBarcode}
+                  onClick={() => setBarcodeModalOpen(true)}
                   disabled={isScanningBarcode}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50 disabled:opacity-50 transition-all"
                 >
-                  {isScanningBarcode ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin text-emerald-600 dark:text-emerald-400" />
-                      Scanning...
-                    </>
-                  ) : (
-                    <>
-                      <Barcode size={12} className="text-emerald-600 dark:text-emerald-400" />
-                      Scan Barcode
-                    </>
-                  )}
+                  <Barcode size={12} className="text-emerald-600 dark:text-emerald-400" />
+                  Lookup Barcode
                 </button>
               </div>
               <input
@@ -1038,10 +1032,10 @@ export default function AddProductPage() {
                 />
               </div>
 
-              {/* Quick Sample Prompts (For Instant 1-Tap Judge Demo) */}
+              {/* Multilingual Voice Prompts */}
               <div className="space-y-1.5">
                 <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  ⚡ Quick Demo Presets (1-Tap):
+                  ⚡ Multilingual Voice Prompts (1-Tap):
                 </div>
                 <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
                   {[
@@ -1122,6 +1116,87 @@ export default function AddProductPage() {
                     <>
                       <Sparkles size={16} />
                       Auto-Fill Form
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Barcode Catalog Lookup Modal */}
+      <AnimatePresence>
+        {barcodeModalOpen && (
+          <div className="fixed inset-0 bg-black/65 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 15 }}
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <Barcode size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-gray-900 dark:text-white">Lookup Barcode</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Search database & open food catalog</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBarcodeModalOpen(false)}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                  Barcode Number (EAN-13, UPC, Code 128)
+                </label>
+                <input
+                  type="text"
+                  value={manualBarcode}
+                  onChange={(e) => setManualBarcode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleLookupBarcode();
+                    }
+                  }}
+                  placeholder="e.g. 8901234567890"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 dark:text-white font-mono"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBarcodeModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isScanningBarcode || !manualBarcode.trim()}
+                  onClick={() => handleLookupBarcode()}
+                  className="flex-1 px-4 py-2.5 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 disabled:opacity-50 transition flex items-center justify-center gap-2 text-xs shadow-md shadow-emerald-500/20"
+                >
+                  {isScanningBarcode ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={14} />
+                      Lookup Item
                     </>
                   )}
                 </button>

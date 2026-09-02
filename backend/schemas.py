@@ -35,6 +35,7 @@ class User(UserBase):
 class CustomerRegisterRequest(BaseModel):
     name: str
     email: str
+    password: Optional[str] = None
 
     @field_validator('email')
     @classmethod
@@ -56,8 +57,9 @@ class VendorRegisterRequest(BaseModel):
     shop_name: str
     email: str
     phone_number: str
-    photo_url: Optional[str] = None
-    document_url: Optional[str] = None
+    password: Optional[str] = None
+    photo_url: str = Field(..., description="Storefront photo URL from /auth/upload")
+    document_url: str = Field(..., description="Business license document URL from /auth/upload")
     address: Optional[str] = "Main Market Location"
     latitude: Optional[float] = 13.0827
     longitude: Optional[float] = 80.2707
@@ -84,6 +86,22 @@ class VendorRegisterRequest(BaseModel):
         v_clean = v.strip()
         if not v_clean:
             raise ValueError("Phone number cannot be empty.")
+        return v_clean
+
+    @field_validator('photo_url')
+    @classmethod
+    def validate_photo_url(cls, v: str) -> str:
+        v_clean = (v or "").strip()
+        if not v_clean:
+            raise ValueError("Storefront photo is required for vendor registration.")
+        return v_clean
+
+    @field_validator('document_url')
+    @classmethod
+    def validate_document_url(cls, v: str) -> str:
+        v_clean = (v or "").strip()
+        if not v_clean:
+            raise ValueError("Business license document is required for vendor registration.")
         return v_clean
 
 class RegisterRequest(BaseModel):
@@ -673,6 +691,8 @@ class PantrySmartAlert(BaseModel):
 
 class AdminShopApprovalRequest(BaseModel):
     notes: Optional[str] = None
+    override_location_check: bool = False
+    override_reason: Optional[str] = None
 
 class AdminShopRejectRequest(BaseModel):
     reason: str = Field(..., min_length=3, max_length=1000, description="Mandatory reason for rejection")
@@ -687,6 +707,12 @@ class AdminShopRejectRequest(BaseModel):
 
 class AdminShopSuspendRequest(BaseModel):
     reason: Optional[str] = None
+
+class AdminUpdateShopLocationRequest(BaseModel):
+    latitude: float
+    longitude: float
+    address: Optional[str] = None
+    reason: Optional[str] = "Admin manual live map location update"
 
 class AdminShopResponse(BaseModel):
     id: str
@@ -716,6 +742,9 @@ class AdminShopResponse(BaseModel):
     rejected_at: Optional[datetime] = None
     verification_document_url: Optional[str] = None
     verification_document_name: Optional[str] = None
+    location_override_by: Optional[str] = None
+    location_override_at: Optional[datetime] = None
+    location_override_reason: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

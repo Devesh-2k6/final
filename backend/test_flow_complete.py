@@ -62,32 +62,30 @@ def generate_random_string(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 def _verify_user(email: str):
-    import sqlite3
-    from pathlib import Path
-    db_file = Path(__file__).resolve().parent / "expirygo_local_dev.db"
-    conn = sqlite3.connect(str(db_file))
-    cur = conn.cursor()
-    # Mark email as verified and ensure role is correct
-    cur.execute("UPDATE users SET email_verified=1 WHERE email=?", (email,))
-    conn.commit()
-    conn.close()
+    from db.session import SessionLocal
+    from db.models import User
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.email_verified = True
+            db.commit()
+    finally:
+        db.close()
 
 def _approve_shop(owner_id: str):
-    import sqlite3
-    from pathlib import Path
-    db_file = Path(__file__).resolve().parent / "expirygo_local_dev.db"
-    conn = sqlite3.connect(str(db_file))
-    cur = conn.cursor()
-    # Mark shop as location verified and approved
-    cur.execute("""
-        UPDATE shops
-        SET location_verified=1,
-            approval_status='APPROVED',
-            is_active=1
-        WHERE owner_id=?
-    """, (owner_id,))
-    conn.commit()
-    conn.close()
+    from db.session import SessionLocal
+    from db.models import Shop, ShopApprovalStatus
+    db = SessionLocal()
+    try:
+        shop = db.query(Shop).filter(Shop.owner_id == owner_id).first()
+        if shop:
+            shop.location_verified = True
+            shop.approval_status = ShopApprovalStatus.APPROVED
+            shop.is_active = True
+            db.commit()
+    finally:
+        db.close()
 
 def run_complete_testing():
     print("=" * 70)

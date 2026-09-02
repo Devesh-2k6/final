@@ -60,6 +60,30 @@ export async function getMyFollowing(): Promise<ApiFollower[]> {
   return apiRequest<ApiFollower[]>("/users/me/following");
 }
 
+export type ShopLocationVerifyResponse = {
+  verified: boolean;
+  provider: string;
+  matched_business_name?: string;
+  matched_address?: string;
+  distance_meters?: number;
+  category?: string;
+  message?: string;
+};
+
+export async function verifyShopLocation(data: {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}): Promise<ShopLocationVerifyResponse> {
+  return apiRequest<ShopLocationVerifyResponse>("/shops/verify-location", {
+    method: "POST",
+    json: data,
+    skipAuth: true,
+  });
+}
+
+
 export async function leaveReview(
   shopId: string,
   rating: number,

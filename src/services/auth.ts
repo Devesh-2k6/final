@@ -38,14 +38,19 @@ export type RegisterInput = {
 export type CustomerSignupInput = {
   name: string;
   email: string;
+  password?: string;
 };
 
 export type VendorSignupInput = {
   shop_name: string;
   email: string;
   phone_number: string;
+  password?: string;
   photo_url?: string;
   document_url?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type LoginInput = {

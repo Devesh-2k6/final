@@ -9,6 +9,7 @@ import { DealProductCard } from "./DealProductCard";
 import { buildDealProductCardProps } from "@/lib/products/map-deal-product";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useSound } from "@/hooks/useSound";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { createReservation } from "@/services/reservations";
 
 export default function LiveDealsSection() {
@@ -37,6 +38,24 @@ export default function LiveDealsSection() {
   useEffect(() => {
     fetchDeals();
   }, [activeCategory]);
+
+  // Real-time live synchronization via WebSocket
+  useWebSocket((msg) => {
+    if (msg.type === "new_deal" && msg.product) {
+      const newProd = msg.product;
+      setProducts((prev) => {
+        if (prev.some((p) => p.id === newProd.id)) return prev;
+        if (activeCategory !== "All" && newProd.category?.toLowerCase() !== activeCategory.toLowerCase()) return prev;
+        return [newProd, ...prev].slice(0, 6);
+      });
+    } else if (msg.type === "update_deal" && msg.product) {
+      const updated = msg.product;
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    } else if (msg.type === "delete_deal" && msg.product_id) {
+      setProducts((prev) => prev.filter((p) => p.id !== msg.product_id));
+      fetchDeals();
+    }
+  });
 
   const handleReserve = async (id: string, e?: React.MouseEvent) => {
     playPopSound();

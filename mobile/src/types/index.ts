@@ -181,6 +181,11 @@ export type AdminShop = {
   description?: string | null;
   photo_url?: string | null;
   document_url?: string | null;
+  verification_document_url?: string | null;
+  verification_document_name?: string | null;
+  location_override_by?: string | null;
+  location_override_at?: string | null;
+  location_override_reason?: string | null;
   is_active: boolean;
   location_verified: boolean;
   location_verified_at?: string | null;

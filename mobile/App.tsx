@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { enableScreens } from "react-native-screens";
@@ -43,9 +43,14 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       return (
         <View style={errorStyles.container}>
           <Text style={errorStyles.title}>App Notice</Text>
-          <Text style={errorStyles.message}>
-            {this.state.error?.message || "An unexpected issue occurred while rendering this screen."}
-          </Text>
+          <ScrollView style={errorStyles.scroll} contentContainerStyle={errorStyles.scrollContent}>
+            <Text style={errorStyles.message}>
+              {this.state.error?.message || "An unexpected issue occurred."}
+            </Text>
+            {this.state.error?.stack ? (
+              <Text style={errorStyles.stackText}>{this.state.error.stack}</Text>
+            ) : null}
+          </ScrollView>
           <TouchableOpacity style={errorStyles.button} onPress={this.handleReset} activeOpacity={0.8}>
             <Text style={errorStyles.buttonText}>Reload Screen</Text>
           </TouchableOpacity>
@@ -62,7 +67,19 @@ const errorStyles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
-    padding: Spacing.xl,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xxl,
+  },
+  scroll: {
+    maxHeight: 300,
+    width: "100%",
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  scrollContent: {
+    alignItems: "flex-start",
   },
   title: {
     ...Typography.title1,
@@ -70,10 +87,15 @@ const errorStyles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   message: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    marginBottom: Spacing.xl,
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+    textAlign: "left",
+    marginBottom: Spacing.sm,
+  },
+  stackText: {
+    fontSize: 11,
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+    color: Colors.textMuted,
   },
   button: {
     backgroundColor: Colors.primary,

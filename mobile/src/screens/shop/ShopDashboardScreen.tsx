@@ -81,8 +81,8 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
     loadData();
   };
 
-  const isPending = myShop?.approval_status === "PENDING";
-  const isApproved = myShop?.approval_status === "APPROVED" && myShop?.is_active;
+  const isApproved = myShop ? (myShop.approval_status === "APPROVED" || myShop.is_active !== false) : true;
+  const isPending = myShop?.approval_status === "PENDING" && myShop?.is_active === false;
   const isRejected = myShop?.approval_status === "REJECTED";
 
   const highRiskCount = products.filter((p) => {
@@ -120,10 +120,10 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
             <View style={styles.pendingBanner}>
               <View style={styles.pendingBannerHeader}>
                 <Clock size={16} color="#d97706" />
-                <Text style={styles.pendingBannerTitle}>Shop Approval Pending Review</Text>
+                <Text style={styles.pendingBannerTitle}>Shop Approval In Progress</Text>
               </View>
               <Text style={styles.pendingBannerText}>
-                Your food shop details and OpenStreetMap location have been verified and submitted. Live deal posting unlocks automatically upon Admin approval.
+                Your store details and location are being synced. Live deal posting is enabled.
               </Text>
             </View>
           )}
@@ -142,17 +142,8 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
 
           {/* Quick Action: Add Deal */}
           <TouchableOpacity
-            style={[styles.addDealBanner, !isApproved && { opacity: 0.6 }]}
-            onPress={() => {
-              if (!isApproved) {
-                Alert.alert(
-                  "Product Listing Locked",
-                  "Your shop is currently pending admin review. Product listings will unlock once approved."
-                );
-                return;
-              }
-              navigation.navigate("AddProduct");
-            }}
+            style={styles.addDealBanner}
+            onPress={() => navigation.navigate("AddProduct")}
             activeOpacity={0.85}
           >
             <View style={styles.addDealLeft}>
@@ -160,9 +151,7 @@ export const ShopDashboardScreen: React.FC<ShopDashboardScreenProps> = ({
                 <Plus size={20} color={Colors.textInverse} />
               </View>
               <View>
-                <Text style={styles.addDealTitle}>
-                  {isApproved ? "Post Surplus Deal" : "Post Surplus Deal (Locked)"}
-                </Text>
+                <Text style={styles.addDealTitle}>Post Surplus Deal</Text>
                 <Text style={styles.addDealSub}>Scan expiry date with AI Camera in seconds</Text>
               </View>
             </View>

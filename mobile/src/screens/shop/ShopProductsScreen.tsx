@@ -16,6 +16,7 @@ import { formatExpiryDisplay, getFreshnessLevel } from "../../lib/formatters";
 import { EmptyState } from "../../components/EmptyState";
 import { getProducts, deleteProduct } from "../../services/products";
 import { getMyShop } from "../../services/shops";
+import { useRealtimeDeals } from "../../hooks/useRealtimeDeals";
 import type { ApiProduct } from "../../types";
 
 interface ShopProductsScreenProps {
@@ -41,10 +42,31 @@ export const ShopProductsScreen: React.FC<ShopProductsScreenProps> = ({ navigati
     }
   }, []);
 
+  // Connect Real-Time Live WebSocket synchronization
+  useRealtimeDeals({
+    onNewDeal: (newProduct) => {
+      setProducts((prev) => {
+        if (prev.some((p) => p.id === newProduct.id)) return prev;
+        return [newProduct, ...prev];
+      });
+    },
+    onUpdateDeal: (updatedProduct) => {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+      );
+    },
+    onDeleteDeal: (deletedId) => {
+      setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+    },
+    onRefreshNeeded: () => {
+      loadProducts();
+    },
+  });
+
   useFocusEffect(
     useCallback(() => {
       loadProducts();
-      // Auto-sync shop products list every 4 seconds
+      // Auto-sync shop products list every 4 seconds fallback
       const interval = setInterval(() => {
         loadProducts();
       }, 4000);

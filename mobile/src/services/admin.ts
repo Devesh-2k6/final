@@ -10,10 +10,25 @@ export async function getAllShops(status?: string): Promise<AdminShop[]> {
   return apiRequest<AdminShop[]>(`/admin/shops${query}`);
 }
 
-export async function approveShop(shopId: string, notes?: string): Promise<AdminShop> {
+export async function approveShop(
+  shopId: string,
+  notes?: string,
+  overrideLocationCheck: boolean = false,
+  overrideReason?: string
+): Promise<AdminShop> {
   return apiRequest<AdminShop>(`/admin/shops/${shopId}/approve`, {
     method: "POST",
-    json: { notes: notes || null },
+    json: {
+      notes: notes || null,
+      override_location_check: overrideLocationCheck,
+      override_reason: overrideReason || null,
+    },
+  });
+}
+
+export async function reverifyShopLocation(shopId: string): Promise<AdminShop> {
+  return apiRequest<AdminShop>(`/admin/shops/${shopId}/reverify-location`, {
+    method: "POST",
   });
 }
 

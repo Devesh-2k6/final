@@ -9,6 +9,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 
 import { LiveDealToast } from "@/components/ui/LiveDealToast";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import { MobileAppFloatingButton } from "@/components/ui/MobileAppFloatingButton";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -42,6 +43,7 @@ export default function RootLayout({
             <EmailVerificationBanner />
             {children}
             <LiveDealToast />
+            <MobileAppFloatingButton />
           </AuthenticationProvider>
         </LanguageProvider>
       </body>

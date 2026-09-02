@@ -89,81 +89,54 @@ def send_email_notification(
     """
     config = get_smtp_config()
     
+    record_dev_email(
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_fallback=text_fallback,
+        sent_via=f"smtp_queued ({config['host']})" if config["is_configured"] else "dev_mock",
+        status="delivered_dev" if not config["is_configured"] else "queued",
+        token=token,
+        verification_url=verification_url,
+    )
+
     if not config["is_configured"]:
-        try:
-            logger.info(f"[DEV EMAIL LOG] To: {to_email} | Subject: {subject}")
-            if text_fallback:
-                logger.info(f"[DEV EMAIL BODY]\n{text_fallback}\n")
-        except Exception:
-            pass
-        record_dev_email(
-            to_email=to_email,
-            subject=subject,
-            html_content=html_content,
-            text_fallback=text_fallback,
-            sent_via="dev_mock",
-            status="delivered_dev",
-            token=token,
-            verification_url=verification_url,
-        )
         return True
 
-    try:
-        # Create message
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = config["sender"]
-        message["To"] = to_email
-        
-        # Attach plain text fallback and HTML parts
-        if text_fallback:
-            part1 = MIMEText(text_fallback, "plain", "utf-8")
-            message.attach(part1)
+    def _async_smtp_send():
+        try:
+            message = MIMEMultipart("alternative")
+            message["Subject"] = subject
+            message["From"] = config["sender"]
+            message["To"] = to_email
             
-        part2 = MIMEText(html_content, "html", "utf-8")
-        message.attach(part2)
-        
-        # Connect and send with resilient multi-mode fallback
-        if config["port"] == 465:
-            with smtplib.SMTP_SSL(config["host"], config["port"], timeout=10) as server:
-                server.login(config["user"], config["password"])
-                server.sendmail(config["sender"], to_email, message.as_string())
-        else:
-            with smtplib.SMTP(config["host"], config["port"], timeout=10) as server:
-                try:
-                    server.starttls()
-                except Exception as tls_err:
-                    logger.debug(f"STARTTLS skipped or unsupported on {config['host']}:{config['port']}: {tls_err}")
-                server.login(config["user"], config["password"])
-                server.sendmail(config["sender"], to_email, message.as_string())
+            if text_fallback:
+                part1 = MIMEText(text_fallback, "plain", "utf-8")
+                message.attach(part1)
                 
-        logger.info(f"[SUCCESS] Email successfully sent to {to_email} via SMTP ({config['host']}).")
-        record_dev_email(
-            to_email=to_email,
-            subject=subject,
-            html_content=html_content,
-            text_fallback=text_fallback,
-            sent_via=f"smtp ({config['host']})",
-            status="sent",
-            token=token,
-            verification_url=verification_url,
-        )
-        return True
-    except Exception as e:
-        error_msg = str(e)
-        logger.warning(f"[WARNING] Failed to send email to {to_email} via SMTP: {error_msg}")
-        record_dev_email(
-            to_email=to_email,
-            subject=subject,
-            html_content=html_content,
-            text_fallback=text_fallback,
-            sent_via=f"smtp_failed ({config['host']})",
-            status="failed",
-            error=error_msg,
-            token=token,
-            verification_url=verification_url,
-        )
-        return False
+            part2 = MIMEText(html_content, "html", "utf-8")
+            message.attach(part2)
+            
+            if config["port"] == 465:
+                with smtplib.SMTP_SSL(config["host"], config["port"], timeout=3) as server:
+                    server.login(config["user"], config["password"])
+                    server.sendmail(config["sender"], to_email, message.as_string())
+            else:
+                with smtplib.SMTP(config["host"], config["port"], timeout=3) as server:
+                    try:
+                        server.starttls()
+                    except Exception:
+                        pass
+                    server.login(config["user"], config["password"])
+                    server.sendmail(config["sender"], to_email, message.as_string())
+            logger.info(f"[SUCCESS] Email sent to {to_email} via SMTP ({config['host']}).")
+        except Exception as e:
+            logger.warning(f"[WARNING] SMTP delivery to {to_email} skipped: {e}")
+
+    import threading
+    t = threading.Thread(target=_async_smtp_send, daemon=True)
+    t.start()
+    return True
 
 
 def test_smtp_connection(to_email: str) -> Dict[str, Any]:

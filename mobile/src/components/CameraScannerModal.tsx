@@ -6,7 +6,7 @@ import {
   type ScannedOcrResult,
 } from "./UniversalScannerModal";
 
-export type ScannerMode = "ocr_dates" | "barcode" | "qr_pickup" | "qr_general" | "fridge_log" | "demo_test";
+export type ScannerMode = "ocr_dates" | "barcode" | "qr_pickup" | "qr_general" | "fridge_log";
 
 interface CameraScannerModalProps {
   visible: boolean;

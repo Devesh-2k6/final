@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { 
-  APIProvider, Map, AdvancedMarker, Pin, InfoWindow, useAdvancedMarkerRef 
-} from "@vis.gl/react-google-maps";
-import { 
-  MapPin, Navigation, Sliders, Locate, Store, Info, CircleDot, AlertTriangle 
+  MapPin, Navigation, Sliders, Locate, Store, Info, CircleDot, Sparkles 
 } from "lucide-react";
 import type { ApiProduct as Product, ApiShopSummary as Shop } from "@/types/product";
+import dynamic from "next/dynamic";
 
+const LeafletMapComponent = dynamic(() => import("@/components/MapComponent"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-80 rounded-2xl flex items-center justify-center bg-slate-100 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 animate-pulse">
+      <div className="flex flex-col items-center">
+        <MapPin size={32} className="text-emerald-500 mb-2 animate-bounce" />
+        <p className="text-slate-500 dark:text-gray-400 font-bold text-xs">Loading Live High-Definition Deals Map...</p>
+      </div>
+    </div>
+  ),
+});
 
 // Helper: Haversine distance formula
 export function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -23,13 +32,6 @@ export function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in kilometers
 }
-
-const API_KEY =
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_PLATFORM_KEY ||
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  "";
-
-const hasValidKey = Boolean(API_KEY) && API_KEY !== "YOUR_API_KEY";
 
 interface DealsMapProps {
   products: Product[];
@@ -52,290 +54,205 @@ export default function DealsMap({
   setMaxDistance,
   selectedShopId,
   onSelectShop,
-  onReserveProduct
+  onReserveProduct,
 }: DealsMapProps) {
-  const [activeShopInfo, setActiveShopInfo] = useState<Shop | null>(null);
-  const [infoWindowOpen, setInfoWindowOpen] = useState(false);
-  const selectedMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Group products by shop
-  const shopListingCounts = products.reduce((acc, p) => {
-    acc[p.shop_id] = (acc[p.shop_id] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const shopListingCounts = useMemo(() => {
+    return products.reduce((acc, p) => {
+      acc[p.shop_id] = (acc[p.shop_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [products]);
 
-  // Filter shops that have listing counts > 0
-  const activeShops = shops.filter(shop => (shopListingCounts[shop.id] || 0) > 0);
+  // Filter shops with listings
+  const activeShops = useMemo(() => {
+    return shops.filter((shop) => (shopListingCounts[shop.id] || 0) > 0);
+  }, [shops, shopListingCounts]);
 
-  // Default coordinate (Bengaluru center)
-  const defaultCenter = { lat: 12.9716, lng: 77.5946 };
+  // Default coordinate (Chennai / India default)
+  const defaultCenter = { lat: 13.0827, lng: 80.2707 };
   const currentCenter = userLocation || defaultCenter;
 
   // Request browser geolocation
   const handleLocateMe = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
+      setIsLocating(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          setIsLocating(false);
           setUserLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
         },
         (error) => {
-          console.warn("Geolocation access denied or failed. Defaulting to pre-set location.", error);
+          setIsLocating(false);
+          console.warn("Geolocation access denied or failed:", error);
         },
-        { enableHighAccuracy: true, timeout: 5000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     }
   };
 
-  // Drag user location marker handler
-  const handleUserMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
-    if (event.latLng) {
-      setUserLocation({
-        lat: event.latLng.lat(),
-        lng: event.latLng.lng(),
-      });
-    }
-  };
+  // Filtered shops based on radius
+  const visibleShops = useMemo(() => {
+    return activeShops.filter((shop) => {
+      if (maxDistance === 999 || !userLocation) return true;
+      const dist = getDistanceInKm(
+        userLocation.lat,
+        userLocation.lng,
+        shop.latitude || currentCenter.lat,
+        shop.longitude || currentCenter.lng
+      );
+      return dist <= maxDistance;
+    });
+  }, [activeShops, maxDistance, userLocation, currentCenter]);
 
-  if (!hasValidKey) {
-    return (
-      <div id="maps-setup-banner" className="bg-[#1A1A1C] border border-white/5 rounded-3xl p-6 sm:p-8 space-y-6 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl" />
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl">
-            <AlertTriangle size={24} />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-lg font-bold">Google Maps API Key Required</h3>
-            <p className="text-xs text-gray-400 leading-normal max-w-lg">
-              To view real-time grocer coordinates and calculate exact proximity for food rescue deals, configure a Google Maps API Key.
-            </p>
-          </div>
-        </div>
+  // Format markers for Leaflet Map
+  const markers = useMemo(() => {
+    return visibleShops.map((shop) => ({
+      id: shop.id,
+      lat: shop.latitude || currentCenter.lat,
+      lng: shop.longitude || currentCenter.lng,
+      label: shop.name,
+      dealCount: shopListingCounts[shop.id] || 0,
+    }));
+  }, [visibleShops, currentCenter, shopListingCounts]);
 
-        <div className="border-t border-white/5 pt-5 space-y-4">
-          <p className="text-xs font-bold text-gray-300">Quick Setup Instructions:</p>
-          <ol className="text-xs text-gray-400 space-y-3 list-decimal list-inside leading-loose">
-            <li>
-              Get an API Key from the {" "}
-              <a 
-                href="https://console.cloud.google.com/google/maps-apis/start?utm_campaign=gmp-code-assist-ais" 
-                target="_blank" 
-                rel="noopener"
-                className="text-emerald-400 hover:underline font-extrabold"
-              >
-                Google Cloud Console
-              </a>
-            </li>
-            <li>
-              Open <strong className="text-gray-200">Settings</strong> (⚙️ gear icon, top-right corner) in AI Studio
-            </li>
-            <li>
-              Go to <strong className="text-gray-200">Secrets</strong>, add a secret named{" "}
-              <code className="bg-white/5 px-1.5 py-0.5 rounded text-amber-400">GOOGLE_MAPS_PLATFORM_KEY</code>
-            </li>
-            <li>Paste your API key and save. The application will rebuild automatically!</li>
-          </ol>
-        </div>
+  const selectedShopObj = useMemo(() => {
+    return visibleShops.find((s) => s.id === selectedShopId) || null;
+  }, [visibleShops, selectedShopId]);
 
-        {/* Mock/Simulated visual indicator for map view */}
-        <div className="border border-white/5 bg-[#111111] p-4 rounded-2xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500/10 p-2 rounded-xl text-emerald-400">
-              <Store size={18} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white">Interactive Proximity Mode</p>
-              <p className="text-[10px] text-gray-500">Currently active on fallback database coordinates</p>
-            </div>
-          </div>
-          <button 
-            type="button" 
-            onClick={handleLocateMe}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-4 rounded-xl transition flex items-center gap-1.5"
-          >
-            <Locate size={12} /> Enable GPS Simulation
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const selectedShopDeals = useMemo(() => {
+    if (!selectedShopId) return [];
+    return products.filter((p) => p.shop_id === selectedShopId && p.quantity > 0);
+  }, [products, selectedShopId]);
 
   return (
-    <APIProvider apiKey={API_KEY} version="weekly">
-      <div id="google-maps-dashboard" className="space-y-4">
-        {/* Controls Panel */}
-        <div className="bg-[#1A1A1C] border border-white/5 rounded-3xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Proximity Filter Slider */}
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
-              <Sliders size={18} />
-            </div>
-            <div className="space-y-1 flex-1 md:flex-none md:w-64">
-              <div className="flex justify-between text-xs font-bold text-gray-400">
-                <span>Rescue Radius</span>
-                <span className="text-emerald-400">
-                  {maxDistance === 999 ? "All Deals" : `${maxDistance} km`}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="10"
-                step="0.5"
-                value={maxDistance === 999 ? 10 : maxDistance}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setMaxDistance(val === 10 ? 999 : val);
-                }}
-                className="w-full accent-emerald-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
+    <div id="live-hd-deals-map-dashboard" className="space-y-4">
+      {/* Controls Panel */}
+      <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-3xl p-5 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Proximity Filter Slider */}
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 rounded-2xl shadow-xs">
+            <Sliders size={18} />
           </div>
-
-          {/* User Address Indicator & Location Search */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <button
-              type="button"
-              onClick={handleLocateMe}
-              className="bg-white/5 border border-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center gap-2 cursor-pointer"
-              title="Get current browser location"
-            >
-              <Locate size={14} className="text-emerald-400" /> Locate Me
-            </button>
-            <span className="text-xs text-gray-400 py-2 sm:py-0">
-              📍 Drag <strong className="text-white">Blue Pin</strong> to adjust rescue origin
-            </span>
+          <div className="space-y-1 flex-1 md:flex-none md:w-64">
+            <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-gray-400">
+              <span>Rescue Radius</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
+                {maxDistance === 999 ? "All Available Deals" : `${maxDistance} km Radius`}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="10"
+              step="0.5"
+              value={maxDistance === 999 ? 10 : maxDistance}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setMaxDistance(val === 10 ? 999 : val);
+              }}
+              className="w-full accent-emerald-500 bg-slate-200 dark:bg-gray-700 rounded-lg appearance-none h-1.5 cursor-pointer"
+            />
           </div>
         </div>
 
-        {/* Map Layout */}
-        <div className="relative border border-white/5 bg-[#1A1A1C] rounded-3xl overflow-hidden shadow-2xl h-[420px] w-full">
-          <Map
-            defaultCenter={defaultCenter}
-            center={currentCenter}
-            defaultZoom={13}
-            mapId="DEMO_MAP_ID"
-            internalUsageAttributionIds={["gmp_mcp_codeassist_v1_aistudio"]}
-            style={{ width: "100%", height: "100%" }}
-            gestureHandling="cooperative"
-            disableDefaultUI
+        {/* Action Controls & Store Count */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            disabled={isLocating}
+            className="flex-1 md:flex-none bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
           >
-            {/* Draggable User Location Marker */}
-            <AdvancedMarker 
-              position={currentCenter} 
-              draggable={true} 
-              onDragEnd={handleUserMarkerDragEnd}
-              title="Your rescue position (drag to move)"
-            >
-              <Pin background="#3b82f6" glyphColor="#ffffff" borderColor="#1d4ed8" scale={1.2}>
-                <Navigation size={12} className="text-white" />
-              </Pin>
-            </AdvancedMarker>
-
-            {/* Shop Markers */}
-            {activeShops.map((shop) => {
-              const distance = userLocation 
-                ? getDistanceInKm(userLocation.lat, userLocation.lng, shop.latitude, shop.longitude)
-                : 0;
-
-              // Check if within radius
-              const isWithinRadius = maxDistance === 999 || distance <= maxDistance;
-              if (!isWithinRadius) return null;
-
-              const dealCount = shopListingCounts[shop.id] || 0;
-
-              return (
-                <AdvancedMarker
-                  key={shop.id}
-                  position={{ lat: shop.latitude, lng: shop.longitude }}
-                  title={shop.name}
-                  onClick={(e) => {
-                    setActiveShopInfo(shop);
-                    setInfoWindowOpen(true);
-                    onSelectShop(shop.id);
-                  }}
-                >
-                  <Pin 
-                    background={selectedShopId === shop.id ? "#10b981" : "#f59e0b"} 
-                    glyphColor="#ffffff" 
-                    scale={1.1}
-                  >
-                    <span className="text-[10px] font-black text-white">{dealCount}</span>
-                  </Pin>
-                </AdvancedMarker>
-              );
-            })}
-
-            {/* InfoWindow for Clicked Shop */}
-            {infoWindowOpen && activeShopInfo && (
-              <InfoWindow
-                position={{ lat: activeShopInfo.latitude, lng: activeShopInfo.longitude }}
-                onCloseClick={() => {
-                  setInfoWindowOpen(false);
-                  setActiveShopInfo(null);
-                  onSelectShop(null);
-                }}
-              >
-                <div className="text-gray-900 p-1.5 max-w-64 space-y-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="font-bold text-sm tracking-tight text-gray-900">{activeShopInfo.name}</h4>
-                      <p className="text-[10px] text-gray-500">{activeShopInfo.address}</p>
-                    </div>
-                    {userLocation && (
-                      <span className="bg-emerald-50 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap">
-                        {getDistanceInKm(userLocation.lat, userLocation.lng, activeShopInfo.latitude, activeShopInfo.longitude).toFixed(1)} km away
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="border-t border-gray-100 pt-2 space-y-1.5">
-                    <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Active Deals</p>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {products
-                        .filter((p) => p.shop_id === activeShopInfo.id && p.quantity > 0)
-                        .map((p) => (
-                          <div key={p.id} className="flex justify-between items-center text-xs bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                            <span className="font-semibold text-gray-800 truncate max-w-[120px]">{p.name}</span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-black text-emerald-600">${p.discount_price.toFixed(2)}</span>
-                              <button
-                                type="button"
-                                onClick={() => onReserveProduct(p)}
-                                className="bg-emerald-600 text-white rounded-md text-[9px] font-bold px-1.5 py-0.5 hover:bg-emerald-500 transition cursor-pointer"
-                              >
-                                Reserve
-                              </button>
-                            </div>
-                          </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </InfoWindow>
-            )}
-          </Map>
-
-          {/* Quick Guide Overlay */}
-          <div className="absolute bottom-3 left-3 bg-[#111112]/95 border border-white/5 backdrop-blur-md rounded-2xl p-2.5 max-w-xs text-[10px] text-gray-400 space-y-0.5 pointer-events-none">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-              <span>Your Search Origin</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
-              <span>Available Food Shop</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-              <span>Selected Store</span>
-            </div>
+            <Locate size={14} className={isLocating ? "animate-spin" : "text-emerald-600"} />
+            {isLocating ? "Locating..." : "📍 Locate Me (GPS)"}
+          </button>
+          <div className="text-xs text-slate-600 dark:text-gray-300 font-bold px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700">
+            <span>🏪 {visibleShops.length} Stores nearby</span>
           </div>
         </div>
       </div>
-    </APIProvider>
+
+      {/* High-Definition 100% Free Leaflet / OpenStreetMap Container */}
+      <div className="w-full h-96 sm:h-[440px] rounded-3xl overflow-hidden border-2 border-emerald-100 dark:border-gray-800 shadow-xl relative">
+        <LeafletMapComponent
+          lat={currentCenter.lat}
+          lng={currentCenter.lng}
+          zoom={13}
+          originLocation={userLocation}
+          markers={markers}
+          selectedMarker={markers.find((m) => m.id === selectedShopId) || null}
+          onMarkerClick={(marker) => onSelectShop(marker.id)}
+          className="w-full h-full"
+        />
+
+        {/* Live HD Real Map Badge Overlay */}
+        <div className="absolute top-3 left-3 z-[1000] bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 dark:border-gray-700 shadow-md flex items-center gap-2 pointer-events-none">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-white">
+            Live High-Definition Real Map (0 API Key Required)
+          </span>
+        </div>
+      </div>
+
+      {/* Selected Shop Deals Drawer / Popup */}
+      {selectedShopObj && (
+        <div className="bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800/60 rounded-3xl p-5 shadow-xl space-y-3 animate-in fade-in-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-950/50 text-orange-600 flex items-center justify-center">
+                <Store size={18} />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                  {selectedShopObj.name}
+                </h4>
+                <p className="text-xs text-slate-500 line-clamp-1">{selectedShopObj.address}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectShop(null)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 transition cursor-pointer text-xs font-bold"
+            >
+              ✕ Close
+            </button>
+          </div>
+
+          {/* Active Deals at this shop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+            {selectedShopDeals.map((deal) => (
+              <div
+                key={deal.id}
+                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700"
+              >
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">{deal.name}</p>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="font-black text-emerald-600 dark:text-emerald-400">₹{deal.discount_price.toFixed(0)}</span>
+                    <span className="text-[10px] text-slate-400 line-through">₹{deal.original_price.toFixed(0)}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onReserveProduct(deal)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow-xs transition active:scale-95 cursor-pointer"
+                >
+                  Reserve
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

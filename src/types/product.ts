@@ -55,9 +55,22 @@ export type ApiProduct = {
   shop: ApiShopSummary | null;
 };
 
-export type ApiProductCreate = Omit<ApiProduct, "id" | "created_at" | "shop" | "is_active" | "shop_id" | "current_price" | "discount_price"> & {
-  is_active?: boolean;
+export type ApiProductCreate = {
+  name: string;
+  original_price: number;
   discount_price?: number | null;
+  quantity: number;
+  manufacturing_date: string;
+  expiry_date: string;
+  category: ProductCategory;
+  front_image_url?: string;
+  expiry_image_url?: string;
+  voice_note_url?: string | null;
+  description?: string | null;
+  is_active?: boolean;
+  is_surprise_bag?: boolean;
+  auto_discount_enabled?: boolean;
+  auto_discount_min_price?: number | null;
 };
 
 export type ReservationStatus = "PENDING" | "COMPLETED" | "CANCELLED";

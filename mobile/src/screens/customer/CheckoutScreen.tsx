@@ -58,7 +58,16 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ route, navigatio
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No item selected for checkout.</Text>
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => {
+            if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("DealsTab");
+            }
+          }}
+        >
           <Text style={styles.primaryBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -126,7 +135,16 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ route, navigatio
     >
       {/* Top Bar */}
       <View style={styles.topNav}>
-        <TouchableOpacity style={styles.navCircle} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.navCircle}
+          onPress={() => {
+            if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("DealsTab");
+            }
+          }}
+        >
           <ArrowLeft size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
 
@@ -173,7 +191,13 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ route, navigatio
               <View style={styles.stepperCol}>
                 <TouchableOpacity
                   style={styles.deleteBtn}
-                  onPress={() => navigation.goBack()}
+                  onPress={() => {
+                    if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+                      navigation.goBack();
+                    } else {
+                      navigation.navigate("DealsTab");
+                    }
+                  }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <Trash2 size={16} color={Colors.textMuted} />

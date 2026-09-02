@@ -45,6 +45,18 @@ export function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!token ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : user?.role === "ADMIN" ? (
+          <>
+            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+            <Stack.Screen name="CustomerRoot" component={CustomerTabs} />
+            <Stack.Screen name="ShopRoot" component={ShopTabs} />
+            <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+            <Stack.Screen
+              name="Scanner"
+              component={ScannerScreen}
+              options={{ presentation: "fullScreenModal" }}
+            />
+          </>
         ) : roleIntent === "shop" ? (
           <>
             <Stack.Screen name="ShopRoot" component={ShopTabs} />

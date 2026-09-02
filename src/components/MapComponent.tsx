@@ -139,6 +139,7 @@ export type MapProps = {
   markers?: MapMarker[];
   selectedMarker?: MapMarker | null;
   onMarkerClick?: (marker: MapMarker) => void;
+  layerType?: "streets" | "satellite";
 };
 
 export default function MapComponent({
@@ -151,6 +152,7 @@ export default function MapComponent({
   markers,
   selectedMarker,
   onMarkerClick,
+  layerType = "streets",
 }: MapProps) {
   const points =
     markers && markers.length > 0
@@ -222,10 +224,17 @@ export default function MapComponent({
         style={{ height: "100%", width: "100%", borderRadius: "inherit" }}
         attributionControl={false}
       >
-        <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
+        {layerType === "streets" ? (
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+        ) : (
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+          />
+        )}
 
         {/* Turn-by-Turn Road Route Polyline */}
         {routeCoords.length > 0 && (

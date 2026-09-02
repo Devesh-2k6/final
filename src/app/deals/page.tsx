@@ -39,6 +39,7 @@ import { DealProductCard } from "@/components/products/DealProductCard";
 import { DealProductSkeleton } from "@/components/products/DealProductSkeleton";
 import { getErrorMessage } from "@/api/errors";
 import { useProducts } from "@/hooks/useProducts";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { buildDealProductCardProps } from "@/lib/products/map-deal-product";
 import { createOrder } from "@/services/orders";
 import { createReservation } from "@/services/reservations";
@@ -167,6 +168,14 @@ export default function CustomerDealsPage() {
     lat,
     lng,
     radius_km: lat ? 50 : undefined
+  });
+
+  // Real-time synchronization across Web and Mobile
+  useWebSocket(() => {
+    refetchStandard();
+    if (isDeepSearchActive) {
+      mutateDeepSearch();
+    }
   });
 
   const menuRef = useRef<HTMLDivElement>(null);

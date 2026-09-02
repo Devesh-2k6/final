@@ -40,6 +40,7 @@ import {
   getFavorites,
 } from "../../services/products";
 import { createReservation } from "../../services/reservations";
+import { useRealtimeDeals } from "../../hooks/useRealtimeDeals";
 import type { ApiProduct, ProductCategory, ApiRecipeResponse } from "../../types";
 
 interface DealsFeedScreenProps {
@@ -106,12 +107,34 @@ export const DealsFeedScreen: React.FC<DealsFeedScreenProps> = ({ navigation }) 
     }
   }, []);
 
+  // Connect Real-Time Live WebSocket synchronization
+  useRealtimeDeals({
+    onNewDeal: (newProduct) => {
+      setProducts((prev) => {
+        if (prev.some((p) => p.id === newProduct.id)) return prev;
+        if (category !== "ALL" && newProduct.category !== category) return prev;
+        return [newProduct, ...prev];
+      });
+    },
+    onUpdateDeal: (updatedProduct) => {
+      setProducts((prev) =>
+        prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+      );
+    },
+    onDeleteDeal: (deletedId) => {
+      setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+    },
+    onRefreshNeeded: () => {
+      fetchDeals();
+    },
+  });
+
   useFocusEffect(
     useCallback(() => {
       fetchDeals();
       loadFavorites();
 
-      // Real-time live sync: refresh deals every 4 seconds while screen is active
+      // Real-time live sync fallback: refresh deals every 4 seconds while screen is active
       const interval = setInterval(() => {
         if (!query.trim() && !recipeMode) {
           fetchDeals();

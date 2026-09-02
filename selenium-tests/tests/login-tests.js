@@ -24,6 +24,7 @@ const BASE_URL = process.env.BASE_URL || "https://frontend-two-topaz-40.vercel.a
 const HEADLESS = process.env.HEADLESS !== "false";
 const REPORT_OUTPUT_DIR = path.resolve(__dirname, "../reports");
 const REPORT_FILE_PATH = path.join(REPORT_OUTPUT_DIR, "ExpiryGo_E2E_Test_Execution_Report.xlsx");
+const ROOT_REPORT_FILE_PATH = path.resolve(__dirname, "../ExpiryGo_Login_E2E_Test_Report.xlsx");
 
 // Ensure reports directory exists
 if (!fs.existsSync(REPORT_OUTPUT_DIR)) {
@@ -933,13 +934,16 @@ async function generateExcelReport(testMatrix, liveResultsMap) {
 
   // Write file to disk
   await workbook.xlsx.writeFile(REPORT_FILE_PATH);
-  console.log(`\n🎉 Excel report generated successfully!`);
-  console.log(`📁 File Saved At: ${REPORT_FILE_PATH}`);
+  await workbook.xlsx.writeFile(ROOT_REPORT_FILE_PATH);
+  console.log(`\n🎉 Excel reports generated successfully!`);
+  console.log(`📁 Primary Saved At: ${REPORT_FILE_PATH}`);
+  console.log(`📁 Root Saved At:    ${ROOT_REPORT_FILE_PATH}`);
   console.log(`📊 Total Test Cases Documented: ${testResults.length}`);
   console.log(`✔ Passed: ${passedTests} | ❌ Failed: ${failedTests} | 📈 Pass Rate: ${passRate}%\n`);
 
   return {
     filePath: REPORT_FILE_PATH,
+    rootFilePath: ROOT_REPORT_FILE_PATH,
     totalTests: testResults.length,
     passed: passedTests,
     failed: failedTests,

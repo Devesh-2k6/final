@@ -52,9 +52,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(50), default="CUSTOMER", nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="CUSTOMER", index=True, nullable=False)
     is_shop_owner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, index=True, nullable=False)
     phone_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
     # Real Email Verification & Security
@@ -98,7 +98,7 @@ class Shop(Base):
     rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Status & Real Location Verification
-    is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     location_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     location_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     location_verification_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -108,13 +108,18 @@ class Shop(Base):
     location_verification_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Admin Approval Workflow & Verification Documents
-    approval_status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
+    approval_status: Mapped[str] = mapped_column(String(50), default="PENDING", index=True, nullable=False)
     approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rejected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     verification_document_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     verification_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Admin Location Override Audit Trail
+    location_override_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    location_override_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    location_override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     owner: Mapped["User"] = relationship(back_populates="shop")
     products: Mapped[list["Product"]] = relationship(back_populates="shop", cascade="all, delete-orphan")
@@ -139,7 +144,7 @@ class Product(Base):
     expiry_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     voice_note_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     # Surprise Bags
@@ -186,9 +191,9 @@ class Reservation(Base):
     
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     total_price: Mapped[float] = mapped_column(Float, nullable=False) # Price locked at reservation time
-    status: Mapped[ReservationStatus] = mapped_column(Enum(ReservationStatus), default=ReservationStatus.PENDING, nullable=False)
+    status: Mapped[ReservationStatus] = mapped_column(Enum(ReservationStatus), default=ReservationStatus.PENDING, index=True, nullable=False)
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.UNPAID, nullable=False)
-    pickup_code: Mapped[str] = mapped_column(String(6), default=generate_pickup_code, nullable=False)
+    pickup_code: Mapped[str] = mapped_column(String(6), default=generate_pickup_code, index=True, nullable=False)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -234,7 +239,7 @@ class Order(Base):
     product_id: Mapped[str] = mapped_column(String(36), ForeignKey("products.id"), index=True, nullable=False)
     
     order_type: Mapped[str] = mapped_column(String(50), default="PICKUP", nullable=False) # "PICKUP" or "DELIVERY"
-    status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False) # "PENDING", "ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"
+    status: Mapped[str] = mapped_column(String(50), default="PENDING", index=True, nullable=False) # "PENDING", "ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     total_price: Mapped[float] = mapped_column(Float, nullable=False)
     delivery_fee: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
@@ -243,7 +248,7 @@ class Order(Base):
     customer_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, index=True, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     customer: Mapped["User"] = relationship("User", foreign_keys=[customer_id], back_populates="orders_placed")
@@ -263,7 +268,7 @@ class PantryItem(Base):
     purchase_date: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     expiry_date: Mapped[datetime] = mapped_column(DateTime, index=True, nullable=False)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    is_consumed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_consumed: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 

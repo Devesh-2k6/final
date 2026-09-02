@@ -10,8 +10,10 @@ import math
 import time
 import json
 import logging
+import threading
 import urllib.request
 import urllib.parse
+import urllib.error
 from dataclasses import dataclass
 from typing import Optional, Any, List, Dict, Tuple
 
@@ -215,9 +217,34 @@ def _is_commercial_candidate(item: dict) -> Tuple[bool, Optional[str]]:
     return (cls in ("FOOD", "NON_FOOD_COMMERCIAL")), cat
 
 
-def _fetch_nominatim_json(url: str, timeout: float = 10.0) -> Optional[Any]:
-    """Fetches JSON data from Nominatim using strict User-Agent header."""
-    user_agent = settings.NOMINATIM_USER_AGENT or "ExpiryGo-Location-Verifier/1.0 (contact: support@expirygo.com)"
+# Rate limit tracking for OpenStreetMap Nominatim usage policy (min 1.0s between requests)
+_NOMINATIM_LOCK = threading.Lock()
+_LAST_NOMINATIM_CALL_TIME = 0.0
+NOMINATIM_MIN_INTERVAL_SECONDS = 1.0
+DEFAULT_NOMINATIM_TIMEOUT_SECONDS = 2.5
+
+
+def _fetch_nominatim_json(url: str, timeout: float = DEFAULT_NOMINATIM_TIMEOUT_SECONDS) -> Optional[Any]:
+    """
+    Fetches JSON data from Nominatim complying with OpenStreetMap Usage Policy:
+    - Enforces mandatory minimum 1.0s throttle between consecutive HTTP requests.
+    - Sends strict, identifiable User-Agent header.
+    - Enforces hard 2.5s per-request timeout.
+    - Gracefully catches socket/HTTP/timeout errors without crashing.
+    """
+    global _LAST_NOMINATIM_CALL_TIME
+
+    with _NOMINATIM_LOCK:
+        now = time.time()
+        elapsed = now - _LAST_NOMINATIM_CALL_TIME
+        if elapsed < NOMINATIM_MIN_INTERVAL_SECONDS:
+            sleep_duration = NOMINATIM_MIN_INTERVAL_SECONDS - elapsed
+            time.sleep(sleep_duration)
+        _LAST_NOMINATIM_CALL_TIME = time.time()
+
+    user_agent = settings.NOMINATIM_USER_AGENT or "ExpiryGo/1.0 (contact: support@expirygo.com)"
+    logger.info(f"[NOMINATIM REQUEST] User-Agent: '{user_agent}' -> URL: {url}")
+
     req = urllib.request.Request(
         url,
         headers={
@@ -226,14 +253,26 @@ def _fetch_nominatim_json(url: str, timeout: float = 10.0) -> Optional[Any]:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
+        effective_timeout = min(timeout, DEFAULT_NOMINATIM_TIMEOUT_SECONDS) if timeout else DEFAULT_NOMINATIM_TIMEOUT_SECONDS
+        with urllib.request.urlopen(req, timeout=effective_timeout) as response:
             if response.status == 200:
                 raw = response.read().decode("utf-8")
                 return json.loads(raw)
-    except Exception as e:
-        logger.warning(f"Nominatim request failed ({url}): {e}")
+            else:
+                logger.warning(f"Nominatim returned non-200 status: {response.status}")
+                return None
+    except urllib.error.HTTPError as he:
+        logger.warning(f"Nominatim HTTP error ({he.code}): {he.reason}")
         return None
-    return None
+    except urllib.error.URLError as ue:
+        logger.warning(f"Nominatim URL/network error: {ue.reason}")
+        return None
+    except TimeoutError:
+        logger.warning(f"Nominatim request timed out after {DEFAULT_NOMINATIM_TIMEOUT_SECONDS}s: {url}")
+        return None
+    except Exception as e:
+        logger.warning(f"Nominatim unexpected request failure ({url}): {e}")
+        return None
 
 
 def _extract_clean_keywords(name: str) -> Optional[str]:
@@ -291,9 +330,9 @@ def verify_shop_location(
             return cached_res
 
     base_url = settings.NOMINATIM_BASE_URL.rstrip("/")
-    timeout = settings.NOMINATIM_TIMEOUT_SECONDS
+    timeout = DEFAULT_NOMINATIM_TIMEOUT_SECONDS
 
-    # 3. Gather candidates from Nominatim using multi-query strategy
+    # 3. Gather candidates from Nominatim using focused query strategy with rate-throttling
     candidates: List[dict] = []
     seen_place_ids = set()
     any_request_succeeded = False
@@ -314,33 +353,27 @@ def verify_shop_location(
                 seen_place_ids.add(pid)
                 candidates.append(data)
 
-    # Strategy A: Search with both Name and Address
-    if clean_name and clean_address:
+    # Strategy A: Reverse Geocoding at coordinates
+    url_rev = f"{base_url}/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1&extratags=1"
+    add_candidates(_fetch_nominatim_json(url_rev, timeout=timeout))
+
+    # Strategy B: If reverse geocoding found no commercial food candidates, query by name & address
+    if not candidates and clean_name and clean_address:
         query_a = f"{clean_name}, {clean_address}"
         url_a = f"{base_url}/search?q={urllib.parse.quote(query_a)}&format=json&addressdetails=1&extratags=1&limit=5"
         add_candidates(_fetch_nominatim_json(url_a, timeout=timeout))
 
-    # Strategy B: Search with clean Name
-    if clean_name:
+    # Strategy C: If still no candidates, search with clean name
+    if not candidates and clean_name:
         url_b = f"{base_url}/search?q={urllib.parse.quote(clean_name)}&format=json&addressdetails=1&extratags=1&limit=5"
         add_candidates(_fetch_nominatim_json(url_b, timeout=timeout))
 
-        # Strategy B2: Search with core keywords stripped of generic suffixes
-        clean_kw = _extract_clean_keywords(clean_name)
-        if clean_kw and clean_kw.lower() != clean_name.lower():
-            url_kw = f"{base_url}/search?q={urllib.parse.quote(clean_kw)}&format=json&addressdetails=1&extratags=1&limit=5"
-            add_candidates(_fetch_nominatim_json(url_kw, timeout=timeout))
-
-    # Strategy C: Reverse Geocoding at exact submitted coordinates
-    url_c = f"{base_url}/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1&extratags=1"
-    add_candidates(_fetch_nominatim_json(url_c, timeout=timeout))
-
-    # Handle provider outage or unreachable service
+    # Handle provider outage or unreachable service gracefully
     if not any_request_succeeded:
         err_result = LocationVerificationResult(
             verified=False,
             is_error=True,
-            message="Shop location verification service is temporarily unavailable. Please try again later.",
+            message="Shop location verification service is temporarily unavailable. Submitted for admin manual review.",
         )
         return err_result
 
@@ -348,7 +381,7 @@ def verify_shop_location(
         no_result = LocationVerificationResult(
             verified=False,
             is_error=False,
-            message="We could not verify a business at this location. Please select the correct shop location on the map.",
+            message="We could not verify a food business at this exact coordinate on OpenStreetMap. Submitted for administrator review.",
         )
         _VERIFICATION_CACHE[cache_key] = (no_result, now_ts)
         return no_result

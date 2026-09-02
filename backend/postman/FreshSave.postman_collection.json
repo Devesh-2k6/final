@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "FreshSave API",
-    "description": "FastAPI backend for FreshSave. Set collection variable `base_url` (e.g. http://127.0.0.1:8000). There is no Bearer auth yet — all routes are open.",
+    "name": "ExpiryGo API",
+    "description": "FastAPI backend for ExpiryGo. Set collection variable `base_url` (e.g. http://127.0.0.1:8000). There is no Bearer auth yet — all routes are open.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

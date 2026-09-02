@@ -73,7 +73,11 @@ export async function sendOtp(identifier: string, name?: string): Promise<SendOt
   });
 }
 
-export async function customerSignup(data: { name: string; email: string }): Promise<SendOtpResponse> {
+export async function customerSignup(data: {
+  name: string;
+  email: string;
+  password?: string;
+}): Promise<SendOtpResponse> {
   return apiRequest<SendOtpResponse>("/auth/customer/register", {
     method: "POST",
     json: data,
@@ -85,8 +89,12 @@ export async function vendorSignup(data: {
   shop_name: string;
   email: string;
   phone_number: string;
+  password?: string;
   photo_url?: string;
   document_url?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
 }): Promise<SendOtpResponse> {
   return apiRequest<SendOtpResponse>("/auth/vendor/register", {
     method: "POST",
@@ -94,6 +102,29 @@ export async function vendorSignup(data: {
     skipAuth: true,
   });
 }
+
+export type VerifyOtpInput = {
+  identifier: string;
+  otp: string;
+  is_shop_owner?: boolean;
+  name?: string;
+  phone_number?: string;
+};
+
+export async function verifyOtp(data: VerifyOtpInput): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/verify-otp", {
+    method: "POST",
+    json: {
+      identifier: data.identifier.trim().toLowerCase(),
+      otp: data.otp.trim(),
+      is_shop_owner: data.is_shop_owner,
+      name: data.name?.trim(),
+      phone_number: data.phone_number?.trim(),
+    },
+    skipAuth: true,
+  });
+}
+
 
 
 

@@ -13,15 +13,48 @@ router = APIRouter(prefix="/health", tags=["Health"])
 def health_check():
     return {"status": "ok", "message": "Service is running"}
 
+@router.get("/network")
+def get_network_info():
+    import socket
+    lan_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        detected = s.getsockname()[0]
+        s.close()
+        if detected and not detected.startswith("127."):
+            lan_ip = detected
+    except Exception:
+        try:
+            lan_ip = socket.gethostbyname(socket.gethostname())
+        except Exception:
+            pass
+
+    return {
+        "status": "ok",
+        "lan_ip": lan_ip,
+        "api_url": f"http://{lan_ip}:8000",
+        "web_url": f"http://{lan_ip}:3000",
+        "expo_uri": f"exp://{lan_ip}:8081",
+        "expo_web_url": f"http://{lan_ip}:8081",
+    }
+
 @router.get("/db")
 def db_health_check(db: Annotated[Session, Depends(get_db)]):
+    users = db.query(func.count(User.id)).scalar() or 0
     shops = db.query(func.count(Shop.id)).scalar() or 0
     products = db.query(func.count(Product.id)).scalar() or 0
+    from db.models import Order, Reservation
+    orders = db.query(func.count(Order.id)).scalar() or 0
+    reservations = db.query(func.count(Reservation.id)).scalar() or 0
     return {
         "status": "ok",
         "storage": "postgres" if "postgresql" in db.bind.dialect.name else "sqlite",
+        "users": users,
         "shops": shops,
         "products": products,
+        "orders": orders,
+        "reservations": reservations,
     }
 
 @router.get("/debug")

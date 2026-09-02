@@ -1,29 +1,28 @@
 import { useEffect, useState, useRef } from "react";
 import type { ApiProduct } from "@/types/product";
+import { getPublicApiBaseUrl } from "@/config/env";
 
 function getWebSocketUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace(/^http/, "ws");
+  try {
+    const httpUrl = getPublicApiBaseUrl();
+    return httpUrl.replace(/^https:\/\//i, "wss://").replace(/^http:\/\//i, "ws://");
+  } catch {
+    return "ws://localhost:8000";
   }
-  if (typeof window !== "undefined") {
-    const isHttps = window.location.protocol === "https:";
-    const host = window.location.hostname;
-    // Default to port 8000 on localhost if on dev
-    const port = host === "localhost" || host === "127.0.0.1" ? ":8000" : (window.location.port ? `:${window.location.port}` : "");
-    return `${isHttps ? "wss:" : "ws:"}//${host}${port}`;
-  }
-  return "ws://localhost:8000";
 }
 
-type WSMessage = {
+export type WSMessage = {
   type: string;
   product?: ApiProduct;
+  product_id?: string;
 };
 
-export function useWebSocket() {
+export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
   const [lastDeal, setLastDeal] = useState<ApiProduct | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const reconnectAttempt = useRef(0);
+  const onMessageRef = useRef(onMessage);
+  onMessageRef.current = onMessage;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -51,6 +50,7 @@ export function useWebSocket() {
             if (data.type === "new_deal" && data.product) {
               setLastDeal(data.product);
             }
+            onMessageRef.current?.(data);
           } catch (e) {
             console.error("Failed to parse WS message", e);
           }

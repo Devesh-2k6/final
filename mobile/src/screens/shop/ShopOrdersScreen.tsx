@@ -30,6 +30,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { CameraScannerModal } from "../../components/CameraScannerModal";
 import { getShopReservations, verifyReservation } from "../../services/reservations";
 import { getShopOrders, updateOrderStatus } from "../../services/orders";
+import { useRealtimeDeals } from "../../hooks/useRealtimeDeals";
 import type { ApiReservation, ApiOrder, OrderStatus } from "../../types";
 
 interface ShopOrdersScreenProps {
@@ -65,6 +66,10 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
       setRefreshing(false);
     }
   }, []);
+
+  useRealtimeDeals({
+    onRefreshNeeded: loadData,
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -221,7 +226,7 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
               </View>
               <View>
                 <Text style={styles.qrBannerTitle}>Scan Customer QR Code</Text>
-                <Text style={styles.qrBannerSub}>Point camera at customer's phone to auto-verify</Text>
+                <Text style={styles.qrBannerSub}>Point camera at customer&apos;s phone to auto-verify</Text>
               </View>
             </View>
             <ArrowRight size={18} color={Colors.textInverse} />
@@ -231,7 +236,7 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
           <View style={styles.pinInputCard}>
             <Text style={styles.pinCardTitle}>Or Enter 6-Digit Pickup PIN</Text>
             <Text style={styles.pinCardSub}>
-              Type the code shown on the customer's ExpiryGo screen:
+              Type the code shown on the customer&apos;s ExpiryGo screen:
             </Text>
 
             <View style={styles.pinRow}>

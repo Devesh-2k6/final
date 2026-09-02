@@ -36,4 +36,18 @@ class ConnectionManager:
         for connection in dead_connections:
             self.disconnect(connection)
 
+    def broadcast_sync(self, message: dict):
+        """Thread-safe and sync-safe helper to trigger WebSocket broadcast."""
+        if not self.active_connections:
+            return
+        try:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.broadcast(message))
+            except RuntimeError:
+                pass  # No running event loop in background thread / sync context
+        except Exception as e:
+            logger.warning(f"Could not dispatch WS broadcast: {e}")
+
 manager = ConnectionManager()

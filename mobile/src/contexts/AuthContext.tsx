@@ -5,7 +5,7 @@ import { login as apiLogin, register as apiRegister, getMe, LoginInput, Register
 import { registerForPushNotificationsAsync } from "../services/notifications";
 import type { AuthUser } from "../types";
 
-export type RoleIntent = "customer" | "shop";
+export type RoleIntent = "customer" | "shop" | "admin";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -14,6 +14,7 @@ interface AuthContextType {
   roleIntent: RoleIntent;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
+  loginWithSession: (res: { access_token: string; user: AuthUser }, role?: RoleIntent) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   setRoleIntent: (role: RoleIntent) => Promise<void>;
@@ -35,8 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUser = await AsyncStorage.getItem(USER_KEY);
         const storedRole = await AsyncStorage.getItem(ROLE_INTENT_KEY);
 
-        if (storedRole === "shop" || storedRole === "customer") {
-          setRoleIntentState(storedRole);
+        if (storedRole === "shop" || storedRole === "customer" || storedRole === "admin") {
+          setRoleIntentState(storedRole as RoleIntent);
         }
 
         if (storedToken) {
@@ -45,6 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setToken(storedToken);
             setUser(freshUser);
             await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+            if (freshUser.role === "ADMIN") {
+              setRoleIntentState("admin");
+            }
           } catch (err: any) {
             // Token is invalid/expired (e.g. server database reseeded or expired)
             console.log("Stored token invalid or expired, clearing session:", err?.message);
@@ -72,7 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, res.access_token);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(res.user));
 
-    if (res.user.is_shop_owner) {
+    if (res.user.role === "ADMIN") {
+      setRoleIntentState("admin");
+      await AsyncStorage.setItem(ROLE_INTENT_KEY, "admin");
+    } else if (res.user.is_shop_owner || res.user.role === "VENDOR") {
       setRoleIntentState("shop");
       await AsyncStorage.setItem(ROLE_INTENT_KEY, "shop");
     } else {
@@ -92,7 +99,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await AsyncStorage.setItem(AUTH_TOKEN_KEY, res.access_token);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(res.user));
 
-    const targetRole = res.user.is_shop_owner ? "shop" : "customer";
+    const targetRole = res.user.role === "ADMIN" ? "admin" : (res.user.is_shop_owner || res.user.role === "VENDOR") ? "shop" : "customer";
+    setRoleIntentState(targetRole);
+    await AsyncStorage.setItem(ROLE_INTENT_KEY, targetRole);
+
+    registerForPushNotificationsAsync().catch(() => {});
+  };
+
+  const loginWithSession = async (res: { access_token: string; user: AuthUser }, role?: RoleIntent) => {
+    setToken(res.access_token);
+    setUser(res.user);
+
+    await AsyncStorage.setItem(AUTH_TOKEN_KEY, res.access_token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(res.user));
+
+    let targetRole: RoleIntent = "customer";
+    if (res.user.role === "ADMIN") {
+      targetRole = "admin";
+    } else if (res.user.is_shop_owner || res.user.role === "VENDOR" || role === "shop") {
+      targetRole = "shop";
+    } else {
+      targetRole = "customer";
+    }
     setRoleIntentState(targetRole);
     await AsyncStorage.setItem(ROLE_INTENT_KEY, targetRole);
 
@@ -118,6 +146,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const setRoleIntent = async (role: RoleIntent) => {
+    if (role === "admin" && user?.role !== "ADMIN") {
+      return;
+    }
     setRoleIntentState(role);
     await AsyncStorage.setItem(ROLE_INTENT_KEY, role);
   };
@@ -131,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roleIntent,
         login,
         register,
+        loginWithSession,
         logout,
         refreshUser,
         setRoleIntent,

@@ -11,7 +11,9 @@ export function getAuthToken(): string | null {
 }
 
 export function clearAuthToken(): void {
+  if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ROLE_INTENT_KEY);
 }
 
 export function setRoleIntent(role: string): void {

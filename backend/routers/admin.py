@@ -43,6 +43,9 @@ def _serialize_admin_shop(shop: Shop) -> dict:
         "rejected_at": getattr(shop, "rejected_at", None),
         "verification_document_url": getattr(shop, "verification_document_url", None) or getattr(shop, "document_url", None),
         "verification_document_name": getattr(shop, "verification_document_name", None),
+        "location_override_by": getattr(shop, "location_override_by", None),
+        "location_override_at": getattr(shop, "location_override_at", None),
+        "location_override_reason": getattr(shop, "location_override_reason", None),
         "created_at": getattr(owner, "created_at", None) if owner else None,
     }
 
@@ -92,6 +95,7 @@ def approve_shop(
 ):
     """
     Approves a verified food business shop, activating its selling privileges and live marketplace visibility.
+    Supports location verification override when accompanied by a mandatory non-empty audit reason.
     """
     shop = db.query(Shop).options(joinedload(Shop.owner)).filter(Shop.id == shop_id).first()
     if not shop:
@@ -103,11 +107,27 @@ def approve_shop(
             detail="Cannot approve shop: The merchant owner's email address has not been verified.",
         )
 
+    now = datetime.now(UTC).replace(tzinfo=None)
+
+    # Location verification check with admin override capability
     if not getattr(shop, "location_verified", False):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot approve shop: The shop location has not passed OpenStreetMap / Nominatim verification.",
-        )
+        if body and body.override_location_check:
+            override_reason_clean = (body.override_reason or "").strip()
+            if not override_reason_clean:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot override location verification without a non-empty override_reason.",
+                )
+            # Record audit trail on shop record
+            shop.location_override_by = admin_user.email or admin_user.id
+            shop.location_override_at = now
+            shop.location_override_reason = override_reason_clean
+            shop.location_verified = True
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot approve shop: The shop location has not passed OpenStreetMap / Nominatim verification. To approve an unverified shop, set override_location_check=true and provide an override_reason.",
+            )
 
     # Check for mandatory storefront photo
     if not getattr(shop, "photo_url", None) or not str(shop.photo_url).strip():
@@ -126,7 +146,6 @@ def approve_shop(
             detail="Cannot approve shop: Business license document is missing. An admin cannot approve a shop without verification documents.",
         )
 
-    now = datetime.now(UTC).replace(tzinfo=None)
     shop.approval_status = "APPROVED"
     shop.is_active = True
     shop.approved_at = now
@@ -137,14 +156,19 @@ def approve_shop(
     db.commit()
     db.refresh(shop)
 
-    # Send approval email notification to vendor
+    # Send approval email notification to vendor in background thread
     try:
         if shop.owner and shop.owner.email:
-            send_vendor_approval_email(
-                to_email=shop.owner.email,
-                vendor_name=shop.owner.name,
-                shop_name=shop.name,
-            )
+            import threading
+            threading.Thread(
+                target=send_vendor_approval_email,
+                kwargs={
+                    "to_email": shop.owner.email,
+                    "vendor_name": shop.owner.name,
+                    "shop_name": shop.name,
+                },
+                daemon=True,
+            ).start()
     except Exception:
         pass
 
@@ -246,7 +270,39 @@ def reactivate_shop(
     shop.approval_reason = None
 
     db.commit()
+@router.post("/shops/{shop_id}/reverify-location", response_model=schemas.AdminShopResponse)
+def reverify_shop_location(
+    shop_id: str,
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    On-demand OpenStreetMap / Nominatim location verification trigger for administrators.
+    Re-runs verification algorithms and updates the shop record immediately.
+    """
+    from services.location_verifier import verify_shop_location
+    shop = db.query(Shop).options(joinedload(Shop.owner)).filter(Shop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found.")
+
+    loc_res = verify_shop_location(
+        name=shop.name,
+        address=shop.address or "Commercial Location",
+        latitude=shop.latitude or 13.0827,
+        longitude=shop.longitude or 80.2707,
+    )
+    
+    now = datetime.now(UTC).replace(tzinfo=None)
+    shop.location_verified = loc_res.verified
+    shop.location_verified_at = now
+    shop.location_verification_provider = loc_res.provider or "nominatim"
+    shop.location_verification_name = loc_res.matched_business_name or (shop.name if loc_res.verified else "No OSM Match Found")
+    shop.location_verification_address = loc_res.matched_address or shop.address
+    shop.location_verification_distance_meters = loc_res.distance_meters
+    shop.location_verification_category = loc_res.category or ("supermarket" if loc_res.verified else "unverified_commercial")
+    db.commit()
     db.refresh(shop)
+    
     return _serialize_admin_shop(shop)
 
 
@@ -303,6 +359,34 @@ def allow_vendor_resubmit(
     shop.approval_status = "PENDING"
     shop.approval_reason = None
     shop.rejected_at = None
+    db.commit()
+    db.refresh(shop)
+    return _serialize_admin_shop(shop)
+
+
+@router.patch("/shops/{shop_id}/location", response_model=schemas.AdminShopResponse)
+def update_shop_location_by_admin(
+    shop_id: str,
+    body: schemas.AdminUpdateShopLocationRequest,
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Allows administrator to directly calibrate and update a shop's physical location on the live interactive map.
+    """
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found.")
+
+    shop.latitude = body.latitude
+    shop.longitude = body.longitude
+    if body.address:
+        shop.address = body.address.strip()
+    shop.location_verified = True
+    shop.location_verified_at = datetime.now(UTC).replace(tzinfo=None)
+    shop.location_override_by = admin_user.email
+    shop.location_override_at = datetime.now(UTC).replace(tzinfo=None)
+    shop.location_override_reason = body.reason or "Admin live map calibration"
     db.commit()
     db.refresh(shop)
     return _serialize_admin_shop(shop)

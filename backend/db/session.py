@@ -2,9 +2,9 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool, NullPool
+from sqlalchemy.pool import StaticPool, NullPool, QueuePool
 from db.base import Base
 from config import settings
 
@@ -35,8 +35,9 @@ def _create_engine():
         try:
             eng = create_engine(
                 url,
-                pool_size=100,
-                max_overflow=100,
+                pool_size=50,
+                max_overflow=50,
+                pool_timeout=30,
                 pool_pre_ping=True,
                 pool_recycle=300,
                 connect_args={"connect_timeout": 10}
@@ -47,20 +48,37 @@ def _create_engine():
             return eng
         except Exception as e:
             print(f"[WARNING] Primary PostgreSQL database unreachable ({e}). Seamlessly switching to local SQLite database ({LOCAL_DEV_DB})...")
-            return create_engine(
+            eng = create_engine(
                 LOCAL_DEV_DB,
-                connect_args={"check_same_thread": False, "timeout": 30},
+                connect_args={"check_same_thread": False, "timeout": 60},
                 poolclass=NullPool
             )
+            return eng
             
-    return create_engine(
+    eng = create_engine(
         url,
-        connect_args={"check_same_thread": False, "timeout": 30},
+        connect_args={"check_same_thread": False, "timeout": 60},
         poolclass=NullPool
     )
+    return eng
 
 
 engine = _create_engine()
+
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if "sqlite" in str(engine.url):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
+            cursor.close()
+        except Exception:
+            pass
+
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -203,6 +221,48 @@ def _auto_migrate_schema() -> None:
                 # document_url
                 if "document_url" not in existing_shop_columns:
                     conn.execute(text("ALTER TABLE shops ADD COLUMN document_url VARCHAR(500)"))
+
+                # verification_document_url
+                if "verification_document_url" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN verification_document_url TEXT"))
+
+                # verification_document_name
+                if "verification_document_name" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN verification_document_name VARCHAR(255)"))
+
+                # location_override_by
+                if "location_override_by" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN location_override_by VARCHAR(255)"))
+
+                # location_override_at
+                if "location_override_at" not in existing_shop_columns:
+                    if dialect == "sqlite":
+                        conn.execute(text("ALTER TABLE shops ADD COLUMN location_override_at DATETIME"))
+                    else:
+                        conn.execute(text("ALTER TABLE shops ADD COLUMN location_override_at TIMESTAMP WITHOUT TIME ZONE"))
+
+                # location_override_reason
+                if "location_override_reason" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN location_override_reason TEXT"))
+
+            # Create performance indexes if missing
+            index_statements = [
+                "CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)",
+                "CREATE INDEX IF NOT EXISTS ix_users_created_at ON users (created_at)",
+                "CREATE INDEX IF NOT EXISTS ix_shops_is_active ON shops (is_active)",
+                "CREATE INDEX IF NOT EXISTS ix_shops_approval_status ON shops (approval_status)",
+                "CREATE INDEX IF NOT EXISTS ix_products_is_active ON products (is_active)",
+                "CREATE INDEX IF NOT EXISTS ix_orders_status ON orders (status)",
+                "CREATE INDEX IF NOT EXISTS ix_orders_created_at ON orders (created_at)",
+                "CREATE INDEX IF NOT EXISTS ix_reservations_status ON reservations (status)",
+                "CREATE INDEX IF NOT EXISTS ix_reservations_pickup_code ON reservations (pickup_code)",
+                "CREATE INDEX IF NOT EXISTS ix_pantry_items_is_consumed ON pantry_items (is_consumed)",
+            ]
+            for idx_stmt in index_statements:
+                try:
+                    conn.execute(text(idx_stmt))
+                except Exception:
+                    pass
 
     except Exception as e:
         print(f"[INFO] Auto-migration check completed with notice: {e}")

@@ -28,6 +28,9 @@ export type AdminShop = {
   document_url?: string | null;
   verification_document_url?: string | null;
   verification_document_name?: string | null;
+  location_override_by?: string | null;
+  location_override_at?: string | null;
+  location_override_reason?: string | null;
   created_at?: string | null;
 };
 
@@ -52,10 +55,25 @@ export async function getAllShops(status?: string): Promise<AdminShop[]> {
   return apiRequest<AdminShop[]>(`/admin/shops${query}`);
 }
 
-export async function approveShop(shopId: string, notes?: string): Promise<AdminShop> {
+export async function approveShop(
+  shopId: string,
+  notes?: string,
+  overrideLocation?: boolean,
+  overrideReason?: string
+): Promise<AdminShop> {
   return apiRequest<AdminShop>(`/admin/shops/${shopId}/approve`, {
     method: "POST",
-    json: { notes: notes || null },
+    json: {
+      notes: notes || null,
+      override_location_check: !!overrideLocation,
+      override_reason: overrideReason || null,
+    },
+  });
+}
+
+export async function reverifyShopLocation(shopId: string): Promise<AdminShop> {
+  return apiRequest<AdminShop>(`/admin/shops/${shopId}/reverify-location`, {
+    method: "POST",
   });
 }
 
@@ -82,3 +100,14 @@ export async function reactivateShop(shopId: string): Promise<AdminShop> {
 export async function getAdminStats(): Promise<AdminStats> {
   return apiRequest<AdminStats>("/admin/stats");
 }
+
+export async function updateShopLocationByAdmin(
+  shopId: string,
+  data: { latitude: number; longitude: number; address?: string; reason?: string }
+): Promise<AdminShop> {
+  return apiRequest<AdminShop>(`/admin/shops/${shopId}/location`, {
+    method: "PATCH",
+    json: data,
+  });
+}
+

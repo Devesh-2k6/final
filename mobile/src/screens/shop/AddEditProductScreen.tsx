@@ -226,7 +226,11 @@ export const AddEditProductScreen: React.FC<AddEditProductScreenProps> = ({
         await createProduct(payload);
         Alert.alert("Success", "Surplus deal posted live!");
       }
-      navigation.goBack();
+      if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate("ShopDashboard");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to save deal. Please try again.");
     } finally {
@@ -247,7 +251,16 @@ export const AddEditProductScreen: React.FC<AddEditProductScreenProps> = ({
       style={styles.container}
     >
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("ShopDashboard");
+            }
+          }}
+        >
           <ArrowLeft size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>

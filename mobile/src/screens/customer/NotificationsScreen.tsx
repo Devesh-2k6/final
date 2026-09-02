@@ -49,7 +49,16 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ naviga
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("DealsTab");
+            }
+          }}
+        >
           <ArrowLeft size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications & Alerts</Text>

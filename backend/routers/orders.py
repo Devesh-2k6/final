@@ -8,7 +8,8 @@ from auth_service import get_current_user, get_current_shop_owner
 from db.models import User, Product, Shop, Order
 from db.session import get_db
 from routers.shops import _get_owner_shop
-from routers.products import _calculate_dynamic_price
+from routers.products import _calculate_dynamic_price, _serialize_product
+from websocket_manager import manager
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -59,6 +60,19 @@ def create_order(
     db.add(order)
     db.commit()
     db.refresh(order)
+
+    # Broadcast new order to shopkeeper
+    try:
+        manager.broadcast_sync({
+            "type": "new_order",
+            "order_id": str(order.id),
+            "shop_id": str(order.shop_id),
+            "product_name": product.name,
+            "quantity": order.quantity,
+            "order_type": order.order_type
+        })
+    except Exception:
+        pass
     
     # Return order with pre-loaded relationships
     return db.query(Order).options(
@@ -150,6 +164,23 @@ def update_order_status(
         
     db.commit()
     db.refresh(order)
+
+    try:
+        manager.broadcast_sync({
+            "type": "order_status_changed",
+            "order_id": str(order.id),
+            "shop_id": str(order.shop_id),
+            "status": order.status
+        })
+        if order.product:
+            updated_prod = _serialize_product(order.product, order.product.shop)
+            manager.broadcast_sync({
+                "type": "update_deal",
+                "product": updated_prod
+            })
+    except Exception:
+        pass
+
     return order
 
 

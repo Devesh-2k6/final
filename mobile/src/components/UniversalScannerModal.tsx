@@ -44,13 +44,42 @@ import type { ProductCategory } from "../types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+const EXPO_GO_TEST_SAMPLES = [
+  {
+    code: "8901030895431",
+    title: "Amul Taaza Homogenised Toned Milk 1L",
+    brand: "Amul",
+    category: "DAIRY" as ProductCategory,
+    desc: "Fresh pasteurized toned milk with 3.0% fat and 8.5% SNF.",
+    price: 54,
+    image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400",
+  },
+  {
+    code: "8901491101837",
+    title: "Britannia 100% Whole Wheat Bread 400g",
+    brand: "Britannia",
+    category: "BAKERY" as ProductCategory,
+    desc: "Wholesome brown bread enriched with vitamins and minerals.",
+    price: 45,
+    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400",
+  },
+  {
+    code: "8901725181222",
+    title: "Mother Dairy Classic Dahi 400g",
+    brand: "Mother Dairy",
+    category: "DAIRY" as ProductCategory,
+    desc: "Rich, creamy curd packed with probiotic cultures.",
+    price: 35,
+    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400",
+  },
+];
+
 export type UniversalScannerMode =
   | "barcode"
   | "ocr_dates"
   | "qr_pickup"
   | "qr_general"
-  | "fridge_log"
-  | "demo_test";
+  | "fridge_log";
 
 export interface ScannedBarcodeResult {
   barcode: string;
@@ -81,69 +110,7 @@ interface UniversalScannerModalProps {
   onItemAddedToFridge?: () => void;
 }
 
-// Built-in Indian grocery test samples for Expo Go sandbox
-const EXPO_GO_TEST_SAMPLES = [
-  {
-    type: "barcode" as const,
-    title: "Amul Toned Milk (1L)",
-    code: "8901234567890",
-    category: "DAIRY" as ProductCategory,
-    brand: "Amul",
-    price: 72,
-    image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&q=80",
-    desc: "Long life toned milk, rich in calcium and vitamins.",
-  },
-  {
-    type: "barcode" as const,
-    title: "Britannia Brown Bread (400g)",
-    code: "8901030383748",
-    category: "BAKERY" as ProductCategory,
-    brand: "Britannia",
-    price: 50,
-    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80",
-    desc: "Wholesome 100% whole wheat brown bread.",
-  },
-  {
-    type: "barcode" as const,
-    title: "Mother Dairy Curd (400g)",
-    code: "8901063012345",
-    category: "DAIRY" as ProductCategory,
-    brand: "Mother Dairy",
-    price: 35,
-    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80",
-    desc: "Thick and creamy probiotic fresh dahi.",
-  },
-  {
-    type: "barcode" as const,
-    title: "Kellogg's Corn Flakes (300g)",
-    code: "8901725132209",
-    category: "PANTRY" as ProductCategory,
-    brand: "Kellogg's",
-    price: 185,
-    image: "https://images.unsplash.com/photo-1521483451569-e33803c0330c?w=600&q=80",
-    desc: "Crisp corn flakes with almond and honey.",
-  },
-  {
-    type: "barcode" as const,
-    title: "Maggi Masala Noodles (Pack 4)",
-    code: "8901058852882",
-    category: "PANTRY" as ProductCategory,
-    brand: "Nestle Maggi",
-    price: 60,
-    image: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=600&q=80",
-    desc: "Instant noodles with signature masala tastemaker.",
-  },
-  {
-    type: "qr" as const,
-    title: "Customer Order Pickup QR",
-    code: "EXPIRYGO:ORD-2026-8899",
-    category: "OTHER" as ProductCategory,
-    brand: "ExpiryGo Order",
-    price: 120,
-    image: "",
-    desc: "Verified reservation pickup token #ORD-2026-8899.",
-  },
-];
+
 
 export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
   visible,
@@ -171,11 +138,6 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
   const [manualInputModalVisible, setManualInputModalVisible] = useState(false);
   const [manualInputValue, setManualInputValue] = useState("");
 
-  // Test QR Display Modal
-  const [testQrModalVisible, setTestQrModalVisible] = useState(false);
-  const [testQrValue, setTestQrValue] = useState("");
-  const [testQrTitle, setTestQrTitle] = useState("");
-
   // Fridge quick add state
   const [fridgeAdding, setFridgeAdding] = useState(false);
   const [fridgeAddedSuccess, setFridgeAddedSuccess] = useState(false);
@@ -198,7 +160,7 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
   // Continuous laser scanline animation
   useEffect(() => {
     let animation: Animated.CompositeAnimation | null = null;
-    if (visible && !scannedBarcode && !scannedOcr && !scannedQrCode && mode !== "demo_test") {
+    if (visible && !scannedBarcode && !scannedOcr && !scannedQrCode) {
       animation = Animated.loop(
         Animated.sequence([
           Animated.timing(scanAnim, {
@@ -406,30 +368,6 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
     setFridgeAddedSuccess(false);
   };
 
-  // Expo Go Simulator trigger
-  const handleSimulateTestScan = (sample: (typeof EXPO_GO_TEST_SAMPLES)[0]) => {
-    triggerFeedback();
-    if (sample.type === "qr") {
-      const cleanData = sample.code.replace(/^EXPIRYGO:/i, "").trim();
-      setScannedQrCode(cleanData);
-      setScanLocked(true);
-      if (onQrScanned) onQrScanned(cleanData);
-    } else {
-      const res: ScannedBarcodeResult = {
-        barcode: sample.code,
-        name: sample.title,
-        brand: sample.brand,
-        category: sample.category,
-        suggested_price: sample.price,
-        image_url: sample.image,
-        description: sample.desc,
-      };
-      setScannedBarcode(res);
-      setScanLocked(true);
-      if (onBarcodeDetected) onBarcodeDetected(res);
-    }
-  };
-
   const getModeTitle = () => {
     switch (mode) {
       case "barcode":
@@ -440,8 +378,6 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
         return "Pickup QR Scanner";
       case "fridge_log":
         return "Fridge Quick-Scan";
-      case "demo_test":
-        return "Expo Go Test Suite";
       default:
         return "Smart Scanner";
     }
@@ -548,73 +484,11 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
               <Package size={14} color={mode === "fridge_log" ? "#FFF" : Colors.textMuted} />
               <Text style={[styles.modeTabText, mode === "fridge_log" && styles.modeTabTextActive]}>Fridge Scan</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modeTab, mode === "demo_test" && styles.modeTabActiveDemo]}
-              onPress={() => setMode("demo_test")}
-            >
-              <Play size={14} color={mode === "demo_test" ? "#FFF" : Colors.amberBright} />
-              <Text style={[styles.modeTabText, mode === "demo_test" && styles.modeTabTextActive]}>Test Samples</Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
 
-        {/* Viewfinder or Demo Mode View */}
-        {mode === "demo_test" ? (
-          /* Expo Go Test Playground Sandbox */
-          <ScrollView style={styles.demoContainer} contentContainerStyle={styles.demoContent}>
-            <View style={styles.demoHeaderCard}>
-              <Sparkles size={24} color={Colors.primary} />
-              <Text style={styles.demoHeaderTitle}>Expo Go Scanner Simulator</Text>
-              <Text style={styles.demoHeaderSub}>
-                Test scanner recognition, database lookups, and actions without needing physical grocery items.
-              </Text>
-            </View>
-
-            <Text style={styles.demoSectionTitle}>Sample Barcodes (Indian Catalog)</Text>
-            {EXPO_GO_TEST_SAMPLES.map((sample) => (
-              <View key={sample.code} style={styles.demoItemCard}>
-                <View style={styles.demoItemHeader}>
-                  <View style={styles.demoItemIcon}>
-                    {sample.type === "qr" ? (
-                      <QrCode size={20} color={Colors.primary} />
-                    ) : (
-                      <ScanLine size={20} color={Colors.primary} />
-                    )}
-                  </View>
-                  <View style={styles.demoItemInfo}>
-                    <Text style={styles.demoItemName}>{sample.title}</Text>
-                    <Text style={styles.demoItemCode}>Code: {sample.code}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.demoActionsRow}>
-                  <TouchableOpacity
-                    style={styles.demoSimulateBtn}
-                    onPress={() => handleSimulateTestScan(sample)}
-                    activeOpacity={0.8}
-                  >
-                    <Play size={14} color="#FFF" />
-                    <Text style={styles.demoSimulateBtnText}>Simulate Scan</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.demoShowQrBtn}
-                    onPress={() => {
-                      setTestQrValue(sample.code);
-                      setTestQrTitle(sample.title);
-                      setTestQrModalVisible(true);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <QrCode size={14} color={Colors.primary} />
-                    <Text style={styles.demoShowQrBtnText}>Show Code</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        ) : !permission?.granted ? (
+        {/* Viewfinder or Permission Required View */}
+        {!permission?.granted ? (
           /* Camera Permission Required View */
           <View style={styles.permissionContainer}>
             <View style={styles.permissionIconWrap}>
@@ -630,11 +504,11 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
 
             <TouchableOpacity
               style={styles.permissionFallbackBtn}
-              onPress={() => setMode("demo_test")}
+              onPress={() => setManualInputModalVisible(true)}
               activeOpacity={0.85}
             >
-              <Play size={16} color={Colors.primary} />
-              <Text style={styles.permissionFallbackText}>Or Use Expo Go Test Simulator</Text>
+              <ScanLine size={16} color={Colors.primary} />
+              <Text style={styles.permissionFallbackText}>Or Enter Code Manually</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -825,7 +699,7 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
         )}
 
         {/* Bottom Viewfinder Toolbar (Flashlight, Camera Switch, OCR Gallery) */}
-        {!scannedBarcode && !scannedOcr && !scannedQrCode && mode !== "demo_test" && (
+        {!scannedBarcode && !scannedOcr && !scannedQrCode && (
           <View style={styles.bottomBar}>
             {/* Gallery Image Picker */}
             <TouchableOpacity
@@ -917,47 +791,6 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
                   <Text style={styles.manualSubmitBtnText}>Submit Code</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Interactive QR Code Display Modal (for testing with second phone or camera) */}
-        <Modal
-          visible={testQrModalVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setTestQrModalVisible(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.qrDisplayCard}>
-              <View style={styles.manualModalHeader}>
-                <Text style={styles.manualModalTitle} numberOfLines={1}>{testQrTitle}</Text>
-                <TouchableOpacity onPress={() => setTestQrModalVisible(false)}>
-                  <X size={20} color={Colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.qrCodeSvgWrapper}>
-                <QRCode
-                  value={testQrValue || "EXPIRYGO:TEST"}
-                  size={190}
-                  color="#121826"
-                  backgroundColor="#FFFFFF"
-                />
-              </View>
-
-              <Text style={styles.qrDisplayValue}>{testQrValue}</Text>
-              <Text style={styles.qrDisplayHint}>Point any camera or scanner at this QR code to test instant reading.</Text>
-
-              <TouchableOpacity
-                style={styles.manualSubmitBtn}
-                onPress={() => {
-                  setTestQrModalVisible(false);
-                  handleBarcodeScanned({ data: testQrValue, type: "qr" } as any);
-                }}
-              >
-                <Text style={styles.manualSubmitBtnText}>Simulate Test Reading</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -1413,116 +1246,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.textSecondary,
   },
-  demoContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  demoContent: {
-    padding: Spacing.md,
-    paddingBottom: 40,
-  },
-  demoHeaderCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    padding: Spacing.lg,
-    alignItems: "center",
-    textAlign: "center",
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    marginBottom: Spacing.lg,
-    ...Shadows.soft,
-  },
-  demoHeaderTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: Colors.textPrimary,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  demoHeaderSub: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  demoSectionTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  demoItemCard: {
-    backgroundColor: Colors.card,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    ...Shadows.soft,
-  },
-  demoItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 10,
-  },
-  demoItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  demoItemInfo: {
-    flex: 1,
-  },
-  demoItemName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.textPrimary,
-  },
-  demoItemCode: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  demoActionsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  demoSimulateBtn: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Colors.primary,
-    paddingVertical: 8,
-    borderRadius: Radius.xs,
-    gap: 6,
-  },
-  demoSimulateBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  demoShowQrBtn: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.xs,
-    gap: 6,
-  },
-  demoShowQrBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: Colors.primary,
-  },
   permissionContainer: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -1646,36 +1369,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     color: "#FFFFFF",
-  },
-  qrDisplayCard: {
-    width: "100%",
-    maxWidth: 340,
-    backgroundColor: Colors.card,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    alignItems: "center",
-    ...Shadows.card,
-  },
-  qrCodeSvgWrapper: {
-    padding: Spacing.md,
-    backgroundColor: "#FFFFFF",
-    borderRadius: Radius.md,
-    marginVertical: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  qrDisplayValue: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: Colors.primary,
-    marginBottom: 4,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-  qrDisplayHint: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    marginBottom: Spacing.md,
-    paddingHorizontal: Spacing.sm,
   },
 });

@@ -1,11 +1,11 @@
 @echo off
+title ExpiryGo Mobile - Cloudflare Zero-Config Tunnel
 echo ============================================================
-echo   📱 EXPIRYGO MOBILE - TUNNEL MODE (CLOUD RELAY)
+echo   📱 EXPIRYGO MOBILE - GLOBAL CLOUD TUNNEL (EXPO GO)
 echo ============================================================
 echo.
-echo Tunnel mode works over ANY Wi-Fi, Mobile Data (4G/5G), and Hotspot.
-echo Bypasses router isolation and Windows Firewall completely!
+echo Tunnel mode works over ANY Wi-Fi, Mobile Hotspot, and 4G/5G data!
+echo 100% bypasses router isolation, network firewalls, and subnets.
 echo.
-cd mobile
-npx expo start --go --tunnel -c
+python run_tunnel.py
 pause

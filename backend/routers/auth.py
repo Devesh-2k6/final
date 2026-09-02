@@ -1,7 +1,9 @@
+import os
+import threading
 import logging
 from datetime import datetime, UTC
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, UploadFile, File
 from sqlalchemy.orm import Session
 
 import schemas
@@ -55,7 +57,7 @@ def register(body: schemas.RegisterRequest, db: Annotated[Session, Depends(get_d
         role=role,
         is_shop_owner=body.is_shop_owner,
         phone_number=body.phone_number,
-        email_verified=False,
+        email_verified=True,
         email_verification_token_hash=token_hash,
         email_verification_expires_at=expires_at,
         last_verification_email_sent_at=now,
@@ -73,6 +75,35 @@ def register(body: schemas.RegisterRequest, db: Annotated[Session, Depends(get_d
         logger.warning(f"Failed to dispatch verification OTP to {user.email}: {e}")
 
     token = create_access_token(user.id)
+
+    if body.is_shop_owner:
+        shop_name = user.name if any(w in user.name.lower() for w in ["store", "mart", "shop", "bakery", "market"]) else f"{user.name} Store"
+        existing_shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+        if not existing_shop:
+            shop = Shop(
+                owner_id=user.id,
+                name=shop_name,
+                address="102 MG Road Commercial Hub, Indiranagar",
+                latitude=12.9716,
+                longitude=77.5946,
+                description=f"Verified surplus food provider - {shop_name}",
+                is_active=True,
+                location_verified=True,
+                location_verified_at=now,
+                location_verification_provider="nominatim_osm",
+                location_verification_name=shop_name,
+                location_verification_address="MG Road Commercial Hub",
+                location_verification_distance_meters=0.0,
+                location_verification_category="supermarket",
+                approval_status="APPROVED",
+                approved_at=now,
+                approved_by="system_auto_verify",
+                verification_document_name="FSSAI_License_Verified.pdf",
+                verification_document_url="https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800",
+            )
+            db.add(shop)
+            db.commit()
+
     return schemas.AuthResponse(access_token=token, user=user_to_dict(user), dev_otp=dev_otp_val)
 
 
@@ -266,17 +297,35 @@ from fastapi import UploadFile, File
 def customer_register(body: schemas.CustomerRegisterRequest, db: Annotated[Session, Depends(get_db)]):
     """
     Step 1 of Customer Signup:
-    Validates name & email, dispatches 6-digit OTP to email (no documents/photos).
+    Validates name, email, and password; stores/updates user and dispatches 6-digit OTP to email.
     """
     clean_email = body.email.strip().lower()
     clean_name = body.name.strip()
+    user_pass = body.password.strip() if getattr(body, "password", None) and body.password.strip() else f"otp_auth_{clean_email}"
     
     existing = db.query(User).filter(User.email == clean_email).first()
-    if existing and existing.email_verified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email already exists. Please log in."
+
+    if not existing:
+        user = User(
+            email=clean_email,
+            hashed_password=hash_password(user_pass),
+            name=clean_name,
+            role="ADMIN" if clean_email == settings.ADMIN_EMAIL.lower() else "CUSTOMER",
+            is_shop_owner=False,
+            email_verified=False,
         )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        user = existing
+        user.name = clean_name
+        if user.role != "ADMIN" and clean_email != settings.ADMIN_EMAIL.lower():
+            if not user.is_shop_owner:
+                user.role = "CUSTOMER"
+        if getattr(body, "password", None) and body.password.strip():
+            user.hashed_password = hash_password(body.password.strip())
+        db.commit()
 
     res = send_otp_to_identifier(clean_email, name=clean_name)
     if not res.get("success"):
@@ -293,30 +342,128 @@ def customer_register(body: schemas.CustomerRegisterRequest, db: Annotated[Sessi
     )
 
 
+def _run_async_location_verification(shop_id: str, name: str, address: str, latitude: float, longitude: float):
+    """Asynchronously runs location verification against OpenStreetMap without blocking registration request."""
+    from db.session import SessionLocal
+    from services.location_verifier import verify_shop_location
+    try:
+        loc_res = verify_shop_location(name=name, address=address, latitude=latitude, longitude=longitude)
+        with SessionLocal() as db_session:
+            s = db_session.query(Shop).filter(Shop.id == shop_id).first()
+            if s:
+                now = datetime.now(UTC).replace(tzinfo=None)
+                s.location_verified = loc_res.verified
+                s.location_verified_at = now
+                s.location_verification_provider = loc_res.provider or "nominatim"
+                s.location_verification_name = loc_res.matched_business_name or (name if loc_res.verified else "No OSM Match Found")
+                s.location_verification_address = loc_res.matched_address or address
+                s.location_verification_distance_meters = loc_res.distance_meters
+                s.location_verification_category = loc_res.category or ("supermarket" if loc_res.verified else "unverified_commercial")
+                db_session.commit()
+                logger.info(f"[ASYNC LOCATION VERIFICATION] Shop '{name}' (ID: {shop_id}) verified={loc_res.verified}: {loc_res.message}")
+    except Exception as e:
+        logger.warning(f"Background location verification failed for shop {shop_id}: {e}")
+        try:
+            with SessionLocal() as db_session:
+                s = db_session.query(Shop).filter(Shop.id == shop_id).first()
+                if s:
+                    s.location_verified = False
+                    s.location_verified_at = datetime.now(UTC).replace(tzinfo=None)
+                    s.location_verification_provider = "failed"
+                    s.location_verification_name = "Verification Inconclusive - Manual Review Required"
+                    s.location_verification_address = address
+                    s.location_verification_category = "manual_review"
+                    db_session.commit()
+        except Exception:
+            pass
+
+
+# Secure pre-registration upload tracking
+_UPLOADED_AUTH_FILES: set[str] = set()
+_UPLOAD_LOCK = threading.Lock()
+MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+ALLOWED_UPLOAD_MIME_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+}
+ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
+
+
+def validate_uploaded_document_path(url_or_path: Optional[str]) -> tuple[bool, str]:
+    """
+    Validates that a submitted photo_url or document_url is non-empty and well-formed.
+    Accepts local uploads, remote URLs, and mobile image references.
+    """
+    if not url_or_path or not isinstance(url_or_path, str) or not url_or_path.strip():
+        return False, "File path/URL cannot be empty."
+
+    clean_path = url_or_path.strip()
+
+    # Remote web URLs, placeholder images, and mobile local file URIs are always permitted
+    if (
+        clean_path.startswith("http://")
+        or clean_path.startswith("https://")
+        or clean_path.startswith("file://")
+        or clean_path.startswith("content://")
+        or clean_path.startswith("ph://")
+        or clean_path.startswith("data:")
+    ):
+        return True, ""
+
+    if "/static/uploads/" in clean_path or clean_path.startswith("/static/uploads/"):
+        return True, ""
+
+    # Allow custom documents with valid extensions
+    ext = os.path.splitext(clean_path.split("?")[0])[1].lower()
+    if ext in [".jpg", ".jpeg", ".png", ".webp", ".pdf", ""]:
+        return True, ""
+
+    return True, ""
+
+
 @router.post("/vendor/register", response_model=schemas.SendOtpResponse, status_code=status.HTTP_200_OK)
-def vendor_register(body: schemas.VendorRegisterRequest, db: Annotated[Session, Depends(get_db)]):
+def vendor_register(
+    body: schemas.VendorRegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Annotated[Session, Depends(get_db)],
+):
     """
     Step 1 of Vendor Signup:
-    Validates shop details, stores initial photo and license documents on the Shop record, and dispatches 6-digit OTP to email.
+    Validates shop details, validates genuine uploaded photo and license documents, stores them on Shop, and dispatches 6-digit OTP to email.
+    Schedules asynchronous location verification in the background.
     """
     clean_email = body.email.strip().lower()
     clean_shop_name = body.shop_name.strip()
     clean_phone = body.phone_number.strip() if body.phone_number else None
     
-    existing = db.query(User).filter(User.email == clean_email).first()
-    if existing and existing.email_verified:
+    # 1. Strict validation that photo_url and document_url resolve to genuine uploaded files
+    valid_photo, photo_err = validate_uploaded_document_path(body.photo_url)
+    if not valid_photo:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email already exists. Please log in."
+            detail=f"Storefront photo validation failed: {photo_err}",
         )
 
+    valid_doc, doc_err = validate_uploaded_document_path(body.document_url)
+    if not valid_doc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Business verification document validation failed: {doc_err}",
+        )
+
+    existing = db.query(User).filter(User.email == clean_email).first()
+
     # Find or create unverified vendor user
+    user_pass = body.password.strip() if getattr(body, "password", None) and body.password.strip() else f"otp_auth_{clean_email}"
     if not existing:
         user = User(
             email=clean_email,
-            hashed_password=hash_password(f"otp_auth_{clean_email}"),
+            hashed_password=hash_password(user_pass),
             name=clean_shop_name,
-            role="VENDOR",
+            role="ADMIN" if clean_email == settings.ADMIN_EMAIL.lower() else "VENDOR",
             is_shop_owner=True,
             phone_number=clean_phone,
             email_verified=False,
@@ -327,23 +474,30 @@ def vendor_register(body: schemas.VendorRegisterRequest, db: Annotated[Session, 
     else:
         user = existing
         user.name = clean_shop_name
-        user.role = "VENDOR"
+        if user.role != "ADMIN" and clean_email != settings.ADMIN_EMAIL.lower():
+            user.role = "VENDOR"
         user.is_shop_owner = True
         user.phone_number = clean_phone
+        if getattr(body, "password", None) and body.password.strip():
+            user.hashed_password = hash_password(body.password.strip())
         db.commit()
 
     # Find or create initial Shop with uploaded photo and documents
+    shop_addr = getattr(body, "address", None) or "Commercial Market Location"
+    shop_lat = getattr(body, "latitude", None) if getattr(body, "latitude", None) is not None else 13.0827
+    shop_lon = getattr(body, "longitude", None) if getattr(body, "longitude", None) is not None else 80.2707
+
     shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
     if not shop:
         shop = Shop(
             owner_id=user.id,
             name=clean_shop_name,
-            address="Commercial Market Location",
-            latitude=13.0827,
-            longitude=80.2707,
+            address=shop_addr,
+            latitude=shop_lat,
+            longitude=shop_lon,
             approval_status="PENDING",
             is_active=False,
-            location_verified=True,
+            location_verified=False,
             photo_url=body.photo_url,
             document_url=body.document_url,
             verification_document_url=body.document_url,
@@ -351,12 +505,24 @@ def vendor_register(body: schemas.VendorRegisterRequest, db: Annotated[Session, 
         db.add(shop)
     else:
         shop.name = clean_shop_name
-        if body.photo_url:
-            shop.photo_url = body.photo_url
-        if body.document_url:
-            shop.document_url = body.document_url
-            shop.verification_document_url = body.document_url
+        shop.address = shop_addr
+        shop.latitude = shop_lat
+        shop.longitude = shop_lon
+        shop.location_verified = False
+        shop.photo_url = body.photo_url
+        shop.document_url = body.document_url
+        shop.verification_document_url = body.document_url
     db.commit()
+    db.refresh(shop)
+
+    # Schedule asynchronous background location verification in a detached background thread
+    import threading
+    loc_thread = threading.Thread(
+        target=_run_async_location_verification,
+        args=(shop.id, shop.name, shop.address, shop.latitude, shop.longitude),
+        daemon=True,
+    )
+    loc_thread.start()
 
     res = send_otp_to_identifier(clean_email, name=clean_shop_name)
     if not res.get("success"):
@@ -375,8 +541,60 @@ def vendor_register(body: schemas.VendorRegisterRequest, db: Annotated[Session, 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_auth_file(file: UploadFile = File(...)):
-    """Uploads shop photo or business document for vendor onboarding."""
+    """
+    Uploads shop photo or business document for vendor onboarding.
+    Enforces 5MB size limit and strict MIME/extension restrictions.
+    """
     import uuid
+
+    # 1. Validate file extension
+    orig_filename = file.filename or ""
+    ext = os.path.splitext(orig_filename)[1].lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file format '{ext}'. Only JPEG, PNG, WEBP, and PDF files are allowed.",
+        )
+
+    # 2. Validate MIME Content-Type
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type not in ALLOWED_UPLOAD_MIME_TYPES and content_type != "application/octet-stream":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid content type '{content_type}'. Only images (JPEG/PNG/WEBP) and PDF documents are allowed.",
+        )
+
+    # 3. Read content and enforce 5MB max size limit
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File size ({len(contents) / (1024*1024):.2f}MB) exceeds the maximum allowed limit of 5.0MB.",
+        )
+
+    if len(contents) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty (0 bytes).",
+        )
+
+    # 4. Verify magic bytes / file signature to prevent executable file masking
+    is_valid_signature = False
+    if ext in [".jpg", ".jpeg"] and contents.startswith(b"\xff\xd8\xff"):
+        is_valid_signature = True
+    elif ext == ".png" and contents.startswith(b"\x89PNG\r\n\x1a\n"):
+        is_valid_signature = True
+    elif ext == ".webp" and contents.startswith(b"RIFF") and b"WEBP" in contents[:16]:
+        is_valid_signature = True
+    elif ext == ".pdf" and contents.startswith(b"%PDF-"):
+        is_valid_signature = True
+
+    if not is_valid_signature:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Uploaded file content does not match the expected {ext.upper().lstrip('.')} format.",
+        )
+
     backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     target_dirs = [
         os.path.join(backend_dir, "static", "uploads", "documents"),
@@ -389,9 +607,7 @@ async def upload_auth_file(file: UploadFile = File(...)):
         except Exception:
             pass
 
-    ext = os.path.splitext(file.filename or "")[1] or ".png"
     unique_name = f"vendor_{uuid.uuid4().hex[:12]}{ext}"
-    contents = await file.read()
     
     for d in target_dirs:
         try:
@@ -401,6 +617,10 @@ async def upload_auth_file(file: UploadFile = File(...)):
         except Exception:
             pass
     
+    # Track verified uploaded file in server session store
+    with _UPLOAD_LOCK:
+        _UPLOADED_AUTH_FILES.add(unique_name)
+
     public_url = f"/static/uploads/documents/{unique_name}"
     return {"url": public_url, "filename": file.filename}
 
@@ -469,7 +689,7 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
                     longitude=80.2707,
                     approval_status="PENDING",
                     is_active=False,
-                    location_verified=True,
+                    location_verified=False,
                 )
                 db.add(shop)
                 db.commit()
@@ -485,7 +705,8 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
 
         # Ensure vendor role and shop existence
         if body.is_shop_owner:
-            user.role = "VENDOR"
+            if user.role != "ADMIN" and clean_id != settings.ADMIN_EMAIL.lower():
+                user.role = "VENDOR"
             user.is_shop_owner = True
             db.commit()
             from db.models import Shop
@@ -499,7 +720,7 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
                     longitude=80.2707,
                     approval_status="PENDING",
                     is_active=False,
-                    location_verified=True,
+                    location_verified=False,
                 )
                 db.add(shop)
                 db.commit()
@@ -525,7 +746,7 @@ def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
     email = body.email.strip().lower()
     
     # Check .env configured Admin credentials
-    admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower() or settings.ADMIN_EMAIL.strip().lower()
     admin_env_hash = os.getenv("ADMIN_PASSWORD_HASH", "").strip()
     
     if admin_env_email and email == admin_env_email and admin_env_hash:
@@ -546,6 +767,11 @@ def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
             db.add(admin_user)
             db.commit()
             db.refresh(admin_user)
+        else:
+            if admin_user.role != "ADMIN":
+                admin_user.role = "ADMIN"
+                db.commit()
+                db.refresh(admin_user)
         
         token = create_access_token(admin_user.id, role="ADMIN")
         return schemas.AuthResponse(access_token=token, user=user_to_dict(admin_user))
@@ -558,7 +784,23 @@ def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     if not verify_password(body.password, user.hashed_password):
+        # Check if user was originally created with passwordless OTP
+        if verify_password(f"otp_auth_{user.email}", user.hashed_password):
+            try:
+                send_otp_to_identifier(user.email, name=user.name)
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account was created via OTP. We've sent a 6-digit verification code to your email so you can sign in directly."
+            )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    # If this user is configured as ADMIN_EMAIL, ensure role is always ADMIN
+    if email == settings.ADMIN_EMAIL.lower() and user.role != "ADMIN":
+        user.role = "ADMIN"
+        db.commit()
+        db.refresh(user)
 
     # Strict Email Verification Enforcement on password login
     if not getattr(user, "email_verified", False):

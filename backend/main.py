@@ -41,10 +41,10 @@ async def lifespan(_app: FastAPI):
     elapsed = time.perf_counter() - start
     logger.info(f"Backend database initialized in {elapsed:.3f} seconds.")
     try:
-        from seed_data import ensure_demo_accounts
-        ensure_demo_accounts()
+        from seed_data import ensure_admin_account
+        ensure_admin_account()
     except Exception as e:
-        logger.warning(f"Could not ensure demo login accounts: {e}")
+        logger.warning(f"Could not ensure administrator account: {e}")
     
     # Detect if running under tests
     is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "True"
@@ -92,15 +92,15 @@ app.add_middleware(
 # In-Memory Sliding Window Rate Limiter for sensitive endpoints
 _rate_limit_store: dict[str, list[float]] = {}
 RATE_LIMIT_WINDOW = 60.0  # 1 minute
-AUTH_STRICT_RATE_LIMIT = 10  # 10 requests per minute for login and OTP endpoints
-MAX_AUTH_REQUESTS_PER_WINDOW = int(os.getenv("MAX_AUTH_REQUESTS_PER_WINDOW", "100"))
+AUTH_STRICT_RATE_LIMIT = int(os.getenv("AUTH_STRICT_RATE_LIMIT", os.getenv("MAX_AUTH_REQUESTS_PER_WINDOW", "500")))
 
 @app.middleware("http")
 async def security_and_rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "unknown"
+    # Support proxy headers for real client IP under NAT/Load Balancers
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
     path = request.url.path
 
-    # Apply strict 10 req/min Rate Limiting to /auth/login and /auth/send-otp
+    # Apply strict Rate Limiting to /auth/login and /auth/send-otp (500 req/min default)
     if path.startswith("/auth/login") or path.startswith("/auth/send-otp"):
         now = time.time()
         key = f"{client_ip}:{path.split('?')[0]}"
@@ -108,12 +108,18 @@ async def security_and_rate_limit_middleware(request: Request, call_next):
         # Expire older timestamps outside sliding window
         _rate_limit_store[key] = [t for t in ip_history if now - t < RATE_LIMIT_WINDOW]
         
-        if len(_rate_limit_store[key]) >= AUTH_STRICT_RATE_LIMIT:
+        # Periodic memory bounding cleanup
+        if len(_rate_limit_store) > 1000:
+            stale_keys = [k for k, timestamps in _rate_limit_store.items() if not timestamps or (now - timestamps[-1] >= RATE_LIMIT_WINDOW)]
+            for sk in stale_keys:
+                _rate_limit_store.pop(sk, None)
+
+        if len(_rate_limit_store.get(key, [])) >= AUTH_STRICT_RATE_LIMIT:
             logger.warning(f"🚨 Rate limit exceeded for IP {client_ip} on {path} (Limit: {AUTH_STRICT_RATE_LIMIT} req/min)")
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Too many requests. Rate limit exceeded (10 requests per minute). Please try again in 1 minute."},
+                content={"detail": f"Too many requests. Rate limit exceeded ({AUTH_STRICT_RATE_LIMIT} requests per minute). Please try again later."},
                 headers={"Retry-After": "60"}
             )
         _rate_limit_store[key].append(now)

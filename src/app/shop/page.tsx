@@ -2,6 +2,7 @@
 
 import { DollarSign, Package, AlertTriangle, TrendingUp, Store, MapPin, Plus, Sparkles, XCircle, Loader2, Clock, Leaf, ArrowRight, Percent, ShieldAlert, BarChart3, Check, Brain, Activity, Info, Award } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useMemo, useState, useEffect } from "react";
 import { formatExpiryDisplay, isExpiringWithinHours } from "@/lib/products/formatters";
 import { getMyShop, getShopAnalytics, getMlDiagnostics } from "@/services/shops";
@@ -172,6 +173,15 @@ export default function ShopDashboardOverview() {
 
   const [nowMs] = useState(() => Date.now());
   const { products, refetch } = useProducts(shopId ? { shopId, limit: 100, hideExpired: true } : { shopId: "pending_shop_load", limit: 100, hideExpired: true });
+
+  // Real-time synchronization across Web and Mobile
+  useWebSocket(() => {
+    refetch();
+    if (shopId) {
+      getShopAnalytics().then(setAnalytics).catch(console.error);
+      fetchAiInventory();
+    }
+  });
 
   // Sync selected product with the active shop's product list to prevent cross-ownership query errors
   useEffect(() => {

@@ -115,7 +115,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>Product deal not found.</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("DealsTab");
+            }
+          }}
+        >
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -151,7 +160,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     <View style={styles.container}>
       {/* Top Header Navigation */}
       <View style={styles.topNav}>
-        <TouchableOpacity style={styles.navCircle} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.navCircle}
+          onPress={() => {
+            if (navigation && typeof navigation.canGoBack === "function" && navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("DealsTab");
+            }
+          }}
+        >
           <ArrowLeft size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
 

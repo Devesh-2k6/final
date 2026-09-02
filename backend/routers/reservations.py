@@ -9,7 +9,8 @@ from db.models import User, Product, Shop, Reservation, ReservationStatus, Payme
 from db.session import get_db
 from services.email import send_email_notification
 from routers.shops import _get_owner_shop
-from routers.products import _calculate_dynamic_price
+from routers.products import _calculate_dynamic_price, _serialize_product
+from websocket_manager import manager
 
 router = APIRouter(prefix="/reservations", tags=["Reservations"])
 
@@ -26,8 +27,8 @@ def create_reservation(
             detail="Please verify your email address to make deal reservations."
         )
 
-    # Optimized query to load Product and Shop together with a write lock to prevent race conditions
-    product = db.query(Product).options(joinedload(Product.shop)).filter(Product.id == res_in.product_id).with_for_update().first()
+    # Query product with row-level write lock to prevent race conditions without outer join conflicts
+    product = db.query(Product).filter(Product.id == res_in.product_id).with_for_update().first()
     if not product or product.quantity < res_in.quantity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -85,6 +86,24 @@ def create_reservation(
         email_text = f"Hello {user.name},\n\nYour reservation at {shop.name} is confirmed!\n\nProduct: {product.name}\nQuantity: {reservation.quantity}\nTotal: ₹{reservation.total_price:.2f}\nPickup Code: {reservation.pickup_code}\nAddress: {shop.address}\n\nShow the code at the shop to collect."
         send_email_notification(user.email, email_subject, email_html, email_text)
 
+    # Broadcast updated deal stock & new reservation to all connected web and mobile clients
+    try:
+        updated_prod = _serialize_product(product, product.shop)
+        manager.broadcast_sync({
+            "type": "update_deal",
+            "product": updated_prod
+        })
+        manager.broadcast_sync({
+            "type": "new_reservation",
+            "reservation_id": str(reservation.id),
+            "shop_id": str(reservation.shop_id),
+            "product_name": product.name,
+            "quantity": reservation.quantity,
+            "pickup_code": reservation.pickup_code
+        })
+    except Exception as e:
+        pass
+
     # Must query and return the reservation with loaded relationships to avoid Pydantic serialization errors
     return db.query(Reservation).options(joinedload(Reservation.product).joinedload(Product.shop)).filter(Reservation.id == reservation.id).first()
 
@@ -135,6 +154,17 @@ def verify_reservation_by_code(
 
     db.commit()
     db.refresh(reservation)
+
+    try:
+        manager.broadcast_sync({
+            "type": "reservation_status_changed",
+            "reservation_id": str(reservation.id),
+            "shop_id": str(shop.id),
+            "status": "COMPLETED"
+        })
+    except Exception:
+        pass
+
     return {"message": "Reservation verified successfully!", "status": reservation.status}
 
 
@@ -219,6 +249,17 @@ def verify_reservation(
             
     db.commit()
     db.refresh(reservation)
+
+    try:
+        manager.broadcast_sync({
+            "type": "reservation_status_changed",
+            "reservation_id": str(reservation.id),
+            "shop_id": str(shop.id),
+            "status": "COMPLETED"
+        })
+    except Exception:
+        pass
+
     return {"message": "Reservation verified successfully!", "status": reservation.status}
 
 

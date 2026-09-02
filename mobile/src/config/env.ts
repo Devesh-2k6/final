@@ -4,18 +4,32 @@ import Constants from "expo-constants";
 
 export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
-export const CURRENT_LAN_IP = "10.43.177.184";
+export const CURRENT_LAN_IP = "10.60.86.184";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
 export const TUNNEL_API_URL = "https://good-queens-tap.loca.lt";
 
 /**
  * Returns the default API URL depending on the platform:
- * - Real Device / Expo Go: Auto-resolves machine IP or defaults to local Wi-Fi IP (10.189.164.184:8000)
+ * - Expo Web on localhost: http://localhost:8000
+ * - Expo Web on LAN IP: http://<LAN_IP>:8000
+ * - Real Device / Expo Go: Auto-resolves machine IP or defaults to local Wi-Fi IP (10.43.177.184:8000)
  * - Android Emulator: 10.0.2.2:8000
  * - iOS Simulator / Local: localhost:8000
  */
 export function getDefaultApiBaseUrl(): string {
-  // 1. Try extracting host IP from various Expo Constants locations across SDK versions
+  // 1. If running in Web browser (Expo Web / React Native Web)
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+    if (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname)) {
+      return `http://${hostname}:8000`;
+    }
+    return `http://${hostname}:8000`;
+  }
+
+  // 2. Try extracting host IP from various Expo Constants locations across SDK versions
   const hostUri =
     Constants.expoConfig?.hostUri ||
     (Constants as any).expoGoConfig?.debuggerHost ||
@@ -29,7 +43,7 @@ export function getDefaultApiBaseUrl(): string {
     }
   }
 
-  // 2. Try parsing from linkingUri (e.g., "exp://10.189.164.184:8081" or "http://10.189.164.184:8081")
+  // 3. Try parsing from linkingUri (e.g., "exp://10.43.177.184:8081" or "http://10.43.177.184:8081")
   if (Constants.linkingUri && typeof Constants.linkingUri === "string") {
     try {
       const match = Constants.linkingUri.match(/^[a-zA-Z]+:\/\/([^:/]+)/);
@@ -39,12 +53,17 @@ export function getDefaultApiBaseUrl(): string {
     } catch {}
   }
 
-  // 3. For physical mobile devices on Expo Go / Wi-Fi: use laptop Wi-Fi IP
+  // 4. For physical mobile devices on Expo Go / Wi-Fi: use current laptop Wi-Fi IP
   if (Platform.OS === "android" || Platform.OS === "ios") {
     return LAN_API_URL;
   }
 
   return "http://localhost:8000";
+}
+
+export async function getWebSocketUrl(): Promise<string> {
+  const httpUrl = await getApiBaseUrl();
+  return httpUrl.replace(/^https:\/\//i, "wss://").replace(/^http:\/\//i, "ws://");
 }
 
 let cachedBaseUrl: string | null = null;

@@ -289,10 +289,10 @@ export default function ShopSetupPage() {
           animate="animate"
           className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 sm:p-10"
         >
-          {/* Quick Presets for Demo Testing */}
+          {/* Quick Presets */}
           <div className="mb-8 p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
             <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-2">
-              <Sparkles size={14} /> Quick Demo Food Locations (1-Click Fill)
+              <Sparkles size={14} /> Popular Verified Business Locations (1-Click Fill)
             </div>
             <p className="text-xs text-slate-600 dark:text-gray-400 mb-3 font-medium">
               Click any verified food landmark below to auto-fill details and GPS pin:

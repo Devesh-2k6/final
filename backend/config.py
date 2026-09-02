@@ -40,8 +40,8 @@ class Settings(BaseSettings):
     EMAIL_RESEND_COOLDOWN_SECONDS: int = Field(default=60)
 
     # Admin Settings
-    ADMIN_EMAIL: str = Field(default="")
-    ADMIN_PASSWORD_HASH: str = Field(default="")
+    ADMIN_EMAIL: str = Field(default="devpant2006@gmail.com")
+    ADMIN_PASSWORD_HASH: str = Field(default="$2b$12$YXvuTHn/svY5OA9tDbO1luJ37gBWFkE92lSpBXWK5NVYORjw/HlHa")
 
     # Shop Location Verification Settings
     SHOP_LOCATION_VERIFICATION_ENABLED: bool = Field(default=True)

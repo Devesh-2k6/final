@@ -271,4 +271,19 @@
   }
 }
 
+/* Leaflet Custom Marker & Pin Overrides */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+.custom-interactive-store-pin,
+.admin-submitted-pin,
+.admin-matched-pin,
+.custom-shop-marker,
+.custom-user-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+
 

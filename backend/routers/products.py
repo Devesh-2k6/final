@@ -164,6 +164,8 @@ def read_products(
     lat: Optional[float] = None,
     lng: Optional[float] = None,
     radius_km: Optional[float] = 50.0,
+    limit: Optional[int] = None,
+    offset: int = 0,
 ):
     def haversine_distance(lat1, lon1, lat2, lon2):
         R = 6371.0 # Earth radius in km
@@ -185,7 +187,12 @@ def read_products(
     if q:
         query = query.filter(Product.name.ilike(f"%{q}%"))
 
-    products = query.order_by(Product.expiry_date.asc()).all()
+    products_query = query.order_by(Product.expiry_date.asc())
+    if limit is not None:
+        capped_limit = min(max(1, limit), 500)
+        products = products_query.offset(max(0, offset)).limit(capped_limit).all()
+    else:
+        products = products_query.all()
 
     out: list[dict] = []
     products_with_distance = []
@@ -692,12 +699,15 @@ async def create_product(
         db.commit()
 
     serialized = _serialize_product(product, shop)
-    
+
     # Broadcast the new deal to all connected clients!
-    asyncio.create_task(manager.broadcast({
-        "type": "new_deal",
-        "product": serialized
-    }))
+    try:
+        manager.broadcast_sync({
+            "type": "new_deal",
+            "product": serialized
+        })
+    except Exception as e:
+        logger.warning(f"Could not broadcast new_deal: {e}")
 
     return serialized
 
@@ -748,7 +758,18 @@ def update_product(
 
     db.commit()
     db.refresh(product)
-    return _serialize_product(product, shop)
+    serialized = _serialize_product(product, shop)
+    
+    # Broadcast update event to all connected web and mobile clients
+    try:
+        manager.broadcast_sync({
+            "type": "update_deal",
+            "product": serialized
+        })
+    except Exception as e:
+        logger.warning(f"Could not broadcast update_deal: {e}")
+
+    return serialized
 
 
 @router.delete("/{product_id}")
@@ -762,8 +783,19 @@ def delete_product(
     if not product or product.shop_id != shop.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or not yours")
     
+    prod_id_str = str(product.id)
     db.delete(product)
     db.commit()
+
+    # Broadcast deletion event to all connected web and mobile clients
+    try:
+        manager.broadcast_sync({
+            "type": "delete_deal",
+            "product_id": prod_id_str
+        })
+    except Exception as e:
+        logger.warning(f"Could not broadcast delete_deal: {e}")
+
     return {"message": "Product deleted successfully"}
 
 

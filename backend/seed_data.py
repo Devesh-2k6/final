@@ -22,109 +22,46 @@ from db.models import (
 )
 from auth_service import hash_password
 
-DEMO_PASSWORD = "password123"
-
-# Documented localhost demo logins. Upserts only these emails — never wipes other users.
-DEMO_ACCOUNTS = [
-    {
-        "email": "customer@test.com",
-        "name": "John Doe",
-        "role": "CUSTOMER",
-        "is_shop_owner": False,
-    },
-    {
-        "email": "admin@test.com",
-        "name": "Platform Administrator",
-        "role": "ADMIN",
-        "is_shop_owner": False,
-    },
-    {
-        "email": "shop1@test.com",
-        "name": "Rajesh Patel",
-        "role": "VENDOR",
-        "is_shop_owner": True,
-        "shop": {
-            "name": "Green Valley Supermarket",
-            "address": "123 Anna Salai, Downtown Chennai",
-            "latitude": 13.0827,
-            "longitude": 80.2707,
-            "description": "Demo supermarket for local testing.",
-        },
-    },
-]
+ADMIN_EMAIL = "devpant2006@gmail.com"
+ADMIN_PASSWORD = "Sureshkumar12345@"
+ADMIN_NAME = "Platform Administrator"
 
 
-def ensure_demo_accounts() -> None:
-    """Create the documented demo logins if missing, without deleting existing users."""
-    from auth_service import verify_password
+def ensure_admin_account() -> None:
+    """Create or update the platform Administrator account without generating dummy demo accounts."""
+    from auth_service import verify_password, hash_password
 
     init_db()
     db = SessionLocal()
     try:
-        password_hash = None
-        now = datetime.utcnow()
-        for account in DEMO_ACCOUNTS:
-            user = db.query(User).filter(User.email == account["email"]).first()
-            if user:
-                user.role = account["role"]
-                user.is_shop_owner = account["is_shop_owner"]
-                user.email_verified = True
-                if not verify_password(DEMO_PASSWORD, user.hashed_password):
-                    if password_hash is None:
-                        password_hash = hash_password(DEMO_PASSWORD)
-                    user.hashed_password = password_hash
-            else:
-                if password_hash is None:
-                    password_hash = hash_password(DEMO_PASSWORD)
-                user = User(
-                    email=account["email"],
-                    hashed_password=password_hash,
-                    name=account["name"],
-                    role=account["role"],
-                    is_shop_owner=account["is_shop_owner"],
-                    email_verified=True,
-                )
-                db.add(user)
-                db.flush()
-
-            shop_info = account.get("shop")
-            if shop_info:
-                shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
-                if not shop:
-                    shop = Shop(
-                        name=shop_info["name"],
-                        owner_id=user.id,
-                        address=shop_info["address"],
-                        latitude=shop_info["latitude"],
-                        longitude=shop_info["longitude"],
-                        description=shop_info.get("description"),
-                        is_active=True,
-                        location_verified=True,
-                        location_verified_at=now,
-                        location_verification_provider="nominatim",
-                        location_verification_name=shop_info["name"],
-                        location_verification_address=shop_info["address"],
-                        location_verification_distance_meters=0.0,
-                        location_verification_category="supermarket",
-                        approval_status="APPROVED",
-                        approved_at=now,
-                        approved_by="admin@test.com",
-                    )
-                    db.add(shop)
-                else:
-                    shop.is_active = True
-                    shop.approval_status = "APPROVED"
-                    shop.location_verified = True
-                    if not shop.approved_at:
-                        shop.approved_at = now
+        user = db.query(User).filter(User.email == ADMIN_EMAIL).first()
+        if user:
+            user.role = "ADMIN"
+            user.is_shop_owner = False
+            user.email_verified = True
+            if not verify_password(ADMIN_PASSWORD, user.hashed_password):
+                user.hashed_password = hash_password(ADMIN_PASSWORD)
+        else:
+            user = User(
+                email=ADMIN_EMAIL,
+                hashed_password=hash_password(ADMIN_PASSWORD),
+                name=ADMIN_NAME,
+                role="ADMIN",
+                is_shop_owner=False,
+                email_verified=True,
+            )
+            db.add(user)
         db.commit()
-        print("[OK] Demo logins ready: customer@test.com, shop1@test.com, admin@test.com / password123")
+        print(f"[OK] Platform Administrator ready: {ADMIN_EMAIL}")
     except Exception as e:
         db.rollback()
-        print(f"[ERROR] Failed to ensure demo accounts: {e}")
+        print(f"[ERROR] Failed to ensure admin account: {e}")
         raise
-    finally:
-        db.close()
+
+
+def ensure_demo_accounts() -> None:
+    """Alias to ensure_admin_account - only provisions the platform Administrator."""
+    ensure_admin_account()
 
 
 def seed_database():
