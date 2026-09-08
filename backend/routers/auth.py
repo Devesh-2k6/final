@@ -48,7 +48,7 @@ def register(body: schemas.RegisterRequest, db: Annotated[Session, Depends(get_d
     )
     now = datetime.now(UTC).replace(tzinfo=None)
 
-    role = "SHOPKEEPER" if body.is_shop_owner else "CUSTOMER"
+    role = "VENDOR" if body.is_shop_owner else "CUSTOMER"
 
     user = User(
         email=email,
@@ -57,7 +57,7 @@ def register(body: schemas.RegisterRequest, db: Annotated[Session, Depends(get_d
         role=role,
         is_shop_owner=body.is_shop_owner,
         phone_number=body.phone_number,
-        email_verified=True,
+        email_verified=False,
         email_verification_token_hash=token_hash,
         email_verification_expires_at=expires_at,
         last_verification_email_sent_at=now,
@@ -75,34 +75,6 @@ def register(body: schemas.RegisterRequest, db: Annotated[Session, Depends(get_d
         logger.warning(f"Failed to dispatch verification OTP to {user.email}: {e}")
 
     token = create_access_token(user.id)
-
-    if body.is_shop_owner:
-        shop_name = user.name if any(w in user.name.lower() for w in ["store", "mart", "shop", "bakery", "market"]) else f"{user.name} Store"
-        existing_shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
-        if not existing_shop:
-            shop = Shop(
-                owner_id=user.id,
-                name=shop_name,
-                address="102 MG Road Commercial Hub, Indiranagar",
-                latitude=12.9716,
-                longitude=77.5946,
-                description=f"Verified surplus food provider - {shop_name}",
-                is_active=True,
-                location_verified=True,
-                location_verified_at=now,
-                location_verification_provider="nominatim_osm",
-                location_verification_name=shop_name,
-                location_verification_address="MG Road Commercial Hub",
-                location_verification_distance_meters=0.0,
-                location_verification_category="supermarket",
-                approval_status="APPROVED",
-                approved_at=now,
-                approved_by="system_auto_verify",
-                verification_document_name="FSSAI_License_Verified.pdf",
-                verification_document_url="https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800",
-            )
-            db.add(shop)
-            db.commit()
 
     return schemas.AuthResponse(access_token=token, user=user_to_dict(user), dev_otp=dev_otp_val)
 
@@ -818,7 +790,110 @@ def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
     return schemas.AuthResponse(access_token=token, user=user_to_dict(user))
 
 
+@router.post("/forgot-password", response_model=schemas.ForgotPasswordResponse)
+def forgot_password(body: schemas.ForgotPasswordRequest, db: Annotated[Session, Depends(get_db)]):
+    """
+    Initiates Password Reset:
+    Dispatches a cryptographically secure 6-digit OTP to the registered email address.
+    Applies rate limiting cooldown (60s) and expiration (10 min).
+    """
+    clean_email = body.email.strip().lower()
+    user = db.query(User).filter(User.email == clean_email).first()
+    
+    admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower() or settings.ADMIN_EMAIL.strip().lower()
+    is_admin = (clean_email == admin_env_email)
+
+    if not user and not is_admin:
+        # Constant time enumeration protection
+        return schemas.ForgotPasswordResponse(
+            success=True,
+            message="If an account with this email exists, a password reset code has been sent.",
+            expires_in_seconds=600,
+        )
+
+    user_name = user.name if user else "Admin"
+    res = send_otp_to_identifier(clean_email, name=user_name, purpose="reset_password")
+    if not res.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=res.get("message", "Please wait before requesting another password reset code.")
+        )
+    
+    return schemas.ForgotPasswordResponse(
+        success=True,
+        message=f"6-digit password reset code sent to {clean_email}.",
+        expires_in_seconds=res.get("expires_in_seconds", 600),
+        cooldown_remaining=res.get("cooldown_remaining"),
+        dev_code=res.get("dev_code"),
+    )
+
+
+@router.post("/reset-password", response_model=schemas.ResetPasswordResponse)
+def reset_password(body: schemas.ResetPasswordRequest, db: Annotated[Session, Depends(get_db)]):
+    """
+    Completes Password Reset:
+    Validates and consumes the 6-digit OTP code, updates user password hash with Bcrypt,
+    marks email_verified=True, and issues an active access token.
+    """
+    clean_email = body.email.strip().lower()
+    clean_password = body.new_password.strip()
+
+    if len(clean_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters long."
+        )
+
+    is_valid, msg = verify_otp_code(clean_email, body.otp)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
+
+    user = db.query(User).filter(User.email == clean_email).first()
+    admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower() or settings.ADMIN_EMAIL.strip().lower()
+
+    if not user:
+        if clean_email == admin_env_email:
+            user = User(
+                email=clean_email,
+                hashed_password=hash_password(clean_password),
+                name="Platform Admin",
+                role="ADMIN",
+                is_shop_owner=False,
+                email_verified=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User account not found."
+            )
+    else:
+        user.hashed_password = hash_password(clean_password)
+        user.email_verified = True
+        user.email_verification_token_hash = None
+        user.email_verification_expires_at = None
+        db.commit()
+        db.refresh(user)
+
+    logger.info(f"[PASSWORD RESET] Password successfully reset for user: {clean_email}")
+    token = create_access_token(user.id, role=getattr(user, "role", "CUSTOMER"))
+
+    return schemas.ResetPasswordResponse(
+        success=True,
+        message="Password has been reset successfully. You are now signed in.",
+        access_token=token,
+        token_type="bearer",
+        user=user_to_dict(user)
+    )
+
+
 user_router = APIRouter(tags=["Users"])
+
 
 @user_router.get("/users/me", response_model=schemas.User)
 def read_current_user(user: Annotated[User, Depends(get_current_user)]):

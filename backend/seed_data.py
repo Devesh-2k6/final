@@ -123,7 +123,7 @@ def seed_database():
                 email=shop_info["email"],
                 hashed_password=hash_password(shop_info["password"]),
                 name=shop_info["owner_name"],
-                role="SHOPKEEPER",
+                role="VENDOR",
                 is_shop_owner=True,
                 email_verified=True,
             )
@@ -159,7 +159,7 @@ def seed_database():
             email="shop_pending@test.com",
             hashed_password=hash_password("password123"),
             name="Devi Bakery & Sweets",
-            role="SHOPKEEPER",
+            role="VENDOR",
             is_shop_owner=True,
             email_verified=True,
         )

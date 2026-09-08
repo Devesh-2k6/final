@@ -192,12 +192,12 @@ def create_shop(
         shop.location_verification_address = matched_addr
         shop.location_verification_distance_meters = dist_meters
         shop.location_verification_category = category
-        shop.approval_status = "APPROVED"
-        shop.approved_at = now
-        shop.approved_by = "system_auto_verify"
-        shop.approval_reason = None
+        shop.approval_status = "PENDING"
+        shop.approved_at = None
+        shop.approved_by = None
+        shop.approval_reason = approval_reason
         shop.rejected_at = None
-        shop.is_active = True
+        shop.is_active = False
     else:
         shop = Shop(
             owner_id=user.id,
@@ -206,20 +206,20 @@ def create_shop(
             latitude=shop_in.latitude,
             longitude=shop_in.longitude,
             description=shop_in.description,
-            verification_document_url=shop_in.verification_document_url or "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800",
-            verification_document_name=shop_in.verification_document_name or "FSSAI_License_Verified.pdf",
-            is_active=True,
-            location_verified=True,
-            location_verified_at=now,
+            verification_document_url=shop_in.verification_document_url,
+            verification_document_name=shop_in.verification_document_name,
+            is_active=False,
+            location_verified=is_loc_verified,
+            location_verified_at=now if is_loc_verified else None,
             location_verification_provider=provider,
             location_verification_name=matched_name,
             location_verification_address=matched_addr,
             location_verification_distance_meters=dist_meters,
             location_verification_category=category,
-            approval_status="APPROVED",
-            approved_at=now,
-            approved_by="system_auto_verify",
-            approval_reason=None,
+            approval_status="PENDING",
+            approved_at=None,
+            approved_by=None,
+            approval_reason=approval_reason,
         )
         db.add(shop)
 

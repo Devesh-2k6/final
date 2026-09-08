@@ -17,7 +17,7 @@ import { getProducts } from "@/services/products";
 import type { ApiProduct } from "@/types/product";
 import { getSafeImageUrl } from "@/lib/images";
 import { fetchIpGeolocation } from "@/lib/geolocation";
-import { BottomNav } from "@/components/BottomNav";
+import { ShopperLayout } from "@/components/layout/ShopperLayout";
 
 const MapComponent = dynamic(() => import("@/components/MapComponent"), {
   ssr: false,
@@ -229,7 +229,8 @@ export default function MapDiscovery() {
   };
 
   return (
-    <div className="h-screen w-full relative overflow-hidden bg-[#F4FBF7] text-slate-800">
+    <ShopperLayout>
+      <div className="h-screen w-full relative overflow-hidden bg-[#F4FBF7] text-slate-800">
       {/* Top Header Floating Search Bar & Controls */}
       <div className="absolute top-0 inset-x-0 z-[400] p-3 sm:p-4 pt-safe flex flex-col gap-2 pointer-events-none">
         <div className="flex items-center gap-2">
@@ -361,7 +362,7 @@ export default function MapDiscovery() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute bottom-16 sm:bottom-0 inset-x-0 z-[500] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl p-5 border-t border-slate-200 dark:border-gray-800 max-h-[70vh] flex flex-col"
+              className="absolute bottom-16 sm:bottom-0 lg:bottom-6 lg:top-24 lg:right-6 lg:left-auto lg:w-96 lg:rounded-3xl inset-x-0 z-[500] bg-white dark:bg-gray-900 rounded-t-3xl shadow-2xl p-5 border-t lg:border border-slate-200 dark:border-gray-800 max-h-[70vh] lg:max-h-[calc(100vh-8rem)] flex flex-col"
             >
               <div className="w-12 h-1.5 bg-slate-200 dark:bg-gray-700 rounded-full mx-auto mb-3" />
               <div className="flex items-start justify-between gap-4 mb-3">
@@ -442,8 +443,7 @@ export default function MapDiscovery() {
         <span className="w-2.5 h-2.5 rounded-full bg-[#FF5B26] inline-block ml-2" />
         <span>Surplus Store</span>
       </div>
-
-      <BottomNav />
     </div>
+    </ShopperLayout>
   );
 }

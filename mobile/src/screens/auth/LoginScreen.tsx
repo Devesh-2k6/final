@@ -48,6 +48,8 @@ import {
   verifyOtp,
   customerSignup,
   vendorSignup,
+  forgotPassword,
+  resetPassword,
   SendOtpResponse,
 } from "../../services/auth";
 import {
@@ -66,13 +68,13 @@ interface AuthScreenProps {
   route?: any;
 }
 
-type TabType = "login" | "signup" | "otp";
+type TabType = "login" | "signup" | "otp" | "forgot_password";
 type RoleMode = "customer" | "vendor" | "admin";
 
 export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) => {
   const { login: authLogin, loginWithSession } = useAuth();
 
-  const initialTab: TabType = route?.params?.tab === "signup" ? "signup" : "login";
+  const initialTab: TabType = route?.params?.tab === "signup" ? "signup" : route?.params?.tab === "forgot" ? "forgot_password" : "login";
   const [tab, setTab] = useState<TabType>(initialTab);
   const [roleMode, setRoleMode] = useState<RoleMode>("customer");
   const [loginAuthType, setLoginAuthType] = useState<"password" | "otp">("password");
@@ -113,6 +115,19 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [otpStatusMsg, setOtpStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Forgot Password States
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [showForgotPass, setShowForgotPass] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"email" | "reset" | "success">("email");
+  const [forgotSending, setForgotSending] = useState(false);
+  const [forgotResetting, setForgotResetting] = useState(false);
+  const [forgotCooldown, setForgotCooldown] = useState(0);
+  const [forgotDevCode, setForgotDevCode] = useState<string | null>(null);
+  const [forgotStatusMsg, setForgotStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -143,6 +158,14 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
     }, 1000);
     return () => clearInterval(timer);
   }, [otpCooldown]);
+
+  useEffect(() => {
+    if (forgotCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setForgotCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [forgotCooldown]);
 
   const handleTestConnection = async (urlToTest?: string) => {
     const target = urlToTest || customIp || currentApiUrl;
@@ -479,6 +502,88 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
     }
   };
 
+  // Forgot Password Request
+  const handleForgotPasswordRequest = async () => {
+    const cleanEmail = (forgotEmail || loginEmail).trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    setError(null);
+    setForgotSending(true);
+    setForgotStatusMsg(null);
+    setForgotDevCode(null);
+    try {
+      setForgotEmail(cleanEmail);
+      const res = await forgotPassword(cleanEmail);
+      setForgotDevCode(res.dev_code || null);
+      setForgotCooldown(res.cooldown_remaining || 60);
+      setForgotStep("reset");
+      setForgotStatusMsg({
+        type: "success",
+        text: res.message || `A 6-digit code has been sent to ${cleanEmail}.`,
+      });
+      if (res.dev_code) {
+        setForgotOtp(res.dev_code);
+      }
+    } catch (err: any) {
+      const msg = err?.message || "Failed to send password reset code.";
+      setError(msg);
+      setForgotStatusMsg({ type: "error", text: msg });
+    } finally {
+      setForgotSending(false);
+    }
+  };
+
+  // Reset Password Submit
+  const handleResetPasswordSubmit = async () => {
+    const cleanOtp = forgotOtp.trim().replace(/\D/g, "");
+    if (!cleanOtp || cleanOtp.length < 4) {
+      setError("Please enter the 6-digit OTP code.");
+      return;
+    }
+    if (forgotNewPassword.length < 6) {
+      setError("New password must be at least 6 characters long.");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setError("Passwords do not match. Please verify.");
+      return;
+    }
+    setError(null);
+    setForgotResetting(true);
+    setForgotStatusMsg(null);
+    try {
+      const res = await resetPassword({
+        email: forgotEmail.trim().toLowerCase(),
+        otp: cleanOtp,
+        new_password: forgotNewPassword.trim(),
+      });
+      setForgotStep("success");
+      setForgotStatusMsg({
+        type: "success",
+        text: "Password reset successful! Logging you in...",
+      });
+      if (res.access_token && res.user) {
+        await loginWithSession(
+          { access_token: res.access_token, user: res.user as any },
+          res.user.role === "VENDOR" || res.user.is_shop_owner ? "shop" : "customer"
+        );
+      } else {
+        setTimeout(() => {
+          setTab("login");
+          setForgotStep("email");
+        }, 1500);
+      }
+    } catch (err: any) {
+      const msg = err?.message || "Failed to reset password.";
+      setError(msg);
+      setForgotStatusMsg({ type: "error", text: msg });
+    } finally {
+      setForgotResetting(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -500,41 +605,45 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                 ? "Create your Customer or Vendor Account"
                 : tab === "otp"
                 ? "Verify 6-digit OTP Code"
+                : tab === "forgot_password"
+                ? "Reset your account password"
                 : "Sign in to your account"}
             </Text>
           </View>
 
-          {/* Top Tab Switcher: Sign In vs Sign Up */}
-          <View style={styles.topTabSwitcher}>
-            <TouchableOpacity
-              style={[styles.topTabBtn, tab === "login" && styles.topTabBtnActive]}
-              onPress={() => {
-                setTab("login");
-                setError(null);
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.topTabText, tab === "login" && styles.topTabTextActive]}>
-                Sign In
-              </Text>
-            </TouchableOpacity>
+          {/* Top Tab Switcher: Sign In vs Sign Up (Hidden during Forgot Password & OTP) */}
+          {tab !== "otp" && tab !== "forgot_password" && (
+            <View style={styles.topTabSwitcher}>
+              <TouchableOpacity
+                style={[styles.topTabBtn, tab === "login" && styles.topTabBtnActive]}
+                onPress={() => {
+                  setTab("login");
+                  setError(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.topTabText, tab === "login" && styles.topTabTextActive]}>
+                  Sign In
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.topTabBtn, tab === "signup" && styles.topTabBtnActive]}
-              onPress={() => {
-                setTab("signup");
-                setError(null);
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.topTabText, tab === "signup" && styles.topTabTextActive]}>
-                Sign Up
-              </Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={[styles.topTabBtn, tab === "signup" && styles.topTabBtnActive]}
+                onPress={() => {
+                  setTab("signup");
+                  setError(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.topTabText, tab === "signup" && styles.topTabTextActive]}>
+                  Sign Up
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Role Selector (Customer | Vendor | Admin) */}
-          {tab !== "otp" && (
+          {tab !== "otp" && tab !== "forgot_password" && (
             <View style={styles.roleSection}>
               <Text style={styles.sectionLabel}>SELECT ROLE</Text>
               <View style={styles.roleGrid}>
@@ -648,7 +757,21 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>PASSWORD</Text>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <Text style={styles.inputLabel}>PASSWORD</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setForgotEmail(loginEmail);
+                          setTab("forgot_password");
+                          setForgotStep("email");
+                          setError(null);
+                          setForgotStatusMsg(null);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.linkText, { color: Colors.primaryBright, fontWeight: "700" }]}>Forgot password?</Text>
+                      </TouchableOpacity>
+                    </View>
                     <View style={styles.inputBox}>
                       <Lock size={16} color={Colors.textMuted} />
                       <TextInput
@@ -670,7 +793,7 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                       }}
                       style={{ alignSelf: "flex-end", marginTop: 4 }}
                     >
-                      <Text style={styles.linkText}>⚡ Forgot password or created via OTP? Sign in via OTP</Text>
+                      <Text style={styles.linkText}>⚡ Account created via OTP? Sign in via OTP</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -1067,6 +1190,187 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                   </Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB 4: FORGOT PASSWORD FLOW */}
+          {/* ============================================================ */}
+          {tab === "forgot_password" && (
+            <View style={styles.inputsStack}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: Colors.cardBorder }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setTab("login");
+                    setError(null);
+                    setForgotStatusMsg(null);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.linkText, { fontWeight: "700" }]}>← Back to Sign In</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 11, fontWeight: "800", color: Colors.primaryBright }}>
+                  PASSWORD RECOVERY
+                </Text>
+              </View>
+
+              {forgotStep === "email" && (
+                <>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: Colors.textPrimary, marginTop: 4 }}>
+                    Forgot your password?
+                  </Text>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginBottom: 8 }}>
+                    Enter your email to receive a secure 6-digit OTP code to set a new password.
+                  </Text>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>ACCOUNT EMAIL ADDRESS</Text>
+                    <View style={styles.inputBox}>
+                      <Mail size={16} color={Colors.textMuted} />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="name@example.com"
+                        placeholderTextColor={Colors.textMuted}
+                        value={forgotEmail}
+                        onChangeText={setForgotEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.submitBtn, (forgotSending || !forgotEmail.trim()) && styles.btnDisabled]}
+                    onPress={handleForgotPasswordRequest}
+                    disabled={forgotSending || !forgotEmail.trim()}
+                    activeOpacity={0.85}
+                  >
+                    {forgotSending ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <Zap size={18} color="#FFFFFF" />
+                        <Text style={styles.submitBtnText}>Send 6-Digit Reset Code</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {forgotStep === "reset" && (
+                <>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: Colors.textPrimary, marginTop: 4 }}>
+                    Set New Password
+                  </Text>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginBottom: 8 }}>
+                    Verification code sent to <Text style={{ color: Colors.textPrimary, fontWeight: "700" }}>{forgotEmail}</Text>
+                  </Text>
+
+                  {forgotDevCode && (
+                    <View style={[styles.statusBanner, styles.statusBannerSuccess, { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]}>
+                      <Text style={[styles.statusBannerText, { color: Colors.primaryBright, fontWeight: "700" }]}>
+                        Dev Code: {forgotDevCode}
+                      </Text>
+                      <TouchableOpacity onPress={() => setForgotOtp(forgotDevCode)}>
+                        <Text style={{ fontSize: 11, fontWeight: "800", color: Colors.primaryBright }}>FILL CODE</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>6-DIGIT VERIFICATION CODE</Text>
+                    <View style={[styles.inputBox, { justifyContent: "center" }]}>
+                      <TextInput
+                        style={[styles.textInput, styles.otpInput]}
+                        placeholder="••••••"
+                        placeholderTextColor={Colors.textMuted}
+                        value={forgotOtp}
+                        onChangeText={(t) => setForgotOtp(t.replace(/\D/g, ""))}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>NEW PASSWORD *</Text>
+                    <View style={styles.inputBox}>
+                      <Lock size={16} color={Colors.textMuted} />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Min 6 characters"
+                        placeholderTextColor={Colors.textMuted}
+                        value={forgotNewPassword}
+                        onChangeText={setForgotNewPassword}
+                        secureTextEntry={!showForgotPass}
+                      />
+                      <TouchableOpacity onPress={() => setShowForgotPass(!showForgotPass)} style={{ padding: 4 }}>
+                        {showForgotPass ? <EyeOff size={16} color={Colors.textMuted} /> : <Eye size={16} color={Colors.textMuted} />}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>CONFIRM NEW PASSWORD *</Text>
+                    <View style={styles.inputBox}>
+                      <Lock size={16} color={Colors.textMuted} />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Repeat new password"
+                        placeholderTextColor={Colors.textMuted}
+                        value={forgotConfirmPassword}
+                        onChangeText={setForgotConfirmPassword}
+                        secureTextEntry={!showForgotPass}
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.submitBtn, (forgotResetting || forgotOtp.length < 4 || forgotNewPassword.length < 6) && styles.btnDisabled]}
+                    onPress={handleResetPasswordSubmit}
+                    disabled={forgotResetting || forgotOtp.length < 4 || forgotNewPassword.length < 6}
+                    activeOpacity={0.85}
+                  >
+                    {forgotResetting ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <>
+                        <ShieldCheck size={18} color="#FFFFFF" />
+                        <Text style={styles.submitBtnText}>Reset Password & Sign In</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.otpFooterRow}>
+                    <TouchableOpacity onPress={() => { setForgotStep("email"); setError(null); }} activeOpacity={0.8}>
+                      <Text style={styles.linkText}>← Change Email</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handleForgotPasswordRequest}
+                      disabled={forgotSending || forgotCooldown > 0}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.linkText, { color: Colors.primaryBright, fontWeight: "800" }]}>
+                        {forgotSending ? "Sending..." : forgotCooldown > 0 ? `Resend in ${forgotCooldown}s` : "Resend OTP"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {forgotStep === "success" && (
+                <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                  <CheckCircle2 size={40} color={Colors.primaryBright} />
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: Colors.textPrimary, marginTop: 12 }}>
+                    Password Reset Successfully!
+                  </Text>
+                  <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 4 }}>
+                    Signing you in...
+                  </Text>
+                  <ActivityIndicator size="small" color={Colors.primaryBright} style={{ marginTop: 12 }} />
+                </View>
+              )}
             </View>
           )}
 

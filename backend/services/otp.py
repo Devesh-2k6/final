@@ -28,7 +28,7 @@ def generate_otp_code() -> str:
     return str(code_int)
 
 
-def generate_and_send_otp(identifier: str, name: Optional[str] = None) -> Tuple[bool, str]:
+def generate_and_send_otp(identifier: str, name: Optional[str] = None, purpose: str = "login") -> Tuple[bool, str]:
     """
     Generates a 6-digit OTP, applies rate limiting cooldown,
     dispatches email notification, and records dispatch in memory.
@@ -53,6 +53,7 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None) -> Tuple[
             "code": otp_code,
             "identifier": clean_id,
             "name": (name or "").strip(),
+            "purpose": purpose,
             "created_at": now,
             "last_sent_at": now,
             "expires_at": now + OTP_EXPIRATION_SECONDS,
@@ -62,13 +63,18 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None) -> Tuple[
     # Dispatch rich HTML email if identifier is an email address
     if "@" in clean_id:
         display_name = (name or "").strip() or "Valued User"
-        subject = f"🔐 Your ExpiryGo Login Code: {otp_code}"
+        is_reset = purpose == "reset_password"
+        subject = f"🔐 Reset Your ExpiryGo Password: {otp_code}" if is_reset else f"🔐 Your ExpiryGo Login Code: {otp_code}"
+        title_text = "Password Reset Request" if is_reset else "Your One-Time Login Code"
+        body_text = "Use the 6-digit verification code below to securely reset your ExpiryGo account password:" if is_reset else "Use the 6-digit verification code below to securely log in or verify your ExpiryGo account:"
+        action_note = "If you did not request a password reset, please ignore this email. Your password will remain unchanged." if is_reset else "If you did not request this code, you can safely ignore this email. Never share this code with anyone."
+
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your ExpiryGo OTP Verification Code</title>
+    <title>{title_text}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 16px;">
@@ -80,14 +86,14 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None) -> Tuple[
                             <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 18px; border-radius: 9999px; margin-bottom: 8px;">
                                 <span style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px;">🌱 Expiry<span style="color: #d1fae5;">Go</span></span>
                             </div>
-                            <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700; color: #ffffff;">Your One-Time Login Code</h1>
+                            <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700; color: #ffffff;">{title_text}</h1>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 36px 36px 28px 36px;">
                             <p style="font-size: 16px; font-weight: 600; color: #0f172a; margin-top: 0;">Hello {display_name},</p>
                             <p style="font-size: 15px; color: #334155; margin: 12px 0 24px 0;">
-                                Use the 6-digit verification code below to securely log in or verify your ExpiryGo account:
+                                {body_text}
                             </p>
                             <div style="text-align: center; margin: 28px 0; background: #f1f5f9; border-radius: 16px; padding: 24px; border: 2px dashed #cbd5e1;">
                                 <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #059669; font-family: monospace;">
@@ -98,7 +104,7 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None) -> Tuple[
                                 </p>
                             </div>
                             <p style="font-size: 13px; color: #64748b; margin: 20px 0 0 0; line-height: 1.5;">
-                                If you did not request this code, you can safely ignore this email. Never share this code with anyone.
+                                {action_note}
                             </p>
                         </td>
                     </tr>
@@ -117,6 +123,7 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None) -> Tuple[
 
 Your 6-digit ExpiryGo verification code is: {otp_code}
 
+{body_text}
 This code is valid for 10 minutes. Do not share this code with anyone.
 
 ---
@@ -130,7 +137,7 @@ ExpiryGo Team
             token=otp_code,
         )
 
-    logger.info(f"[OTP DISPATCH] 6-digit OTP code for {clean_id}: {otp_code}")
+    logger.info(f"[OTP DISPATCH] 6-digit OTP code for {clean_id} (purpose={purpose}): {otp_code}")
     return True, f"6-digit OTP code dispatched successfully to {clean_id}."
 
 
@@ -173,7 +180,7 @@ def verify_otp_code(identifier: str, code: str) -> Tuple[bool, str]:
     return True, "OTP verified successfully."
 
 
-def send_otp_to_identifier(identifier: str, name: Optional[str] = None) -> Dict[str, Any]:
+def send_otp_to_identifier(identifier: str, name: Optional[str] = None, purpose: str = "login") -> Dict[str, Any]:
     """
     Wrapper for router endpoints returning dict structure.
     In debug mode, includes dev_code for instant developer testing.
@@ -193,7 +200,7 @@ def send_otp_to_identifier(identifier: str, name: Optional[str] = None) -> Dict[
                     "dev_code": existing.get("code"),
                 }
 
-    success, msg = generate_and_send_otp(clean_id, name=name)
+    success, msg = generate_and_send_otp(clean_id, name=name, purpose=purpose)
     with _OTP_LOCK:
         current_record = _OTP_STORE.get(clean_id, {})
         code_val = current_record.get("code")

@@ -8,7 +8,7 @@ import { getMyOrders, cancelOrder } from "@/services/orders";
 import { getSafeImageUrl } from "@/lib/images";
 import type { ApiReservation, ApiOrder } from "@/types/product";
 import { Loader2, Package, MapPin, CheckCircle, Clock, ArrowLeft, CreditCard, Star, X, Truck, ShoppingBag, XCircle } from "lucide-react";
-import { BottomNav } from "@/components/BottomNav";
+import { ShopperLayout } from "@/components/layout/ShopperLayout";
 import { leaveReview } from "@/services/shops";
 import { motion, AnimatePresence } from "framer-motion";
 import { getErrorMessage } from "@/api/errors";
@@ -136,17 +136,21 @@ export default function MyReservations() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 pt-4 pb-3">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link href="/deals" className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
-          </Link>
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">My Orders & Reservations</h1>
-        </div>
-      </header>
+    <ShopperLayout>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
+        <header className="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 lg:px-8 pt-4 pb-3">
+          <div className="w-full max-w-2xl lg:max-w-7xl mx-auto flex items-center gap-3">
+            <Link href="/deals" className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+              <ArrowLeft size={20} className="text-gray-600 dark:text-gray-300" />
+            </Link>
+            <div>
+              <h1 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">My Orders & Reservations</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Track and pick up your surplus reservations</p>
+            </div>
+          </div>
+        </header>
 
-      <main className="p-4 max-w-2xl mx-auto mt-4 space-y-4">
+        <main className="p-4 lg:p-8 w-full max-w-2xl lg:max-w-7xl mx-auto mt-2 space-y-4">
         {loading ? (
           <div className="flex justify-center p-12"><Loader2 className="animate-spin text-emerald-500" size={32} /></div>
         ) : allItems.length === 0 ? (
@@ -157,7 +161,8 @@ export default function MyReservations() {
             <Link href="/deals" className="bg-emerald-600 text-white font-bold px-6 py-2 rounded-xl">Find Deals</Link>
           </div>
         ) : (
-          allItems.map(item => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {allItems.map(item => (
             <div key={item.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 relative overflow-hidden">
               {item.itemType === "order" && (
                 <div className="absolute top-0 right-0">
@@ -282,11 +287,10 @@ export default function MyReservations() {
                 </div>
               )}
             </div>
-          ))
+          ))}
+          </div>
         )}
       </main>
-
-      <BottomNav />
 
       {/* Review Modal */}
       <AnimatePresence>
@@ -393,5 +397,6 @@ export default function MyReservations() {
         )}
       </AnimatePresence>
     </div>
+    </ShopperLayout>
   );
 }

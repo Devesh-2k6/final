@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 
 import schemas
@@ -20,6 +20,7 @@ def create_reservation(
     res_in: schemas.ReservationCreate,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ):
     if not user.email_verified:
         raise HTTPException(
@@ -57,7 +58,7 @@ def create_reservation(
     db.commit()
     db.refresh(reservation)
 
-    # Send Email Notification to user (customer)
+    # Offload Email Notification to background queue (non-blocking)
     shop = product.shop
     if shop and user.email:
         email_subject = f"✓ Reservation Confirmed: {product.name} at {shop.name}"
@@ -84,7 +85,7 @@ def create_reservation(
         </html>
         """
         email_text = f"Hello {user.name},\n\nYour reservation at {shop.name} is confirmed!\n\nProduct: {product.name}\nQuantity: {reservation.quantity}\nTotal: ₹{reservation.total_price:.2f}\nPickup Code: {reservation.pickup_code}\nAddress: {shop.address}\n\nShow the code at the shop to collect."
-        send_email_notification(user.email, email_subject, email_html, email_text)
+        background_tasks.add_task(send_email_notification, user.email, email_subject, email_html, email_text)
 
     # Broadcast updated deal stock & new reservation to all connected web and mobile clients
     try:

@@ -106,6 +106,7 @@ function getExplainabilityReasoning(product: any, forecast: any) {
 }
 
 export default function ShopDashboardOverview() {
+  const { user } = useAuth();
   const [shop, setShop] = useState<ShopWithDescription | null>(null);
   const [shopId, setShopId] = useState<string | undefined>(undefined);
   const [loadingShop, setLoadingShop] = useState<boolean>(true);
@@ -273,8 +274,6 @@ export default function ShopDashboardOverview() {
       </div>
     );
   }
-
-  const { user } = useAuth();
 
   if (!shop) {
     return (

@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Play,
   Search,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -28,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { getErrorMessage } from "@/api/errors";
 import { createProduct, uploadImage, optimizeProductDetails, scanProductDates, lookupBarcode, parseVoiceProductListing } from "@/services/products";
+import { getMyShop, type ShopWithDescription } from "@/services/shops";
 import type { ApiProductCreate, ProductCategory } from "@/types/product";
 
 const CATEGORIES: ProductCategory[] = ["BAKERY", "DAIRY", "PRODUCE", "MEAT", "PANTRY", "PREPARED_FOOD", "OTHER"];
@@ -35,6 +37,7 @@ const CATEGORIES: ProductCategory[] = ["BAKERY", "DAIRY", "PRODUCE", "MEAT", "PA
 export default function AddProductPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [shop, setShop] = useState<ShopWithDescription | null>(null);
 
   // Redirect if not authenticated or not shop owner
   useEffect(() => {
@@ -42,6 +45,12 @@ export default function AddProductPage() {
       router.push("/auth?role=shop_owner&tab=login");
     }
   }, [isLoading, isAuthenticated, user, router]);
+
+  useEffect(() => {
+    getMyShop()
+      .then(setShop)
+      .catch(() => setShop(null));
+  }, []);
 
   const [productName, setProductName] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
@@ -426,6 +435,19 @@ export default function AddProductPage() {
 
       {/* Form */}
       <div className="max-w-3xl mx-auto px-4 py-8 pb-24">
+        {/* Pending Approval Warning Banner */}
+        {shop && shop.approval_status !== "APPROVED" && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-3">
+            <AlertTriangle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold">Admin Approval Required</h4>
+              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                Your store (<strong>{shop.name}</strong>) is currently <strong>{shop.approval_status}</strong>. An administrator must approve your merchant account in the Admin Console before deal publishing is unlocked.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Success Message */}
           {success && (
@@ -896,13 +918,18 @@ export default function AddProductPage() {
               </Link>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="flex-1 px-6 py-3.5 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                disabled={isSubmitting || (shop !== null && shop.approval_status !== "APPROVED")}
+                className="flex-1 px-6 py-3.5 rounded-xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
                     Uploading...
+                  </>
+                ) : shop && shop.approval_status !== "APPROVED" ? (
+                  <>
+                    <AlertTriangle size={18} />
+                    Pending Admin Approval
                   </>
                 ) : (
                   <>

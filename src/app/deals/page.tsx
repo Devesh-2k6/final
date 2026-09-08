@@ -45,7 +45,7 @@ import { createOrder } from "@/services/orders";
 import { createReservation } from "@/services/reservations";
 import { addFavorite, removeFavorite, getFavorites, getRecommendedProducts, getDeepSearchResults, generateRecipe, type ApiRecipeSearchResponse, type ApiRecipeResponse } from "@/services/products";
 import { getMyFollowing, followShop, unfollowShop } from "@/services/shops";
-import { BottomNav } from "@/components/BottomNav";
+import { ShopperLayout } from "@/components/layout/ShopperLayout";
 import { LiveDealTicker } from "@/components/ui/LiveDealTicker";
 import type { ProductCategory, ApiProduct } from "@/types/product";
 import { fetchIpGeolocation } from "@/lib/geolocation";
@@ -444,11 +444,11 @@ export default function CustomerDealsPage() {
   const initial = user?.name ? user.name[0].toUpperCase() : "?";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FFF5F0] via-[#F8F9FA] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-b border-orange-100/60 dark:border-gray-800 px-4 pt-3 pb-2.5 shadow-sm">
-        <div className="max-w-2xl mx-auto">
+    <ShopperLayout>
+      <div className="min-h-screen bg-gradient-to-b from-[#FFF5F0] via-[#F8F9FA] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
+        {/* ── Header ─────────────────────────────────────────────────── */}
+        <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-b border-orange-100/60 dark:border-gray-800 px-4 lg:px-8 pt-3 pb-2.5 shadow-sm">
+          <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
           {/* Top row: QR icon + ExpiryGo branding + Shopper role + notifications */}
           <div className="flex items-center justify-between mb-3">
             <Link
@@ -730,7 +730,7 @@ export default function CustomerDealsPage() {
       </header>
 
       {/* ── Map quick-access banner ─────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto px-4 pt-4 space-y-3">
+      <div className="w-full max-w-2xl lg:max-w-7xl mx-auto px-4 lg:px-8 pt-4 space-y-3">
         {/* Monthly Savings Milestone Tracker */}
         {user && (
           <motion.div
@@ -809,7 +809,7 @@ export default function CustomerDealsPage() {
       </div>
 
       {/* ── Main content ────────────────────────────────────────────── */}
-      <main className="p-4 max-w-2xl mx-auto space-y-4">
+      <main className="p-4 lg:p-8 w-full max-w-2xl lg:max-w-7xl mx-auto space-y-6">
         {/* Flash Surplus Rescue Featured Hero Card */}
         <div className="relative rounded-[2rem] overflow-hidden bg-slate-900 text-white shadow-xl shadow-slate-900/15 p-5 flex flex-col justify-end min-h-[170px]">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&auto=format&fit=crop&q=80')] bg-cover bg-center opacity-60 mix-blend-luminosity" />
@@ -921,9 +921,11 @@ export default function CustomerDealsPage() {
                 <span className="text-sm font-black uppercase tracking-widest">AI is analyzing nearby inventory...</span>
               </motion.div>
             )}
-            {[1, 2, 3, 4].map((i) => (
-              <DealProductSkeleton key={i} />
-            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <DealProductSkeleton key={i} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -1018,19 +1020,21 @@ export default function CustomerDealsPage() {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               {displayProducts.length} deal{displayProducts.length !== 1 ? "s" : ""} available
             </p>
-            {displayProducts.map((product, index) => (
-              <DealProductCard
-                key={product.id}
-                {...buildDealProductCardProps(product, index, playingId, handleTogglePlay, handleReserve, lat, lng)}
-                isFavorite={favorites.has(product.id)}
-                isFollowing={following.has(product.shop_id)}
-                onToggleFavorite={handleToggleFavorite}
-                onToggleFollow={handleToggleFollow}
-                isInRecipeBasket={recipeBasket.has(product.id)}
-                onToggleRecipeBasket={handleToggleRecipeBasket}
-                onQuickRecipe={handleQuickRecipe}
-              />
-            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+              {displayProducts.map((product, index) => (
+                <DealProductCard
+                  key={product.id}
+                  {...buildDealProductCardProps(product, index, playingId, handleTogglePlay, handleReserve, lat, lng)}
+                  isFavorite={favorites.has(product.id)}
+                  isFollowing={following.has(product.shop_id)}
+                  onToggleFavorite={handleToggleFavorite}
+                  onToggleFollow={handleToggleFollow}
+                  isInRecipeBasket={recipeBasket.has(product.id)}
+                  onToggleRecipeBasket={handleToggleRecipeBasket}
+                  onQuickRecipe={handleQuickRecipe}
+                />
+              ))}
+            </div>
           </div>
         )}
       </main>
@@ -1406,23 +1410,22 @@ export default function CustomerDealsPage() {
         )}
       </AnimatePresence>
 
-      <BottomNav />
-
-      {/* Floating Go to Top Button */}
-      <AnimatePresence>
-        {showGoTop && !recipeBasket.size && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.5, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, y: 20 }}
-            onClick={scrollToTop}
-            className="fixed bottom-24 right-4 z-40 bg-white dark:bg-gray-800 text-emerald-600 p-3 rounded-full shadow-2xl border border-emerald-100 dark:border-gray-700 hover:bg-emerald-50 transition-all cursor-pointer"
-            aria-label="Scroll to top"
-          >
-            <ChevronDown size={20} className="rotate-180" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </div>
+        {/* Floating Go to Top Button */}
+        <AnimatePresence>
+          {showGoTop && !recipeBasket.size && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: 20 }}
+              onClick={scrollToTop}
+              className="fixed bottom-24 right-4 z-40 bg-white dark:bg-gray-800 text-emerald-600 p-3 rounded-full shadow-2xl border border-emerald-100 dark:border-gray-700 hover:bg-emerald-50 transition-all cursor-pointer"
+              aria-label="Scroll to top"
+            >
+              <ChevronDown size={20} className="rotate-180" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+    </ShopperLayout>
   );
 }

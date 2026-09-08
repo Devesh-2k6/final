@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, DBAPIError
 
 logger = logging.getLogger("expirygo.errors")
 
@@ -25,6 +25,18 @@ def register_error_handlers(app: FastAPI) -> None:
                 "detail": exc.errors(),
                 "error_code": "VALIDATION_ERROR"
             })
+        )
+
+    @app.exception_handler(OperationalError)
+    @app.exception_handler(DBAPIError)
+    async def db_connection_exception_handler(request: Request, exc: Exception):
+        logger.critical(f"Database Connection Error: {str(exc)} on {request.method} {request.url.path}", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "Database service is temporarily unavailable or overloaded. Please retry shortly.",
+                "error_code": "DATABASE_UNAVAILABLE"
+            }
         )
 
     @app.exception_handler(SQLAlchemyError)

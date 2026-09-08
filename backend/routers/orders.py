@@ -20,7 +20,7 @@ def create_order(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    product = db.query(Product).options(joinedload(Product.shop)).filter(Product.id == order_in.product_id).first()
+    product = db.query(Product).filter(Product.id == order_in.product_id).with_for_update().first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
         

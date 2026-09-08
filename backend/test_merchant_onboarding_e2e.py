@@ -87,9 +87,9 @@ def run_e2e():
     merchant_token = reg_res.json()["access_token"]
     merchant_headers = {"Authorization": f"Bearer {merchant_token}"}
 
-    assert merchant_user["role"] == "SHOPKEEPER"
+    assert merchant_user["role"] == "VENDOR"
     assert merchant_user["email_verified"] is False
-    log(f"Merchant registered: role=SHOPKEEPER, email_verified=False ({test_merchant_email})", "PASS")
+    log(f"Merchant registered: role=VENDOR, email_verified=False ({test_merchant_email})", "PASS")
 
     # 7. Unverified Merchant Cannot Access /shops/me or create products
     unver_res = requests.get(f"{API_URL}/shops/me", headers=merchant_headers)

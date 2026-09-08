@@ -5,6 +5,7 @@ from datetime import datetime, UTC
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from fastapi_cache.decorator import cache
+from sqlalchemy import func, text, or_
 from sqlalchemy.orm import Session, contains_eager, joinedload
 
 import schemas
@@ -167,16 +168,13 @@ def read_products(
     limit: Optional[int] = None,
     offset: int = 0,
 ):
-    def haversine_distance(lat1, lon1, lat2, lon2):
-        R = 6371.0 # Earth radius in km
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
-
     now = datetime.now(UTC).replace(tzinfo=None)
-    query = db.query(Product).join(Product.shop).options(contains_eager(Product.shop)).filter(Product.quantity > 0)
+    query = db.query(Product).join(Product.shop).options(contains_eager(Product.shop)).filter(
+        Product.quantity > 0,
+        Product.is_active == True,
+        Shop.is_active == True,
+        Shop.approval_status == "APPROVED"
+    )
     
     if shop_id:
         query = query.filter(Product.shop_id == shop_id)
@@ -187,29 +185,48 @@ def read_products(
     if q:
         query = query.filter(Product.name.ilike(f"%{q}%"))
 
-    products_query = query.order_by(Product.expiry_date.asc())
+    # PostGIS hardware-accelerated spatial filtering & distance ordering
+    if lat is not None and lng is not None:
+        effective_radius_meters = float(radius_km or 50.0) * 1000.0
+        dialect = db.bind.dialect.name if db.bind else "postgresql"
+        if dialect == "postgresql":
+            # Direct PostGIS ST_DWithin powered by GIST R-Tree index
+            query = query.filter(
+                text(
+                    "ST_DWithin("
+                    "ST_SetSRID(ST_MakePoint(shops.longitude, shops.latitude), 4326)::geography, "
+                    "ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, "
+                    ":radius_m"
+                    ")"
+                ).params(lng=lng, lat=lat, radius_m=effective_radius_meters)
+            )
+            products_query = query.order_by(
+                text(
+                    "ST_Distance("
+                    "ST_SetSRID(ST_MakePoint(shops.longitude, shops.latitude), 4326)::geography, "
+                    "ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography"
+                    ") ASC"
+                ).params(lng=lng, lat=lat),
+                Product.expiry_date.asc()
+            )
+        else:
+            lat_delta = (radius_km or 50.0) / 111.0
+            lng_delta = (radius_km or 50.0) / (111.0 * max(0.1, math.cos(math.radians(lat))))
+            query = query.filter(
+                Shop.latitude.between(lat - lat_delta, lat + lat_delta),
+                Shop.longitude.between(lng - lng_delta, lng + lng_delta)
+            )
+            products_query = query.order_by(Product.expiry_date.asc())
+    else:
+        products_query = query.order_by(Product.expiry_date.asc())
+
     if limit is not None:
         capped_limit = min(max(1, limit), 500)
         products = products_query.offset(max(0, offset)).limit(capped_limit).all()
     else:
         products = products_query.all()
 
-    out: list[dict] = []
-    products_with_distance = []
-    for p in products:
-        shop = p.shop
-        dist = None
-        if lat is not None and lng is not None and shop:
-            dist = haversine_distance(lat, lng, shop.latitude, shop.longitude)
-        products_with_distance.append((p, shop, dist))
-
-    if lat is not None and lng is not None:
-        # Sort by distance (closest first), placing items with known distance first
-        products_with_distance.sort(key=lambda item: item[2] if item[2] is not None else 999999)
-
-    for p, shop, dist in products_with_distance:
-        out.append(_serialize_product(p, shop))
-    return out
+    return [_serialize_product(p, p.shop) for p in products]
 
 
 @router.get("/search/deep")
@@ -380,23 +397,36 @@ async def deep_search_products(
 
     bypass_geo = False
     if lat is not None and lng is not None:
-        lat_delta = radius_km / 111.0
-        lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
-        geo_query = query.filter(
-            Shop.latitude.between(lat - lat_delta, lat + lat_delta),
-            Shop.longitude.between(lng - lng_delta, lng + lng_delta)
-        )
-        if geo_query.count() > 0:
-            query = geo_query
+        radius_m = float(radius_km) * 1000.0
+        dialect = db.bind.dialect.name if db.bind else "postgresql"
+        if dialect == "postgresql":
+            query = query.filter(
+                text(
+                    "ST_DWithin("
+                    "ST_SetSRID(ST_MakePoint(shops.longitude, shops.latitude), 4326)::geography, "
+                    "ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, "
+                    ":radius_m"
+                    ")"
+                ).params(lng=lng, lat=lat, radius_m=radius_m)
+            )
         else:
-            bypass_geo = True
+            lat_delta = radius_km / 111.0
+            lng_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
+            geo_query = query.filter(
+                Shop.latitude.between(lat - lat_delta, lat + lat_delta),
+                Shop.longitude.between(lng - lng_delta, lng + lng_delta)
+            )
+            if geo_query.count() > 0:
+                query = geo_query
+            else:
+                bypass_geo = True
             
     products = query.order_by(Product.expiry_date.asc()).all()
     
     out = []
     for p in products:
         shop = p.shop
-        if lat is not None and lng is not None and not bypass_geo and shop:
+        if lat is not None and lng is not None and not bypass_geo and shop and (db.bind and db.bind.dialect.name != "postgresql"):
             dist = haversine_distance(lat, lng, shop.latitude, shop.longitude)
             if dist > radius_km:
                 continue

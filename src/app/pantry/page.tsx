@@ -14,7 +14,6 @@ import {
   ArrowRight,
   Refrigerator,
 } from "lucide-react";
-import { BottomNav } from "@/components/BottomNav";
 import {
   getPantryItems,
   addPantryItem,
@@ -25,6 +24,7 @@ import {
   type ApiPantryItem,
   type ApiPantrySmartAlert,
 } from "@/services/pantry";
+import { ShopperLayout } from "@/components/layout/ShopperLayout";
 import type { ProductCategory } from "@/types/product";
 import type { ApiRecipeResponse, RecipeIngredientItem, RecipeStep } from "@/types/recipe";
 
@@ -138,8 +138,9 @@ export default function PantryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 pb-28 pt-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <ShopperLayout>
+      <div className="min-h-screen bg-slate-950 text-slate-50 pb-28 pt-6 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800 backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -222,7 +223,7 @@ export default function PantryPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {items.map((item) => {
                 const isCritical = item.urgency_status === "CRITICAL";
                 const isExpSoon = item.urgency_status === "EXPIRING_SOON";
@@ -430,8 +431,7 @@ export default function PantryPage() {
           </div>
         </div>
       )}
-
-      <BottomNav />
-    </div>
+      </div>
+    </ShopperLayout>
   );
 }

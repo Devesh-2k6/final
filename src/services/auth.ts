@@ -168,3 +168,46 @@ export async function getDevMailbox(): Promise<{ emails: Array<{ to_email: strin
   });
 }
 
+export type ForgotPasswordResponse = {
+  success: boolean;
+  message: string;
+  expires_in_seconds?: number;
+  cooldown_remaining?: number;
+  dev_code?: string;
+};
+
+export type ResetPasswordInput = {
+  email: string;
+  otp: string;
+  new_password: string;
+};
+
+export type ResetPasswordResponse = {
+  success: boolean;
+  message: string;
+  access_token?: string;
+  token_type?: string;
+  user?: AuthUser;
+};
+
+export async function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  return apiRequest<ForgotPasswordResponse>("/auth/forgot-password", {
+    method: "POST",
+    json: { email: email.trim().toLowerCase() },
+    skipAuth: true,
+  });
+}
+
+export async function resetPassword(data: ResetPasswordInput): Promise<ResetPasswordResponse> {
+  return apiRequest<ResetPasswordResponse>("/auth/reset-password", {
+    method: "POST",
+    json: {
+      email: data.email.trim().toLowerCase(),
+      otp: data.otp.trim(),
+      new_password: data.new_password.trim(),
+    },
+    skipAuth: true,
+  });
+}
+
+

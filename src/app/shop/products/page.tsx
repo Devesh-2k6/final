@@ -6,10 +6,12 @@ import Link from "next/link";
 import { useProducts } from "@/hooks/useProducts";
 import { formatExpiryDisplay } from "@/lib/products/formatters";
 import { deleteProduct, updateProduct, getProductAiInsight } from "@/services/products";
-import { getMyShop } from "@/services/shops";
+import { getMyShop, type ShopWithDescription } from "@/services/shops";
+import { AlertTriangle } from "lucide-react";
 
 export default function ProductList() {
   const [activeTab, setActiveTab] = useState<"active" | "expired">("active");
+  const [shop, setShop] = useState<ShopWithDescription | null>(null);
   const [shopId, setShopId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -35,8 +37,14 @@ export default function ProductList() {
 
   useEffect(() => {
     getMyShop()
-      .then((s) => setShopId(s.id))
-      .catch(() => setShopId(undefined));
+      .then((s) => {
+        setShop(s);
+        setShopId(s.id);
+      })
+      .catch(() => {
+        setShop(null);
+        setShopId(undefined);
+      });
   }, []);
 
   const { products, status, refetch } = useProducts({
@@ -90,8 +98,21 @@ export default function ProductList() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      {/* Pending Approval Banner */}
+      {shop && shop.approval_status !== "APPROVED" && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex items-start gap-3">
+          <AlertTriangle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <h4 className="text-sm font-bold">Store Under Review ({shop.approval_status})</h4>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+              An administrator must approve <strong>{shop.name}</strong> before live deals can be added or published.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Products</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

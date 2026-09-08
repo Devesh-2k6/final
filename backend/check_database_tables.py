@@ -56,8 +56,7 @@ try:
     pg_conn.close()
 except Exception as e:
     print(f"⚠️ Remote Supabase connection note: {e}")
-    print("\n📌 Supabase Cloud Connection Status:")
-    print(" • Remote Host: db.gkyghgomyieqelsqudpz.supabase.co:5432")
+    print(" • Remote Host: aws-0-ap-south-1.pooler.supabase.com:6543 (delqflwslgciqfwzzqwo)")
     print(" • Table Definitions in Code: User, Shop, Product, Reservation, Order, Favorite, Follower, Review, Notification, PantryItem")
     print(" • Auto-Migration Hook: Base.metadata.create_all(bind=engine) will automatically create all tables upon successful cloud connection.")
 

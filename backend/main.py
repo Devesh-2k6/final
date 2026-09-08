@@ -49,7 +49,7 @@ async def lifespan(_app: FastAPI):
     # Detect if running under tests
     is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "True"
     
-    # Initialize Redis Cache
+    # Initialize Redis Cache and Distributed Pub/Sub
     try:
         import asyncio
         redis = aioredis.from_url(
@@ -61,13 +61,20 @@ async def lifespan(_app: FastAPI):
         )
         await asyncio.wait_for(redis.ping(), timeout=0.2)
         FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache", enable=not is_testing)
-        logger.info(f"Redis cache initialized successfully (enabled: {not is_testing}).")
+        if not is_testing:
+            await manager.start_pubsub(redis)
+        logger.info(f"Redis cache & distributed WebSocket Pub/Sub initialized successfully (enabled: {not is_testing}).")
     except Exception as e:
         logger.warning(f"Redis connection failed or unavailable: {e}. Using InMemoryBackend for fast local caching.")
         from fastapi_cache.backends.inmemory import InMemoryBackend
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache", enable=not is_testing)
         
     yield
+
+    try:
+        await manager.stop_pubsub()
+    except Exception:
+        pass
 
 app = FastAPI(
     title="ExpiryGo API",

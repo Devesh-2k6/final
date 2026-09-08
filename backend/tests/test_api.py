@@ -15,7 +15,7 @@ def verify_user(email: str):
         user = db.query(User).filter(User.email == email).first()
         if user:
             user.email_verified = True
-            user.role = "SHOPKEEPER" if user.is_shop_owner else "CUSTOMER"
+            user.role = "VENDOR" if user.is_shop_owner else "CUSTOMER"
             shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
             if shop:
                 shop.location_verified = True

@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "next lint",
+    "backend": "cd backend && python run_server.py",
+    "web:all": "python serve_all.py",
     "mobile": "npm --prefix mobile start",
     "mobile:android": "npm --prefix mobile run android",
     "mobile:ios": "npm --prefix mobile run ios",

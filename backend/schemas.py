@@ -218,6 +218,68 @@ class VerifyOtpRequest(BaseModel):
             raise ValueError("Please enter a valid OTP code.")
         return v_clean
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean or "." not in v_clean.split("@")[-1]:
+            raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+class ForgotPasswordResponse(BaseModel):
+    success: bool
+    message: str
+    expires_in_seconds: int = 600
+    cooldown_remaining: Optional[int] = None
+    dev_code: Optional[str] = None
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean:
+            raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_otp_or_code(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "otp" not in data and "code" in data:
+                data["otp"] = data["code"]
+        return data
+
+    @field_validator('otp')
+    @classmethod
+    def validate_otp(cls, v: str) -> str:
+        v_clean = v.strip().replace(" ", "").replace("-", "")
+        if len(v_clean) < 4:
+            raise ValueError("Please enter a valid 6-digit OTP code.")
+        return v_clean
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v.strip()) < 6:
+            raise ValueError("New password must be at least 6 characters long.")
+        return v.strip()
+
+class ResetPasswordResponse(BaseModel):
+    success: bool
+    message: str
+    access_token: Optional[str] = None
+    token_type: str = "bearer"
+    user: Optional[dict] = None
+
+
 
 # =========================
 # SHOPS

@@ -353,19 +353,27 @@ def verify_shop_location(
                 seen_place_ids.add(pid)
                 candidates.append(data)
 
+    def has_food_candidate(cands: List[dict]) -> bool:
+        for c in cands:
+            c_class, _ = _classify_candidate(c)
+            if c_class == "FOOD":
+                return True
+        return False
+
     # Strategy A: Reverse Geocoding at coordinates
     url_rev = f"{base_url}/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1&extratags=1"
     add_candidates(_fetch_nominatim_json(url_rev, timeout=timeout))
 
     # Strategy B: If reverse geocoding found no commercial food candidates, query by name & address
-    if not candidates and clean_name and clean_address:
+    if not has_food_candidate(candidates) and clean_name and clean_address:
         query_a = f"{clean_name}, {clean_address}"
         url_a = f"{base_url}/search?q={urllib.parse.quote(query_a)}&format=json&addressdetails=1&extratags=1&limit=5"
         add_candidates(_fetch_nominatim_json(url_a, timeout=timeout))
 
-    # Strategy C: If still no candidates, search with clean name
-    if not candidates and clean_name:
-        url_b = f"{base_url}/search?q={urllib.parse.quote(clean_name)}&format=json&addressdetails=1&extratags=1&limit=5"
+    # Strategy C: If still no food candidates, search with clean name or stripped core name
+    if not has_food_candidate(candidates) and clean_name:
+        core_name = _extract_clean_keywords(clean_name) or clean_name
+        url_b = f"{base_url}/search?q={urllib.parse.quote(core_name)}&format=json&addressdetails=1&extratags=1&limit=5"
         add_candidates(_fetch_nominatim_json(url_b, timeout=timeout))
 
     # Handle provider outage or unreachable service gracefully

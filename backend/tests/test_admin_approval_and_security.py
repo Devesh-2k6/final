@@ -49,7 +49,7 @@ def verified_merchant():
     user = User(
         email="merchant_verified@test.com",
         name="John Baker",
-        role="SHOPKEEPER",
+        role="VENDOR",
         is_shop_owner=True,
         email_verified=True,
         hashed_password=hash_password("merchantpass123"),
@@ -69,7 +69,7 @@ def unverified_email_merchant():
     user = User(
         email="merchant_unverified@test.com",
         name="Bob Merchant",
-        role="SHOPKEEPER",
+        role="VENDOR",
         is_shop_owner=True,
         email_verified=False,
         hashed_password=hash_password("merchantpass123"),
@@ -115,7 +115,7 @@ def test_merchant_registration_sets_role_and_unverified(client):
     )
     assert res.status_code == 201
     data = res.json()
-    assert data["user"]["role"] == "SHOPKEEPER"
+    assert data["user"]["role"] == "VENDOR"
     assert data["user"]["email_verified"] is False
 
 

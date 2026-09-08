@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 
 export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
-export const CURRENT_LAN_IP = "10.60.86.184";
+export const CURRENT_LAN_IP = "192.168.1.6";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
 export const TUNNEL_API_URL = "https://good-queens-tap.loca.lt";
 
@@ -73,12 +73,7 @@ export async function getApiBaseUrl(): Promise<string> {
     const override = await AsyncStorage.getItem(API_OVERRIDE_KEY);
     if (override && override.trim()) {
       const clean = override.trim().replace(/\/+$/, "");
-      // Invalidate stale IPs from older test sessions
-      if (clean.includes("10.221.") || clean.includes("onrender.com")) {
-        await AsyncStorage.removeItem(API_OVERRIDE_KEY);
-      } else {
-        return clean;
-      }
+      return clean;
     }
   } catch {
     // fallback

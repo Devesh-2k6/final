@@ -18,7 +18,7 @@ export function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-6 inset-x-0 z-50 px-4 pointer-events-none flex justify-center">
+    <div className="fixed bottom-6 inset-x-0 z-50 px-4 pointer-events-none flex justify-center lg:hidden">
       <nav className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-orange-100/80 dark:border-gray-800 rounded-full p-2 shadow-[0_15px_35px_rgba(255,91,38,0.08)] dark:shadow-[0_20px_40px_rgba(0,0,0,0.7)] pointer-events-auto flex items-center gap-1.5 max-w-lg w-full justify-between">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
