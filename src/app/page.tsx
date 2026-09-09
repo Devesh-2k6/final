@@ -143,9 +143,6 @@ export default function Home() {
             <Link href="/pantry" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
               <Sparkles size={16} className="text-amber-500" /> AI Pantry
             </Link>
-            <Link href="/shop" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
-              <Store size={16} className="text-slate-400" /> Store Portal
-            </Link>
             <Link href="/admin" onClick={playPopSound} className="hover:text-purple-800 text-purple-800 bg-purple-50 border border-purple-200/80 px-3 py-1 rounded-xl transition-all cursor-pointer font-extrabold text-xs flex items-center gap-1">
               <ShieldCheck size={14} /> Admin
             </Link>
@@ -191,7 +188,7 @@ export default function Home() {
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-2xl mb-8 font-medium leading-relaxed">
-              Near-expiry surplus groceries, artisan bakery breads, and dairy from local supermarkets — at up to <span className="font-extrabold text-purple-700">70% off</span>. Save money, fight food waste, shop smarter.
+              Near-expiry surplus groceries, artisan bakery breads, and dairy from local supermarkets — at up to <span className="font-extrabold text-purple-700">70% off</span>. Save money, support neighborhood shops, and discover great daily deals.
             </p>
 
             {/* Integrated Location & Keyword Search Bar */}
@@ -448,7 +445,7 @@ export default function Home() {
                 <AnimatedCounter value={6.2} decimals={1} />
                 <span className="text-xl ml-1">tons</span>
               </div>
-              <p className="text-sm font-bold text-purple-100">Food waste prevented this month</p>
+              <p className="text-sm font-bold text-purple-100">Surplus groceries rescued this month</p>
             </div>
 
             <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
@@ -491,7 +488,7 @@ export default function Home() {
           {[
             { icon: MapPin, color: "text-purple-600", bg: "bg-purple-50", title: "Hyper-Local Deal Radar", desc: "Discover nearby surplus inventory from walking-distance bakeries and supermarkets with live GPS." },
             { icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50", title: "Real Expiry Countdown", desc: "Visual urgency indicators show exactly how many hours remain — total transparency with zero guessing." },
-            { icon: Sparkles, color: "text-amber-600", bg: "bg-amber-50", title: "AI Recipe Suggestions", desc: "Got surplus items? Our built-in AI Chef generates delicious zero-waste recipes instantly." },
+            { icon: Sparkles, color: "text-amber-600", bg: "bg-amber-50", title: "AI Recipe Suggestions", desc: "Got surplus items? Our built-in AI Chef generates delicious, creative recipes instantly." },
             { icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", title: "Personal Eco Milestone", desc: "Track every kilogram of CO₂ you save and earn green shopper achievement badges." },
             { icon: Bell, color: "text-pink-600", bg: "bg-pink-50", title: "Instant Clearance Alerts", desc: "Get notified immediately when your favourite shopkeeper posts a 70% clearance deal." },
             { icon: ShieldCheck, color: "text-blue-600", bg: "bg-blue-50", title: "100% Verified Stores", desc: "Every shop is verified with OpenStreetMap and platform administrator identity checks." }
@@ -522,7 +519,7 @@ export default function Home() {
                 </span>
               </Link>
               <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-6 font-medium">
-                The smart hyper-local surplus food rescue engine. Connecting conscious shoppers with neighborhood supermarkets and bakeries to fight food waste.
+                The smart hyper-local surplus food rescue engine. Connecting conscious shoppers with neighborhood supermarkets and bakeries for great daily savings.
               </p>
               <div className="flex gap-3">
                 <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
@@ -551,7 +548,6 @@ export default function Home() {
               <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">For Merchants</h4>
               <ul className="space-y-3 text-sm font-semibold text-slate-400">
                 <li><Link href="/shop/setup" className="hover:text-purple-400 transition">Register Store</Link></li>
-                <li><Link href="/shop" className="hover:text-purple-400 transition">Storekeeper Portal</Link></li>
                 <li><Link href="/admin" className="hover:text-purple-400 transition">Admin Moderation</Link></li>
                 <li><Link href="/mobile" className="hover:text-purple-400 transition">Mobile App</Link></li>
               </ul>

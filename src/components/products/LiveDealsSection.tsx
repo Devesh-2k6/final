@@ -28,9 +28,9 @@ export default function LiveDealsSection() {
         category: activeCategory !== "All" ? activeCategory as any : undefined,
         limit: 6
       });
-      setProducts(data);
-    } catch (e) {
-      console.error(e);
+      setProducts(data || []);
+    } catch {
+      // Fallback is handled inside getProducts
     } finally {
       setLoading(false);
     }

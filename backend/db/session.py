@@ -38,29 +38,35 @@ def _create_engine():
         )
     
     if url.startswith("postgresql"):
-        try:
-            eng = create_engine(
-                url,
-                pool_size=10,
-                max_overflow=10,
-                pool_timeout=20,
-                pool_pre_ping=True,
-                pool_recycle=1800,
-                connect_args={"connect_timeout": 10}
-            )
-            with eng.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            logger.info("Connected successfully to primary PostgreSQL database via Supavisor pooler.")
-            return eng
-        except Exception as e:
-            sanitized_host = url.split("@")[-1] if "@" in url else "PostgreSQL"
-            logger.critical(
-                f"FATAL: Primary PostgreSQL database at {sanitized_host} is unreachable ({e}). "
-                f"Aborting startup immediately to prevent silent data corruption or split-brain SQLite fallback."
-            )
-            raise RuntimeError(
-                f"Fatal database connection failure on startup: Unable to reach PostgreSQL database at {sanitized_host}. Error: {e}"
-            ) from e
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                eng = create_engine(
+                    url,
+                    pool_size=10,
+                    max_overflow=10,
+                    pool_timeout=20,
+                    pool_pre_ping=True,
+                    pool_recycle=1800,
+                    connect_args={"connect_timeout": 10}
+                )
+                with eng.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                logger.info("Connected successfully to primary PostgreSQL database via Supavisor pooler.")
+                return eng
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Database connection attempt {attempt}/3 failed: {e}. Retrying...")
+                time.sleep(1.0)
+                
+        sanitized_host = url.split("@")[-1] if "@" in url else "PostgreSQL"
+        logger.critical(
+            f"FATAL: Primary PostgreSQL database at {sanitized_host} is unreachable ({last_error}). "
+            f"Aborting startup immediately to prevent silent data corruption or split-brain SQLite fallback."
+        )
+        raise RuntimeError(
+            f"Fatal database connection failure on startup: Unable to reach PostgreSQL database at {sanitized_host}. Error: {last_error}"
+        ) from last_error
             
     if "sqlite" in url:
         logger.warning(f"Using local SQLite database explicitly configured: {url}")

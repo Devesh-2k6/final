@@ -38,9 +38,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     body = JSON.stringify(jsonBody);
   }
 
-  // Setup timeout to prevent "hanging" during login if server is asleep
+  // Setup timeout to prevent indefinite hanging
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  const timeoutMs = options.method === "POST" || options.method === "PUT" ? 25000 : 20000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(url, { ...rest, headers, body, signal: controller.signal });
@@ -58,9 +59,12 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     return parsedBody as T;
   } catch (err: any) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
-      throw new Error("Server is taking too long to respond. It might be waking up or down.");
+    if (err instanceof ApiError) {
+      throw err;
     }
-    throw err;
+    const errorMsg = err.name === 'AbortError' 
+      ? "Server request timed out. Please try again."
+      : (err.message || "Network request failed");
+    throw new ApiError(503, null, errorMsg);
   }
 }
