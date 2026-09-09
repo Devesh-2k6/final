@@ -7,7 +7,9 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any, Optional
 from config import settings
 
-logger = logging.getLogger("expirygo.email")
+from email.utils import formataddr
+
+logger = logging.getLogger("meeva.email")
 
 # In-memory Dev Mailbox ring buffer (keeps last 50 emails for dev inspection/testing)
 DEV_MAILBOX: List[Dict[str, Any]] = []
@@ -19,7 +21,7 @@ def get_smtp_config() -> Dict[str, Any]:
     port_str = (str(settings.SMTP_PORT) if settings.SMTP_PORT else "").strip()
     user = (settings.SMTP_USERNAME or settings.SMTP_USER or "").strip()
     password = (settings.SMTP_PASSWORD or "").strip()
-    sender = (settings.SMTP_FROM or settings.SMTP_SENDER or user or "no-reply@expirygo.com").strip()
+    sender = (settings.SMTP_FROM or settings.SMTP_SENDER or user or "no-reply@meeva.com").strip()
     
     port = int(port_str) if port_str.isdigit() else 587
     is_configured = bool(host and user and password)
@@ -107,7 +109,7 @@ def send_email_notification(
         try:
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
-            message["From"] = config["sender"]
+            message["From"] = formataddr(("Meeva", config["sender"]))
             message["To"] = to_email
             
             if text_fallback:
@@ -156,12 +158,12 @@ def test_smtp_connection(to_email: str) -> Dict[str, Any]:
             },
         }
 
-    subject = "🌱 ExpiryGo SMTP Test - Diagnostic Ping"
+    subject = "🌱 Meeva SMTP Test - Diagnostic Ping"
     html_content = """<div style="font-family: sans-serif; padding: 20px; color: #111;">
-        <h2 style="color: #10b981;">ExpiryGo SMTP Diagnostic Test Passed!</h2>
+        <h2 style="color: #10b981;">Meeva SMTP Diagnostic Test Passed!</h2>
         <p>Your SMTP mail configuration is working correctly and ready for production email dispatch.</p>
     </div>"""
-    text_content = "ExpiryGo SMTP Diagnostic Test Passed! Your SMTP mail configuration is working correctly."
+    text_content = "Meeva SMTP Diagnostic Test Passed! Your SMTP mail configuration is working correctly."
 
     success = send_email_notification(to_email, subject, html_content, text_content)
     return {
@@ -182,7 +184,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
     """
     frontend_base = (settings.FRONTEND_URL or "http://localhost:3000").rstrip("/")
     verification_url = f"{frontend_base}/verify-email?token={raw_token}"
-    subject = "Verify your ExpiryGo email"
+    subject = "Verify your Meeva email"
     display_name = (name or "").strip() or "there"
 
     html_content = f"""<!DOCTYPE html>
@@ -190,7 +192,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify your ExpiryGo email</title>
+    <title>Verify your Meeva email</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; line-height: 1.6;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 16px;">
@@ -199,9 +201,9 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
                 <table role="presentation" width="100%" max-width="560" style="max-width: 560px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; overflow: hidden; text-align: left;">
                     <!-- Brand Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 36px; text-align: center;">
+                        <td style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 32px 36px; text-align: center;">
                             <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 9999px; margin-bottom: 8px;">
-                                <span style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px;">🌱 Expiry<span style="color: #d1fae5;">Go</span></span>
+                                <span style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px;">🌱 Mee<span style="color: #ede9fe;">va</span></span>
                             </div>
                             <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700; color: #ffffff;">Confirm Your Email Address</h1>
                         </td>
@@ -212,7 +214,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
                         <td style="padding: 36px 36px 28px 36px;">
                             <p style="font-size: 16px; font-weight: 600; color: #0f172a; margin-top: 0;">Hello {display_name},</p>
                             <p style="font-size: 15px; color: #334155; margin: 12px 0 20px 0;">
-                                Thank you for registering with <strong>ExpiryGo</strong>! We are excited to have you join our mission to reduce food waste, save surplus groceries, and unlock exclusive hyper-local deals.
+                                Thank you for registering with <strong>Meeva</strong>! We are excited to have you join our mission to reduce food waste, save surplus groceries, and unlock exclusive hyper-local deals.
                             </p>
                             <p style="font-size: 15px; color: #334155; margin: 0 0 28px 0;">
                                 Please click the button below to verify your email address and activate your account.
@@ -220,7 +222,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
 
                             <!-- CTA Button -->
                             <div style="text-align: center; margin: 32px 0;">
-                                <a href="{verification_url}" target="_blank" style="display: inline-block; background-color: #10b981; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(16,185,129,0.35); transition: background-color 0.2s;">
+                                <a href="{verification_url}" target="_blank" style="display: inline-block; background-color: #7c3aed; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(124,58,237,0.35); transition: background-color 0.2s;">
                                     Verify Email
                                 </a>
                             </div>
@@ -239,7 +241,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
                             </p>
 
                             <p style="font-size: 13px; color: #94a3b8; margin: 20px 0 0 0;">
-                                If you did not create an ExpiryGo account, you can safely ignore this email.
+                                If you did not create a Meeva account, you can safely ignore this email.
                             </p>
                         </td>
                     </tr>
@@ -247,7 +249,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #f1f5f9; padding: 20px 36px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-                            <p style="margin: 0;">&copy; ExpiryGo Surplus Marketplace. Saving food, saving money.</p>
+                            <p style="margin: 0;">&copy; Meeva Surplus Marketplace. Saving food, saving money.</p>
                         </td>
                     </tr>
                 </table>
@@ -259,7 +261,7 @@ def send_verification_email(to_email: str, name: str, raw_token: str) -> bool:
 
     text_fallback = f"""Hello {display_name},
 
-Thank you for registering with ExpiryGo!
+Thank you for registering with Meeva!
 
 Please click the link below or copy and paste it into your browser to verify your email address:
 {verification_url}
@@ -269,7 +271,7 @@ This verification link expires in 24 hours.
 If you did not create this account, you can ignore this email.
 
 ---
-ExpiryGo Team
+Meeva Team
 """
 
     return send_email_notification(
@@ -284,7 +286,7 @@ ExpiryGo Team
 
 def send_vendor_approval_email(to_email: str, vendor_name: str, shop_name: str) -> bool:
     """Dispatches official approval notification to vendor when approved by Admin."""
-    subject = f"🎉 Your shop '{shop_name}' has been APPROVED on ExpiryGo!"
+    subject = f"🎉 Your shop '{shop_name}' has been APPROVED on Meeva!"
     display_name = vendor_name.strip() if vendor_name else "Vendor"
     
     html_content = f"""<!DOCTYPE html>
@@ -298,12 +300,12 @@ def send_vendor_approval_email(to_email: str, vendor_name: str, shop_name: str) 
         <div style="text-align: center; margin: 24px 0;">
             <a href="http://localhost:3000/shop" style="background-color: #059669; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Open Vendor Dashboard</a>
         </div>
-        <p style="font-size: 12px; color: #64748b;">ExpiryGo Marketplace Team</p>
+        <p style="font-size: 12px; color: #64748b;">Meeva Marketplace Team</p>
     </div>
 </body>
 </html>"""
 
-    text_fallback = f"Hello {display_name},\n\nYour shop '{shop_name}' has been APPROVED on ExpiryGo! You can now publish surplus food deals.\n\nOpen your Vendor Dashboard: http://localhost:3000/shop\n\nExpiryGo Team"
+    text_fallback = f"Hello {display_name},\n\nYour shop '{shop_name}' has been APPROVED on Meeva! You can now publish surplus food deals.\n\nOpen your Vendor Dashboard: http://localhost:3000/shop\n\nMeeva Team"
     
     return send_email_notification(
         to_email=to_email,
@@ -315,7 +317,7 @@ def send_vendor_approval_email(to_email: str, vendor_name: str, shop_name: str) 
 
 def send_vendor_rejection_email(to_email: str, vendor_name: str, shop_name: str, reason: str) -> bool:
     """Dispatches rejection and resubmission instructions to vendor."""
-    subject = f"Update regarding your ExpiryGo shop application: {shop_name}"
+    subject = f"Update regarding your Meeva shop application: {shop_name}"
     display_name = vendor_name.strip() if vendor_name else "Vendor"
     clean_reason = reason.strip() if reason else "Documentation or location verification required."
     
@@ -325,7 +327,7 @@ def send_vendor_rejection_email(to_email: str, vendor_name: str, shop_name: str,
     <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
         <h2 style="color: #dc2626; margin-top: 0;">Shop Application Update</h2>
         <p>Hello <strong>{display_name}</strong>,</p>
-        <p>Thank you for your interest in ExpiryGo. After review, our moderation team was unable to approve your application for <strong>{shop_name}</strong>.</p>
+        <p>Thank you for your interest in Meeva. After review, our moderation team was unable to approve your application for <strong>{shop_name}</strong>.</p>
         <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin: 16px 0;">
             <p style="margin: 0; color: #991b1b; font-weight: bold;">Reason for Rejection:</p>
             <p style="margin: 6px 0 0 0; color: #7f1d1d;">{clean_reason}</p>
@@ -334,12 +336,12 @@ def send_vendor_rejection_email(to_email: str, vendor_name: str, shop_name: str,
         <div style="text-align: center; margin: 24px 0;">
             <a href="http://localhost:3000/shop/setup" style="background-color: #dc2626; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Resubmit Application</a>
         </div>
-        <p style="font-size: 12px; color: #64748b;">ExpiryGo Marketplace Team</p>
+        <p style="font-size: 12px; color: #64748b;">Meeva Marketplace Team</p>
     </div>
 </body>
 </html>"""
 
-    text_fallback = f"Hello {display_name},\n\nYour shop application for '{shop_name}' was not approved.\nReason: {clean_reason}\n\nYou may resubmit with corrected documents at http://localhost:3000/shop/setup\n\nExpiryGo Team"
+    text_fallback = f"Hello {display_name},\n\nYour shop application for '{shop_name}' was not approved.\nReason: {clean_reason}\n\nYou may resubmit with corrected documents at http://localhost:3000/shop/setup\n\nMeeva Team"
 
     return send_email_notification(
         to_email=to_email,

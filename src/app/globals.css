@@ -3,47 +3,35 @@
 @custom-variant dark (&:not(*));
 
 @theme {
-  --color-primary: #FF5B26; /* Signature Warm Tangerine Orange */
-  --color-primary-light: #FF7A4D; /* Soft Orange */
-  --color-primary-dark: #E54B18; /* Deep Orange */
-  --color-secondary: #F59E0B; /* Amber 500 */
+  --color-primary: #7C3AED; /* Signature Royal Violet Purple */
+  --color-primary-light: #9333EA; /* Electric Purple */
+  --color-primary-dark: #6D28D9; /* Deep Violet */
+  --color-secondary: #4F46E5; /* Indigo 600 */
   --color-danger: #EF4444; /* Red 500 */
-  --color-background: #F8F9FA; /* Pearl Light Minimalist Canvas */
+  --color-background: #FAFAFE; /* Clean Pearl Minimalist Canvas */
   --color-surface: #FFFFFF;
-  --color-text-primary: #121826; /* Deep Charcoal */
+  --color-text-primary: #0F172A; /* Slate 900 */
   --color-text-secondary: #64748B; /* Slate 500 */
 
-  /* Harmonized Orange Scale */
-  --color-emerald-50: #FFF5F0;
-  --color-emerald-100: #FFE6DB;
-  --color-emerald-200: #FFCEB8;
-  --color-emerald-300: #FFAA85;
-  --color-emerald-400: #FF7A4D;
-  --color-emerald-500: #FF5B26;
-  --color-emerald-600: #E54B18;
-  --color-emerald-700: #C93A0D;
-  --color-emerald-800: #A62E0A;
-  --color-emerald-900: #802307;
-  --color-emerald-950: #4D1202;
-
-  --color-orange-50: #FFF5F0;
-  --color-orange-100: #FFE6DB;
-  --color-orange-200: #FFCEB8;
-  --color-orange-300: #FFAA85;
-  --color-orange-400: #FF7A4D;
-  --color-orange-500: #FF5B26;
-  --color-orange-600: #E54B18;
-  --color-orange-700: #C93A0D;
-  --color-orange-800: #A62E0A;
-  --color-orange-900: #802307;
-  --color-orange-950: #4D1202;
+  /* Harmonized Purple Scale */
+  --color-purple-50: #FAF5FF;
+  --color-purple-100: #F3E8FF;
+  --color-purple-200: #E9D5FF;
+  --color-purple-300: #D8B4FE;
+  --color-purple-400: #C084FC;
+  --color-purple-500: #A855F7;
+  --color-purple-600: #9333EA;
+  --color-purple-700: #7E22CE;
+  --color-purple-800: #6B21A8;
+  --color-purple-900: #581C87;
+  --color-purple-950: #3B0764;
 
   --font-sans: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: #F8FAFC;
+    --background: #FAFAFE;
     --foreground: #0F172A;
   }
 
@@ -53,37 +41,21 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
 @layer utilities {
   .glass {
-    background-color: rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.12);
   }
   
   .glass-card {
-    background-color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(16, 185, 129, 0.15);
-    box-shadow: 0 10px 30px -10px rgba(16, 185, 129, 0.08);
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(124, 58, 237, 0.15);
+    box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.08);
     transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .pulse-glow {
-    animation: pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-}
-
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 10px 0px rgba(214, 107, 31, 0.3);
-  }
-  50% {
-    opacity: 0.8;
-    box-shadow: 0 0 20px 5px rgba(214, 107, 31, 0.15);
   }
 }
 
@@ -113,60 +85,12 @@
   }
 }
 
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(12px) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
 @keyframes shimmerGlow {
   0% {
     background-position: -200% center;
   }
   100% {
     background-position: 200% center;
-  }
-}
-
-@keyframes borderGlowRed {
-  0%, 100% {
-    border-color: rgba(239, 68, 68, 0.25);
-    box-shadow: 0 0 8px -2px rgba(239, 68, 68, 0.15);
-  }
-  50% {
-    border-color: rgba(239, 68, 68, 0.45);
-    box-shadow: 0 0 16px -2px rgba(239, 68, 68, 0.25);
-  }
-}
-
-@keyframes borderGlowOrange {
-  0%, 100% {
-    border-color: rgba(249, 115, 22, 0.2);
-    box-shadow: 0 0 6px -2px rgba(249, 115, 22, 0.1);
-  }
-  50% {
-    border-color: rgba(249, 115, 22, 0.35);
-    box-shadow: 0 0 12px -2px rgba(249, 115, 22, 0.18);
-  }
-}
-
-@keyframes priceDropBounce {
-  0% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-3px);
-  }
-  60% {
-    transform: translateY(1px);
-  }
-  100% {
-    transform: translateY(0);
   }
 }
 
@@ -179,95 +103,17 @@
     animation: freshnessBreath 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  .animate-slide-in-right {
-    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
   .animate-shimmer {
     background-size: 200% 100%;
     animation: shimmerGlow 2.5s linear infinite;
   }
 
-  .animate-border-glow-red {
-    animation: borderGlowRed 2.5s ease-in-out infinite;
-  }
-
-  .animate-border-glow-orange {
-    animation: borderGlowOrange 3s ease-in-out infinite;
-  }
-
-  .animate-price-drop {
-    animation: priceDropBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  .animate-draw-checkmark {
-    stroke-dasharray: 100;
-    stroke-dashoffset: 100;
-    animation: drawCheckmark 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
-  }
-
-  .shimmer-bg {
-    background: linear-gradient(
-      90deg,
-      rgba(229, 231, 235, 0.6) 25%,
-      rgba(243, 244, 246, 0.9) 50%,
-      rgba(229, 231, 235, 0.6) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmerGlow 1.8s infinite linear;
-  }
-
-  .dark .shimmer-bg,
-  .shimmer-bg[class*="dark:"] {
-    background: linear-gradient(
-      90deg,
-      rgba(55, 65, 81, 0.6) 25%,
-      rgba(75, 85, 99, 0.9) 50%,
-      rgba(55, 65, 81, 0.6) 75%
-    );
-    background-size: 200% 100%;
-  }
-
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
-  }
-  .animate-loading-bar {
-    animation: loadingBar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-  .animate-bounce-subtle {
-    animation: bounceSubtle 3s ease-in-out infinite;
-  }
-}
-
-@keyframes loadingBar {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(250%);
-  }
-}
-
-@keyframes bounceSubtle {
-  0%, 100% {
-    transform: translate(-50%, 0);
-  }
-  50% {
-    transform: translate(-50%, -4px);
-  }
-}
-
-
-@keyframes drawCheckmark {
-  from {
-    stroke-dashoffset: 100;
-  }
-  to {
-    stroke-dashoffset: 0;
+    display: none;
   }
 }
 
@@ -276,6 +122,7 @@
   background: transparent !important;
   border: none !important;
 }
+.hero-shop-pin,
 .custom-interactive-store-pin,
 .admin-submitted-pin,
 .admin-matched-pin,
@@ -284,6 +131,3 @@
   background: transparent !important;
   border: none !important;
 }
-
-
-

@@ -143,8 +143,8 @@ export default function AdminLocationMap({
           pathOptions={{
             color: isVerified ? "#10b981" : "#3b82f6",
             fillColor: isVerified ? "#10b981" : "#3b82f6",
-            fillOpacity: 0.1,
-            weight: 1.5,
+            fillOpacity: 0.12,
+            weight: 2,
             dashArray: "4 4",
           }}
         />
@@ -159,7 +159,7 @@ export default function AdminLocationMap({
               <p className="font-bold text-slate-900">{submittedName}</p>
               {submittedAddress && <p className="text-slate-600 text-[11px]">{submittedAddress}</p>}
               <p className="text-[10px] text-slate-400 font-mono">
-                GPS: {submittedLat.toFixed(5)}, {submittedLng.toFixed(5)}
+                GPS: {submittedLat.toFixed(6)}, {submittedLng.toFixed(6)}
               </p>
             </div>
           </Popup>
@@ -177,7 +177,7 @@ export default function AdminLocationMap({
                 {matchedAddress && <p className="text-slate-600 text-[11px]">{matchedAddress}</p>}
                 {distanceMeters != null && (
                   <p className="text-emerald-700 font-bold text-[10px]">
-                    Distance: {distanceMeters}m from submitted pin
+                    Distance: {typeof distanceMeters === "number" ? distanceMeters.toFixed(1) : distanceMeters}m from submitted pin
                   </p>
                 )}
                 {category && (

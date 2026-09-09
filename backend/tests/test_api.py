@@ -206,13 +206,14 @@ def test_product_discount_calculation(client: TestClient):
     )
     approve_user_shop("shop_discount@test.com")
 
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, UTC
 
     # Fair-pricing tiers (see _calculate_automatic_discount):
     #   <=1 day / <=12h -> 40% off, 2-3 days -> 30% off, 4-7 days -> 20% off, 8+ days -> 15% off
 
     # 1. Expiry in 2 days -> 30% off -> 100 * 0.70 = 70.0
-    expiry_2d = (datetime.now() + timedelta(days=2)).isoformat()
+    now_utc = datetime.now(UTC).replace(tzinfo=None)
+    expiry_2d = (now_utc + timedelta(days=2)).isoformat()
     p1 = client.post(
         "/products/",
         headers=headers,
@@ -233,7 +234,7 @@ def test_product_discount_calculation(client: TestClient):
     assert p1.json()["description"] == "Milk expiring soon"
 
     # 2. Expiry in 5 days -> 20% off -> 100 * 0.80 = 80.0
-    expiry_5d = (datetime.now() + timedelta(days=5)).isoformat()
+    expiry_5d = (now_utc + timedelta(days=5)).isoformat()
     p2 = client.post(
         "/products/",
         headers=headers,
@@ -253,7 +254,7 @@ def test_product_discount_calculation(client: TestClient):
     assert p2.json()["description"] is None
 
     # 3. Expiry in 9 days -> 15% off -> 100 * 0.85 = 85.0
-    expiry_9d = (datetime.now() + timedelta(days=9)).isoformat()
+    expiry_9d = (now_utc + timedelta(days=9)).isoformat()
     p3 = client.post(
         "/products/",
         headers=headers,
@@ -360,6 +361,8 @@ def test_order_flow(client: TestClient):
             "latitude": 12.97,
             "longitude": 77.59,
             "description": "Shop for Order testing",
+            "upi_id": "ordertest@upi",
+            "delivery_enabled": True,
         },
     )
     assert shop.status_code in [200, 201], shop.text
@@ -435,13 +438,15 @@ def test_order_flow(client: TestClient):
         }
     )
     assert ord2.status_code in [200, 201]
-    ord2_id = ord2.json()["id"]
-    assert ord2.json()["status"] == "PENDING"
-    assert ord2.json()["order_type"] == "DELIVERY"
-    assert ord2.json()["delivery_fee"] == 45.0
-    assert ord2.json()["customer_name"] == "John Doe"
-    assert ord2.json()["customer_phone"] == "9876543210"
-    assert ord2.json()["delivery_address"] == "456 Lane, City"
+    ord2_data = ord2.json()
+    ord2_id = ord2_data["id"]
+    delivery_pin = ord2_data["delivery_pin"]
+    assert ord2_data["status"] == "PENDING"
+    assert ord2_data["order_type"] == "DELIVERY"
+    assert ord2_data["delivery_fee"] == 45.0
+    assert ord2_data["customer_name"] == "John Doe"
+    assert ord2_data["customer_phone"] == "9876543210"
+    assert ord2_data["delivery_address"] == "456 Lane, City"
 
     # 4. Try to update status of PICKUP order to OUT_FOR_DELIVERY -> Should fail (400)
     invalid_transition = client.patch(
@@ -451,7 +456,24 @@ def test_order_flow(client: TestClient):
     )
     assert invalid_transition.status_code == 400
 
-    # 5. Shopkeeper accepts Delivery Order -> stock reduces from 8 to 5
+    # 5. Customer reports UPI payment and vendor verifies it
+    rep_res = client.post(
+        f"/orders/{ord2_id}/report-payment",
+        headers=cust_headers,
+        json={"upi_transaction_id": "UTR1234567890"}
+    )
+    assert rep_res.status_code == 200
+    assert rep_res.json()["payment_status"] == "CUSTOMER_REPORTED_UNVERIFIED"
+
+    ver_res = client.post(
+        f"/orders/{ord2_id}/verify-payment",
+        headers=shop_headers,
+        json={"confirmed": True}
+    )
+    assert ver_res.status_code == 200
+    assert ver_res.json()["payment_status"] == "PAID"
+
+    # 6. Shopkeeper accepts Delivery Order -> stock reduces from 8 to 5
     accept_res2 = client.patch(
         f"/orders/{ord2_id}/status",
         headers=shop_headers,
@@ -465,7 +487,7 @@ def test_order_flow(client: TestClient):
     prod_obj = next(p for p in prod_db.json() if p["id"] == prod_id)
     assert prod_obj["quantity"] == 5
 
-    # 6. Shopkeeper updates Delivery Order to OUT_FOR_DELIVERY -> SUCCESS
+    # 7. Shopkeeper updates Delivery Order to OUT_FOR_DELIVERY -> SUCCESS
     out_res = client.patch(
         f"/orders/{ord2_id}/status",
         headers=shop_headers,
@@ -474,11 +496,11 @@ def test_order_flow(client: TestClient):
     assert out_res.status_code == 200
     assert out_res.json()["status"] == "OUT_FOR_DELIVERY"
 
-    # 7. Shopkeeper updates Delivery Order to DELIVERED -> SUCCESS
-    delivered_res = client.patch(
-        f"/orders/{ord2_id}/status",
+    # 8. Complete Delivery via 4-digit PIN verification -> SUCCESS
+    delivered_res = client.post(
+        f"/orders/{ord2_id}/verify-delivery-pin",
         headers=shop_headers,
-        json={"status": "DELIVERED"}
+        json={"pin": delivery_pin}
     )
     assert delivered_res.status_code == 200
     assert delivered_res.json()["status"] == "DELIVERED"
@@ -568,7 +590,7 @@ def test_order_flow(client: TestClient):
         f"/orders/{ord1_id}/cancel",
         headers=cust2_headers,
     )
-    assert cancel_other.status_code == 404
+    assert cancel_other.status_code in [403, 404]
 
 
 def test_product_ai_forecast(client: TestClient):

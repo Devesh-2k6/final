@@ -393,7 +393,8 @@ export default function CustomerDealsPage() {
               setLng(data.longitude);
             })
             .catch(() => alert("Could not get location. " + err.message));
-        }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
       fetchIpGeolocation()
@@ -461,7 +462,7 @@ export default function CustomerDealsPage() {
 
             <div className="text-center">
               <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight flex items-center justify-center gap-1">
-                <span>🌱 Expiry<span className="text-[#FF5B26]">Go</span></span>
+                <span>🌱 Mee<span className="text-[#FF5B26]">va</span></span>
               </h1>
               <p className="text-[11px] font-semibold text-slate-400 dark:text-gray-400 leading-none mt-1">
                 Rescue surplus quality food

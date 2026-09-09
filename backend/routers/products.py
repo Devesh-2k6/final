@@ -717,12 +717,12 @@ async def create_product(
                         </div>
                         <p>Hurry and reserve it now before it's gone!</p>
                         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                        <p style="font-size: 0.8em; color: #999;">You are receiving this because you follow {shop.name} on ExpiryGo.</p>
+                        <p style="font-size: 0.8em; color: #999;">You are receiving this because you follow {shop.name} on Meeva.</p>
                     </div>
                 </body>
             </html>
             """
-            email_text = f"Hello {follower.user.name},\n\nA new deal is available at {shop.name}!\n\n{product.name} is now available at {discount_pct}% off for only ₹{product.discount_price:.2f}.\nExpiry: {product.expiry_date.strftime('%Y-%m-%d %H:%M') if product.expiry_date else ''}\n\nReserve it on ExpiryGo!"
+            email_text = f"Hello {follower.user.name},\n\nA new deal is available at {shop.name}!\n\n{product.name} is now available at {discount_pct}% off for only ₹{product.discount_price:.2f}.\nExpiry: {product.expiry_date.strftime('%Y-%m-%d %H:%M') if product.expiry_date else ''}\n\nReserve it on Meeva!"
             send_email_notification(follower.user.email, email_subject, email_html, email_text)
             
     if followers:

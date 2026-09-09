@@ -522,16 +522,16 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#ECFDF5] via-[#F8FAFC] to-[#F0FDF4] dark:from-gray-950 dark:via-gray-900 dark:to-emerald-950/40 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden transition-colors">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50/60 via-[#F8FAFC] to-purple-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950/40 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden transition-colors">
       {/* Brand Header */}
-      <div className="w-full max-w-md bg-white/95 dark:bg-gray-900/90 backdrop-blur-2xl rounded-3xl border border-emerald-100/60 dark:border-gray-800 shadow-2xl p-6 sm:p-8 space-y-6 relative z-10">
+      <div className="w-full max-w-md bg-white/95 dark:bg-gray-900/90 backdrop-blur-2xl rounded-3xl border border-purple-100/70 dark:border-gray-800 shadow-2xl p-6 sm:p-8 space-y-6 relative z-10">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="bg-emerald-500 text-white p-2 rounded-2xl group-hover:scale-105 transition-transform shadow-md shadow-emerald-500/20">
+            <div className="bg-purple-600 text-white p-2 rounded-2xl group-hover:scale-105 transition-transform shadow-md shadow-purple-600/20">
               <Leaf size={24} />
             </div>
             <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              Expiry<span className="text-emerald-500">Go</span>
+              Mee<span className="text-purple-600">va</span>
             </span>
           </Link>
           <p className="text-xs font-semibold text-slate-500 dark:text-gray-400">
@@ -547,7 +547,7 @@ export default function AuthPage() {
 
         {/* Top Tab Switcher: Login vs Sign Up (Hidden during Forgot Password & OTP) */}
         {tab !== "otp" && tab !== "forgot_password" && (
-          <div className="flex border-b border-emerald-100/60 dark:border-gray-800 p-1.5 bg-emerald-50/40 dark:bg-gray-900/50 rounded-2xl">
+          <div className="flex border border-purple-100/60 dark:border-gray-800 p-1.5 bg-purple-50/40 dark:bg-gray-900/50 rounded-2xl">
             <button
               type="button"
               onClick={() => {
@@ -556,7 +556,7 @@ export default function AuthPage() {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 tab === "login"
-                  ? "text-emerald-700 dark:text-emerald-400 bg-white dark:bg-gray-800 shadow-sm"
+                  ? "text-purple-700 dark:text-purple-400 bg-white dark:bg-gray-800 shadow-sm"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
@@ -570,7 +570,7 @@ export default function AuthPage() {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 tab === "signup"
-                  ? "text-emerald-700 dark:text-emerald-400 bg-white dark:bg-gray-800 shadow-sm"
+                  ? "text-purple-700 dark:text-purple-400 bg-white dark:bg-gray-800 shadow-sm"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
               }`}
             >
@@ -594,7 +594,7 @@ export default function AuthPage() {
                 }}
                 className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold transition-all ${
                   roleMode === "customer"
-                    ? "bg-white dark:bg-gray-900 text-emerald-700 dark:text-emerald-400 shadow-sm"
+                    ? "bg-white dark:bg-gray-900 text-purple-700 dark:text-purple-400 shadow-sm font-black"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
@@ -674,7 +674,7 @@ export default function AuthPage() {
                     required
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-emerald-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                    className="w-full rounded-2xl border border-purple-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 text-sm font-medium"
                     placeholder="name@example.com"
                   />
                 </div>
@@ -688,7 +688,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={forgotSending || !forgotEmail.trim()}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-3.5 rounded-2xl transition shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
                 >
                   {forgotSending ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
                   Send 6-Digit Reset Code
@@ -709,14 +709,14 @@ export default function AuthPage() {
 
                 {/* Dev Code Quick Auto-Fill Helper if present */}
                 {forgotDevCode && (
-                  <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 rounded-2xl p-3 text-xs flex items-center justify-between">
-                    <div className="text-emerald-800 dark:text-emerald-300">
+                  <div className="bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800/50 rounded-2xl p-3 text-xs flex items-center justify-between">
+                    <div className="text-purple-800 dark:text-purple-300">
                       <span className="font-bold">Dev Code:</span> <span className="font-mono tracking-wider font-extrabold">{forgotDevCode}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setForgotOtp(forgotDevCode)}
-                      className="text-[11px] font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-500 transition cursor-pointer"
+                      className="text-[11px] font-bold bg-purple-600 text-white px-2.5 py-1 rounded-lg hover:bg-purple-500 transition cursor-pointer"
                     >
                       Fill Code
                     </button>
@@ -733,7 +733,7 @@ export default function AuthPage() {
                     maxLength={6}
                     value={forgotOtp}
                     onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
-                    className="w-full text-center tracking-[10px] text-xl font-black rounded-2xl border border-emerald-300 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full text-center tracking-[10px] text-xl font-black rounded-2xl border border-purple-300 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20"
                     placeholder="••••••"
                   />
                 </div>
@@ -749,7 +749,7 @@ export default function AuthPage() {
                       minLength={6}
                       value={forgotNewPassword}
                       onChange={(e) => setForgotNewPassword(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 pr-11 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 pr-11 outline-none focus:ring-2 focus:ring-purple-500/20 text-sm font-medium"
                       placeholder="Min 6 characters"
                     />
                     <button
@@ -772,7 +772,7 @@ export default function AuthPage() {
                     minLength={6}
                     value={forgotConfirmPassword}
                     onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 text-sm font-medium"
                     placeholder="Repeat new password"
                   />
                 </div>
@@ -781,7 +781,7 @@ export default function AuthPage() {
                   <p
                     className={`text-xs font-semibold rounded-xl px-3.5 py-2.5 border ${
                       forgotStatusMsg.type === "success"
-                        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200"
+                        ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200"
                         : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200"
                     }`}
                   >
@@ -798,7 +798,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={forgotResetting || forgotOtp.length < 4 || forgotNewPassword.length < 6}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-3.5 rounded-2xl transition shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
                 >
                   {forgotResetting ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
                   Reset Password & Sign In
@@ -819,7 +819,7 @@ export default function AuthPage() {
                     type="button"
                     onClick={() => handleForgotPasswordRequest()}
                     disabled={forgotSending || forgotCooldown > 0}
-                    className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline disabled:opacity-50 cursor-pointer"
+                    className="text-purple-600 dark:text-purple-400 font-bold hover:underline disabled:opacity-50 cursor-pointer"
                   >
                     {forgotSending ? "Sending..." : forgotCooldown > 0 ? `Resend in ${forgotCooldown}s` : "Resend OTP"}
                   </button>
@@ -829,7 +829,7 @@ export default function AuthPage() {
 
             {forgotStep === "success" && (
               <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <div className="w-16 h-16 bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
                   <CheckCircle2 size={36} />
                 </div>
                 <div className="space-y-1">
@@ -840,7 +840,7 @@ export default function AuthPage() {
                     Your password has been updated. Signing you into your dashboard...
                   </p>
                 </div>
-                <Loader2 size={24} className="animate-spin text-emerald-500 mx-auto" />
+                <Loader2 size={24} className="animate-spin text-purple-500 mx-auto" />
               </div>
             )}
           </div>
@@ -859,7 +859,7 @@ export default function AuthPage() {
                 maxLength={6}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full text-center tracking-[12px] text-2xl font-black rounded-2xl border border-emerald-300 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="w-full text-center tracking-[12px] text-2xl font-black rounded-2xl border border-purple-300 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3.5 outline-none focus:ring-2 focus:ring-purple-500/20"
                 placeholder="••••••"
               />
             </div>
@@ -868,7 +868,7 @@ export default function AuthPage() {
               <p
                 className={`text-xs font-semibold rounded-xl px-3.5 py-2.5 border ${
                   otpStatusMsg.type === "success"
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200"
+                    ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200"
                     : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200"
                 }`}
               >
@@ -885,7 +885,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={verifyingOtpLoading || otpCode.length < 4}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
+              className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-3.5 rounded-2xl transition shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
             >
               {verifyingOtpLoading ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
               Verify OTP & Complete Sign In
@@ -903,7 +903,7 @@ export default function AuthPage() {
                 type="button"
                 onClick={() => handleSendOtp()}
                 disabled={sendingOtp || otpCooldown > 0}
-                className="text-emerald-600 font-bold hover:underline disabled:opacity-50 cursor-pointer"
+                className="text-purple-600 font-bold hover:underline disabled:opacity-50 cursor-pointer"
               >
                 {sendingOtp ? "Sending..." : otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend OTP"}
               </button>
@@ -925,7 +925,7 @@ export default function AuthPage() {
                     required
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full rounded-2xl border border-emerald-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-emerald-500 text-sm font-medium"
+                    className="w-full rounded-2xl border border-purple-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-purple-500 text-sm font-medium"
                     placeholder="e.g. John Doe"
                   />
                 </div>
@@ -938,7 +938,7 @@ export default function AuthPage() {
                     required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-emerald-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-emerald-500 text-sm font-medium"
+                    className="w-full rounded-2xl border border-purple-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-purple-500 text-sm font-medium"
                     placeholder="name@example.com"
                   />
                 </div>
@@ -953,7 +953,7 @@ export default function AuthPage() {
                       minLength={6}
                       value={customerPassword}
                       onChange={(e) => setCustomerPassword(e.target.value)}
-                      className="w-full rounded-2xl border border-emerald-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-emerald-500 text-sm font-medium"
+                      className="w-full rounded-2xl border border-purple-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-purple-500 text-sm font-medium"
                       placeholder="Min 6 characters"
                     />
                   </div>
@@ -967,7 +967,7 @@ export default function AuthPage() {
                       minLength={6}
                       value={customerConfirmPassword}
                       onChange={(e) => setCustomerConfirmPassword(e.target.value)}
-                      className="w-full rounded-2xl border border-emerald-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-emerald-500 text-sm font-medium"
+                      className="w-full rounded-2xl border border-purple-100 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-purple-500 text-sm font-medium"
                       placeholder="Repeat password"
                     />
                   </div>
@@ -978,7 +978,7 @@ export default function AuthPage() {
                     id="showCustPass"
                     checked={showSignupPassword}
                     onChange={(e) => setShowSignupPassword(e.target.checked)}
-                    className="accent-emerald-600 rounded"
+                    className="accent-purple-600 rounded"
                   />
                   <label htmlFor="showCustPass" className="cursor-pointer">Show password text</label>
                 </div>
@@ -1123,7 +1123,7 @@ export default function AuthPage() {
               disabled={submitting || uploadingPhoto || uploadingDoc}
               className={`w-full text-white font-black py-4 rounded-2xl transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm ${
                 roleMode === "customer"
-                  ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25"
+                  ? "bg-purple-600 hover:bg-purple-500 shadow-purple-600/25"
                   : "bg-orange-600 hover:bg-orange-500 shadow-orange-500/25"
               }`}
             >
@@ -1146,7 +1146,7 @@ export default function AuthPage() {
                 }}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   loginAuthType === "password"
-                    ? "bg-white dark:bg-gray-900 text-slate-900 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-900 text-purple-700 dark:text-purple-300 shadow-sm font-black"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
@@ -1160,7 +1160,7 @@ export default function AuthPage() {
                 }}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   loginAuthType === "otp"
-                    ? "bg-white dark:bg-gray-900 text-emerald-700 dark:text-emerald-400 shadow-sm"
+                    ? "bg-white dark:bg-gray-900 text-purple-700 dark:text-purple-400 shadow-sm font-black"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
@@ -1179,7 +1179,7 @@ export default function AuthPage() {
                     required
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm font-medium"
                     placeholder="name@example.com"
                   />
                 </div>
@@ -1198,7 +1198,7 @@ export default function AuthPage() {
                         setError("");
                         setForgotStatusMsg(null);
                       }}
-                      className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -1209,7 +1209,7 @@ export default function AuthPage() {
                       required
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 pr-11 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 pr-11 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm font-medium"
                       placeholder="••••••••"
                     />
                     <button
@@ -1227,9 +1227,9 @@ export default function AuthPage() {
                         setLoginAuthType("otp");
                         setError("");
                       }}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-xs font-semibold text-slate-500 hover:text-purple-700 dark:hover:text-purple-300 hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      <Zap size={12} /> Account created via OTP? Sign in via OTP
+                      <Zap size={12} className="text-purple-600" /> Account created via OTP? Sign in via OTP
                     </button>
                   </div>
                 </div>
@@ -1245,10 +1245,10 @@ export default function AuthPage() {
                   disabled={submitting}
                   className={`w-full text-white font-black py-4 rounded-2xl transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm ${
                     roleMode === "admin"
-                      ? "bg-purple-600 hover:bg-purple-500 shadow-purple-500/25"
+                      ? "bg-purple-700 hover:bg-purple-600 shadow-purple-600/30"
                       : roleMode === "vendor"
                       ? "bg-orange-600 hover:bg-orange-500 shadow-orange-500/25"
-                      : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25"
+                      : "bg-purple-600 hover:bg-purple-500 shadow-purple-600/25"
                   }`}
                 >
                   {submitting ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
@@ -1273,7 +1273,7 @@ export default function AuthPage() {
                     required
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full rounded-2xl border border-emerald-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                    className="w-full rounded-2xl border border-purple-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm font-medium"
                     placeholder="name@example.com"
                   />
                 </div>
@@ -1287,7 +1287,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={sendingOtp}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-2xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-2xl transition shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer text-sm"
                 >
                   {sendingOtp ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
                   Send 6-Digit Login Code

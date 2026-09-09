@@ -12,6 +12,10 @@ export type ShopUpdatePayload = {
   latitude: number;
   longitude: number;
   description?: string;
+  upi_id?: string | null;
+  delivery_enabled?: boolean;
+  delivery_fee?: number;
+  min_order_amount?: number;
   verification_document_url?: string | null;
   verification_document_name?: string | null;
 };

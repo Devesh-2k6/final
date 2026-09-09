@@ -162,13 +162,13 @@ export default function MobileHubPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-3">
                 <Smartphone className="w-3.5 h-3.5" />
-                EXPIRYGO UNIFIED ECOSYSTEM
+                MEEVA UNIFIED ECOSYSTEM
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
                 Mobile App & Scanner Hub
               </h1>
               <p className="text-sm text-zinc-400 mt-2 max-w-xl">
-                Experience ExpiryGo as a real native application on your phone. Test with Expo Go or download standalone APK with 100% live synchronization.
+                Experience Meeva as a real native application on your phone. Test with Expo Go or download standalone APK with 100% live synchronization.
               </p>
             </div>
             

@@ -100,7 +100,7 @@ export default function CheckoutClient({ reservationId }: { reservationId: strin
     setProcessingStep("Contacting bank gateway...");
     await new Promise(r => setTimeout(r, 1000));
     
-    setProcessingStep("Finalizing ExpiryGo reservation...");
+    setProcessingStep("Finalizing Meeva reservation...");
     await new Promise(r => setTimeout(r, 800));
 
     try {

@@ -91,7 +91,7 @@ export default function DealsMap({
           setIsLocating(false);
           console.warn("Geolocation access denied or failed:", error);
         },
-        { enableHighAccuracy: true, timeout: 8000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     }
   };

@@ -220,7 +220,7 @@ export const DealsFeedScreen: React.FC<DealsFeedScreenProps> = ({ navigation }) 
     <View style={styles.container}>
       {/* Header */}
       <CustomHeader
-        title="ExpiryGo"
+        title="Meeva"
         subtitle="Rescue surplus quality food"
         onPressNotifications={() => navigation.navigate("Notifications")}
         showRoleToggle={true}

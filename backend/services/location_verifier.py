@@ -360,8 +360,8 @@ def verify_shop_location(
                 return True
         return False
 
-    # Strategy A: Reverse Geocoding at coordinates
-    url_rev = f"{base_url}/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1&extratags=1"
+    # Strategy A: Reverse Geocoding at coordinates with building-level zoom=18 precision
+    url_rev = f"{base_url}/reverse?lat={lat}&lon={lon}&zoom=18&format=json&addressdetails=1&extratags=1&namedetails=1"
     add_candidates(_fetch_nominatim_json(url_rev, timeout=timeout))
 
     # Strategy B: If reverse geocoding found no commercial food candidates, query by name & address
@@ -472,7 +472,7 @@ def verify_shop_location(
         nf_name = best_nf["name"]
         fail_msg = (
             f"The business identified at this location ('{nf_name}') is classified as '{nf_cat}'. "
-            f"ExpiryGo exclusively supports food and grocery businesses (groceries, bakeries, dairies, produce, restaurants, cafes). "
+            f"Meeva exclusively supports food and grocery businesses (groceries, bakeries, dairies, produce, restaurants, cafes). "
             f"Please select a verified food business location."
         )
         fail_result = LocationVerificationResult(

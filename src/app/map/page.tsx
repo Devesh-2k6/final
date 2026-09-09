@@ -79,7 +79,7 @@ export default function MapDiscovery() {
             })
             .catch(() => {});
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     }
   }, []);

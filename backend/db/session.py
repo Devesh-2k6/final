@@ -261,19 +261,124 @@ def _auto_migrate_schema() -> None:
                 if "location_override_reason" not in existing_shop_columns:
                     conn.execute(text("ALTER TABLE shops ADD COLUMN location_override_reason TEXT"))
 
+                # delivery_enabled
+                if "delivery_enabled" not in existing_shop_columns:
+                    if dialect == "sqlite":
+                        conn.execute(text("ALTER TABLE shops ADD COLUMN delivery_enabled BOOLEAN DEFAULT 1 NOT NULL"))
+                    else:
+                        conn.execute(text("ALTER TABLE shops ADD COLUMN delivery_enabled BOOLEAN DEFAULT TRUE NOT NULL"))
+
+                # upi_id
+                if "upi_id" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN upi_id VARCHAR(255)"))
+
+                # delivery_fee
+                if "delivery_fee" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN delivery_fee FLOAT DEFAULT 0.0 NOT NULL"))
+
+                # min_order_amount
+                if "min_order_amount" not in existing_shop_columns:
+                    conn.execute(text("ALTER TABLE shops ADD COLUMN min_order_amount FLOAT DEFAULT 0.0 NOT NULL"))
+
+            # -------------------------------------------------------------
+            # Migration: orders table
+            # -------------------------------------------------------------
+            existing_order_columns = set()
+            if dialect == "sqlite":
+                order_result = conn.execute(text("PRAGMA table_info(orders)"))
+                existing_order_columns = {row[1] for row in order_result.fetchall()}
+            elif dialect == "postgresql":
+                order_result = conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'orders'"
+                ))
+                existing_order_columns = {row[0] for row in order_result.fetchall()}
+
+            if existing_order_columns:
+                # payment_method
+                if "payment_method" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_method VARCHAR(50) DEFAULT 'UPI' NOT NULL"))
+
+                # payment_status
+                if "payment_status" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN payment_status VARCHAR(50) DEFAULT 'UNPAID' NOT NULL"))
+
+                # upi_transaction_id
+                if "upi_transaction_id" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN upi_transaction_id VARCHAR(255)"))
+
+                # payment_reported_at
+                if "payment_reported_at" not in existing_order_columns:
+                    if dialect == "sqlite":
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN payment_reported_at DATETIME"))
+                    else:
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN payment_reported_at TIMESTAMP WITHOUT TIME ZONE"))
+
+                # payment_verified_at
+                if "payment_verified_at" not in existing_order_columns:
+                    if dialect == "sqlite":
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN payment_verified_at DATETIME"))
+                    else:
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN payment_verified_at TIMESTAMP WITHOUT TIME ZONE"))
+
+                # delivery_pin
+                if "delivery_pin" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin VARCHAR(10)"))
+
+                # delivery_pin_attempts
+                if "delivery_pin_attempts" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin_attempts INTEGER DEFAULT 0 NOT NULL"))
+
+                # delivery_pin_locked
+                if "delivery_pin_locked" not in existing_order_columns:
+                    if dialect == "sqlite":
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin_locked BOOLEAN DEFAULT 0 NOT NULL"))
+                    else:
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_pin_locked BOOLEAN DEFAULT FALSE NOT NULL"))
+
+                # delivery_notes
+                if "delivery_notes" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN delivery_notes TEXT"))
+
+                # cancelled_by
+                if "cancelled_by" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN cancelled_by VARCHAR(50)"))
+
+                # cancelled_at
+                if "cancelled_at" not in existing_order_columns:
+                    if dialect == "sqlite":
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN cancelled_at DATETIME"))
+                    else:
+                        conn.execute(text("ALTER TABLE orders ADD COLUMN cancelled_at TIMESTAMP WITHOUT TIME ZONE"))
+
+                # cancellation_reason
+                if "cancellation_reason" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN cancellation_reason TEXT"))
+
+                # previous_status
+                if "previous_status" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN previous_status VARCHAR(50)"))
+
+                # previous_payment_status
+                if "previous_payment_status" not in existing_order_columns:
+                    conn.execute(text("ALTER TABLE orders ADD COLUMN previous_payment_status VARCHAR(50)"))
+
             # Create performance and composite indexes if missing
             index_statements = [
                 "CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)",
                 "CREATE INDEX IF NOT EXISTS ix_users_created_at ON users (created_at)",
                 "CREATE INDEX IF NOT EXISTS ix_shops_is_active ON shops (is_active)",
+                "CREATE INDEX IF NOT EXISTS ix_shops_delivery_enabled ON shops (delivery_enabled)",
                 "CREATE INDEX IF NOT EXISTS ix_shops_approval_status ON shops (approval_status)",
                 "CREATE INDEX IF NOT EXISTS ix_shops_approval_loc ON shops (approval_status, location_verified_at DESC)",
                 "CREATE INDEX IF NOT EXISTS ix_products_is_active ON products (is_active)",
                 "CREATE INDEX IF NOT EXISTS ix_products_shop_active_exp ON products (shop_id, is_active, expiry_date, quantity)",
                 "CREATE INDEX IF NOT EXISTS ix_orders_status ON orders (status)",
+                "CREATE INDEX IF NOT EXISTS ix_orders_order_type ON orders (order_type)",
+                "CREATE INDEX IF NOT EXISTS ix_orders_payment_status ON orders (payment_status)",
                 "CREATE INDEX IF NOT EXISTS ix_orders_created_at ON orders (created_at)",
                 "CREATE INDEX IF NOT EXISTS ix_orders_customer_created ON orders (customer_id, created_at DESC)",
                 "CREATE INDEX IF NOT EXISTS ix_orders_shop_created ON orders (shop_id, created_at DESC)",
+                "CREATE INDEX IF NOT EXISTS ix_orders_shop_status ON orders (shop_id, status, created_at DESC)",
                 "CREATE INDEX IF NOT EXISTS ix_reservations_status ON reservations (status)",
                 "CREATE INDEX IF NOT EXISTS ix_reservations_pickup_code ON reservations (pickup_code)",
                 "CREATE INDEX IF NOT EXISTS ix_reservations_shop_status_created ON reservations (shop_id, status, created_at DESC)",

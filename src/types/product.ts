@@ -12,6 +12,10 @@ export type ApiShopSummary = {
   rating_count: number;
   phone_number?: string;
   is_active?: boolean;
+  delivery_enabled?: boolean;
+  upi_id?: string | null;
+  delivery_fee?: number;
+  min_order_amount?: number;
   location_verified?: boolean;
   location_verified_at?: string | null;
   location_verification_provider?: string | null;
@@ -137,6 +141,8 @@ export type ApiNotification = {
 
 export type OrderType = "PICKUP" | "DELIVERY";
 export type OrderStatus = "PENDING" | "ACCEPTED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
+export type OrderPaymentStatus = "UNPAID" | "CUSTOMER_REPORTED_UNVERIFIED" | "PAID";
+export type OrderPaymentMethod = "UPI";
 
 export type ApiOrder = {
   id: string;
@@ -146,25 +152,47 @@ export type ApiOrder = {
   product_id: string;
   order_type: OrderType;
   status: OrderStatus;
+  payment_method: OrderPaymentMethod;
+  payment_status: OrderPaymentStatus;
+  upi_transaction_id?: string | null;
+  payment_reported_at?: string | null;
+  payment_verified_at?: string | null;
   quantity: number;
   total_price: number;
   delivery_fee: number;
   customer_name: string | null;
   customer_phone: string | null;
   delivery_address: string | null;
+  delivery_notes?: string | null;
+  delivery_pin?: string | null;
+  delivery_pin_attempts?: number;
+  delivery_pin_locked?: boolean;
+  cancelled_by?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  refund_guidance?: string | null;
+  is_payment_stuck?: boolean;
+  payment_stuck_minutes?: number;
   created_at: string;
   completed_at: string | null;
   product: ApiProduct;
 };
 
-export type ApiOrderCreate = {
+export type ApiOrderItemCreate = {
   product_id: string;
-  order_type: OrderType;
   quantity: number;
+};
+
+export type ApiOrderCreate = {
+  product_id?: string;
+  quantity?: number;
+  items?: ApiOrderItemCreate[];
+  order_type: OrderType;
   delivery_fee?: number;
   customer_name?: string;
   customer_phone?: string;
   delivery_address?: string;
+  delivery_notes?: string;
 };
 
 

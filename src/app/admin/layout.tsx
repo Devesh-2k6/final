@@ -110,7 +110,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="p-1 rounded-md bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300">
                 <ShieldCheck size={16} />
               </span>
-              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base truncate">ExpiryGo Administration</h2>
+              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base truncate">Meeva Administration</h2>
             </div>
           </div>
 

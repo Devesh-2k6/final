@@ -79,11 +79,11 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       >
         <div className="h-16 flex items-center px-6 border-b border-emerald-100/40">
           <Link href="/" className="flex items-center gap-2" onClick={closeSidebar}>
-            <div className="bg-emerald-600 p-1.5 rounded-lg text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <div className="bg-[#FF5B26] p-1.5 rounded-lg text-white shadow-[0_0_15px_rgba(255,91,38,0.3)]">
               <Leaf size={20} className="fill-current" />
             </div>
             <span className="text-xl font-black tracking-tight text-slate-900">
-              Expiry<span className="text-emerald-600">Go</span>
+              Mee<span className="text-[#FF5B26]">va</span>
             </span>
           </Link>
           <button

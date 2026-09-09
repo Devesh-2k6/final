@@ -15,6 +15,9 @@ from storage import upload_shop_document
 router = APIRouter(prefix="/shops", tags=["Shops"])
 
 def _serialize_shop(shop: Shop) -> dict:
+    has_upi = bool(shop.upi_id and shop.upi_id.strip())
+    # A shop can only offer delivery if delivery_enabled is True AND a valid UPI ID is registered
+    can_deliver = bool(getattr(shop, "delivery_enabled", True) and has_upi)
     return {
         "id": shop.id,
         "name": shop.name,
@@ -27,6 +30,12 @@ def _serialize_shop(shop: Shop) -> dict:
         "average_rating": shop.average_rating,
         "rating_count": shop.rating_count,
         "is_active": getattr(shop, "is_active", False),
+        "delivery_enabled": can_deliver,
+        "delivery_enabled_raw": getattr(shop, "delivery_enabled", True),
+        "upi_id": getattr(shop, "upi_id", None),
+        "has_upi_id": has_upi,
+        "delivery_fee": getattr(shop, "delivery_fee", 0.0),
+        "min_order_amount": getattr(shop, "min_order_amount", 0.0),
         "location_verified": getattr(shop, "location_verified", False),
         "location_verified_at": getattr(shop, "location_verified_at", None),
         "location_verification_provider": getattr(shop, "location_verification_provider", None),
@@ -185,6 +194,11 @@ def create_shop(
             shop.verification_document_url = shop_in.verification_document_url
         if shop_in.verification_document_name is not None:
             shop.verification_document_name = shop_in.verification_document_name
+        if shop_in.upi_id is not None:
+            shop.upi_id = shop_in.upi_id.strip() if shop_in.upi_id else None
+        shop.delivery_enabled = shop_in.delivery_enabled
+        shop.delivery_fee = shop_in.delivery_fee
+        shop.min_order_amount = shop_in.min_order_amount
         shop.location_verified = is_loc_verified
         shop.location_verified_at = now if is_loc_verified else None
         shop.location_verification_provider = provider
@@ -208,6 +222,10 @@ def create_shop(
             description=shop_in.description,
             verification_document_url=shop_in.verification_document_url,
             verification_document_name=shop_in.verification_document_name,
+            upi_id=shop_in.upi_id.strip() if shop_in.upi_id else None,
+            delivery_enabled=shop_in.delivery_enabled,
+            delivery_fee=shop_in.delivery_fee,
+            min_order_amount=shop_in.min_order_amount,
             is_active=False,
             location_verified=is_loc_verified,
             location_verified_at=now if is_loc_verified else None,
@@ -254,13 +272,15 @@ def get_shop_orders(
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    from routers.orders import _decorate_order
     shop = _get_owner_shop(user, db, require_active=True)
-    return db.query(Order).filter(Order.shop_id == shop.id)\
+    orders = db.query(Order).filter(Order.shop_id == shop.id)\
         .options(
             joinedload(Order.product).joinedload(Product.shop),
             joinedload(Order.customer)
         )\
         .order_by(Order.created_at.desc()).all()
+    return [_decorate_order(o) for o in orders]
 
 
 @router.get("/{shop_id}")
@@ -272,9 +292,10 @@ def read_shop(shop_id: str, db: Annotated[Session, Depends(get_db)]):
 
 
 @router.put("/{shop_id}")
+@router.patch("/{shop_id}")
 def update_shop(
     shop_id: str,
-    shop_in: schemas.ShopBase,
+    shop_in: schemas.ShopUpdate,
     user: Annotated[User, Depends(get_current_shop_owner)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -285,25 +306,30 @@ def update_shop(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this shop")
 
     # If location or name changes, re-verify location against OpenStreetMap
+    new_name = shop_in.name if shop_in.name is not None else shop.name
+    new_address = shop_in.address if shop_in.address is not None else shop.address
+    new_lat = shop_in.latitude if shop_in.latitude is not None else shop.latitude
+    new_lon = shop_in.longitude if shop_in.longitude is not None else shop.longitude
+
     if (
-        shop.latitude != shop_in.latitude
-        or shop.longitude != shop_in.longitude
-        or shop.name != shop_in.name
-        or shop.address != shop_in.address
+        (shop_in.latitude is not None and shop.latitude != shop_in.latitude)
+        or (shop_in.longitude is not None and shop.longitude != shop_in.longitude)
+        or (shop_in.name is not None and shop.name != shop_in.name)
+        or (shop_in.address is not None and shop.address != shop_in.address)
     ):
         v_res = verify_shop_location(
-            name=shop_in.name,
-            address=shop_in.address,
-            latitude=shop_in.latitude,
-            longitude=shop_in.longitude,
+            name=new_name,
+            address=new_address,
+            latitude=new_lat,
+            longitude=new_lon,
         )
         now = datetime.now(UTC).replace(tzinfo=None)
         is_loc_verified = bool(v_res.verified)
         shop.location_verified = is_loc_verified
         shop.location_verified_at = now if is_loc_verified else None
         shop.location_verification_provider = v_res.provider if is_loc_verified else "manual_submission"
-        shop.location_verification_name = v_res.matched_business_name if is_loc_verified else shop_in.name
-        shop.location_verification_address = v_res.matched_address if is_loc_verified else shop_in.address
+        shop.location_verification_name = v_res.matched_business_name if is_loc_verified else new_name
+        shop.location_verification_address = v_res.matched_address if is_loc_verified else new_address
         shop.location_verification_distance_meters = v_res.distance_meters if is_loc_verified else 0.0
         shop.location_verification_category = v_res.category if is_loc_verified else "food_retail"
         if not is_loc_verified:
@@ -311,15 +337,28 @@ def update_shop(
             shop.approval_reason = f"Location pending admin review: {v_res.message}"
             shop.is_active = False
 
-    shop.name = shop_in.name
-    shop.address = shop_in.address
-    shop.latitude = shop_in.latitude
-    shop.longitude = shop_in.longitude
-    shop.description = shop_in.description
+    if shop_in.name is not None:
+        shop.name = shop_in.name
+    if shop_in.address is not None:
+        shop.address = shop_in.address
+    if shop_in.latitude is not None:
+        shop.latitude = shop_in.latitude
+    if shop_in.longitude is not None:
+        shop.longitude = shop_in.longitude
+    if shop_in.description is not None:
+        shop.description = shop_in.description
     if shop_in.verification_document_url is not None:
         shop.verification_document_url = shop_in.verification_document_url
     if shop_in.verification_document_name is not None:
         shop.verification_document_name = shop_in.verification_document_name
+    if shop_in.upi_id is not None:
+        shop.upi_id = shop_in.upi_id.strip() if shop_in.upi_id else None
+    if shop_in.delivery_enabled is not None:
+        shop.delivery_enabled = shop_in.delivery_enabled
+    if shop_in.delivery_fee is not None:
+        shop.delivery_fee = shop_in.delivery_fee
+    if shop_in.min_order_amount is not None:
+        shop.min_order_amount = shop_in.min_order_amount
 
     db.commit()
     db.refresh(shop)

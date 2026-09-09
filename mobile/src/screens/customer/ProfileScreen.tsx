@@ -310,7 +310,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
       {/* Logout Action */}
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.85}>
         <LogOut size={17} color={Colors.rose} />
-        <Text style={styles.logoutText}>Sign Out of ExpiryGo</Text>
+        <Text style={styles.logoutText}>Sign Out of Meeva</Text>
       </TouchableOpacity>
     </ScrollView>
   );

@@ -1,14 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { motion, useScroll, useSpring } from "framer-motion";
 import { 
   MapPin, 
   ArrowRight, 
-  MoreHorizontal, 
   Clock, 
-  BarChart3, 
   Leaf, 
   Bell, 
   ShieldCheck,
@@ -16,7 +16,16 @@ import {
   MessageCircle,
   Camera,
   Briefcase,
-  Code
+  Search,
+  Store,
+  Compass,
+  QrCode,
+  Locate,
+  Flame,
+  ChefHat,
+  Percent,
+  TrendingDown,
+  ShoppingBag
 } from "lucide-react";
 
 import { useConfetti } from "@/hooks/useConfetti";
@@ -24,82 +33,17 @@ import { useSound } from "@/hooks/useSound";
 import AnimatedCounter from "@/components/ui/AnimatedCounter";
 import MagneticButton from "@/components/ui/MagneticButton";
 import LiveDealsSection from "@/components/products/LiveDealsSection";
-
-// Custom inline SVG icons for brands removed in lucide-react v1
-const Twitter = ({ size = 24 }: { size?: number }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-  </svg>
-);
-
-const Instagram = ({ size = 24 }: { size?: number }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-  </svg>
-);
-
-const Linkedin = ({ size = 24 }: { size?: number }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-    <rect width="4" height="12" x="2" y="9" />
-    <circle cx="4" cy="4" r="2" />
-  </svg>
-);
-
-const Github = ({ size = 24 }: { size?: number }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-    <path d="M9 18c-4.51 2-5-2-7-2" />
-  </svg>
-);
+import { fetchIpGeolocation } from "@/lib/geolocation";
 
 // Dynamically import client components
 const HeroMap = dynamic(() => import('@/components/map/HeroMap'), { ssr: false });
 const CustomCursor = dynamic(() => import('@/components/ui/CustomCursor'), { ssr: false });
 
 export default function Home() {
+  const router = useRouter();
+  const [heroSearch, setHeroSearch] = useState("");
+  const [locationText, setLocationText] = useState("Chennai, Tamil Nadu");
+  const [isLocating, setIsLocating] = useState(false);
   const { triggerConfetti } = useConfetti();
   const { playPopSound } = useSound();
 
@@ -110,336 +54,533 @@ export default function Home() {
     restDelta: 0.001
   });
 
-  // Parallax effects
-  const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
-  const y2 = useTransform(scrollY, [0, 1000], [0, -150]);
+  useEffect(() => {
+    fetchIpGeolocation()
+      .then((data) => {
+        if (data.city) {
+          setLocationText(`${data.city}, ${data.region || "India"}`);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
-  const handleReserve = (e: React.MouseEvent) => {
-    playPopSound();
-    triggerConfetti(e);
-  };
-
-  const fadeInUp = {
-    initial: { opacity: 0, y: 30 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, margin: "-50px" },
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }
-  };
-
-  const staggerContainer = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+  const handleLocateMe = () => {
+    setIsLocating(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setIsLocating(false);
+          setLocationText("Current GPS Location (Live)");
+        },
+        () => {
+          fetchIpGeolocation()
+            .then((data) => {
+              setIsLocating(false);
+              if (data.city) setLocationText(`${data.city}, ${data.region || "India"}`);
+            })
+            .catch(() => setIsLocating(false));
+        }
+      );
+    } else {
+      setIsLocating(false);
     }
   };
 
-  const staggerItem = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } }
+  const handleHeroSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (heroSearch.trim()) {
+      router.push(`/deals?q=${encodeURIComponent(heroSearch.trim())}`);
+    } else {
+      router.push("/deals");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#F4FBF7] text-slate-900 font-sans selection:bg-emerald-500/30 overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#FAFAFE] text-slate-900 font-sans selection:bg-purple-500/25 overflow-x-hidden relative">
       <CustomCursor />
       
       {/* Scroll Progress Bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-emerald-600 origin-left z-[99999] shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 origin-left z-[99999] shadow-[0_0_12px_rgba(124,58,237,0.5)]"
         style={{ scaleX }}
       />
 
-      {/* Ambient Parallax Background Glows */}
-      <div className="absolute top-0 inset-x-0 h-[120vh] overflow-hidden pointer-events-none z-0">
-        <motion.div 
-          style={{ y: y1 }}
-          animate={{ scale: [1, 1.1, 1], opacity: [0.08, 0.15, 0.08] }} 
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-40 -left-20 w-[40vw] h-[40vw] min-w-[500px] min-h-[500px] bg-emerald-300/35 rounded-full blur-[130px]" 
-        />
-        <motion.div 
-          style={{ y: y2 }}
-          animate={{ scale: [1, 1.2, 1], opacity: [0.05, 0.1, 0.05] }} 
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute top-[20%] -right-20 w-[45vw] h-[45vw] min-w-[600px] min-h-[600px] bg-emerald-400/20 rounded-full blur-[150px]" 
-        />
+      {/* ── LUMINOUS PURPLE & INDIGO AMBIENT GLOWS ── */}
+      <div className="absolute top-0 inset-x-0 h-[1100px] overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-32 left-1/4 w-[700px] h-[700px] bg-purple-500/10 rounded-full blur-[160px]" />
+        <div className="absolute top-20 right-10 w-[600px] h-[600px] bg-indigo-500/8 rounded-full blur-[180px]" />
+        <div className="absolute top-[600px] -left-20 w-[500px] h-[500px] bg-violet-400/10 rounded-full blur-[150px]" />
       </div>
 
-      {/* Navbar */}
-      <div className="pt-6 px-4 max-w-7xl mx-auto sticky top-0 z-50">
-        <nav className="bg-white/80 backdrop-blur-3xl border border-emerald-100/50 rounded-2xl px-4 md:px-6 py-3 md:py-4 flex items-center justify-between shadow-[0_8px_30px_rgba(16,185,129,0.06)] transition-all duration-300">
-          <div className="flex items-center gap-8">
-            <MagneticButton>
-              <Link href="/" onClick={playPopSound} className="flex items-center gap-2 group cursor-pointer">
-                <div className="bg-emerald-600 p-1.5 rounded-lg group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                  <MapPin size={20} className="text-white fill-white" />
-                </div>
-                <span className="text-xl font-bold tracking-tight text-slate-900">Expiry<span className="text-emerald-600 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">Go</span></span>
-              </Link>
-            </MagneticButton>
-            
-            <div className="hidden lg:flex items-center gap-6 text-sm font-bold text-slate-700">
-              <Link href="/deals" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">Deals</Link>
-              <Link href="/map" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                Live Map
-              </Link>
-              <Link href="/pantry" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">AI Pantry</Link>
-              <Link href="/shop" onClick={playPopSound} className="hover:text-emerald-600 transition-all cursor-pointer">Store Portal</Link>
-              <Link href="/admin" onClick={playPopSound} className="hover:text-amber-600 text-amber-700 bg-amber-500/10 px-2.5 py-1 rounded-lg transition-all cursor-pointer">Admin</Link>
+      {/* ── CRISP WHITE GLASSMORPHIC HEADER ── */}
+      <header className="pt-4 md:pt-6 px-4 sm:px-6 lg:px-8 max-w-7xl 2xl:max-w-[1440px] mx-auto sticky top-0 z-50">
+        <nav className="bg-white/90 backdrop-blur-2xl border border-purple-100/90 rounded-2xl px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-[0_10px_35px_rgba(124,58,237,0.06)] transition-all duration-300">
+          
+          {/* Logo */}
+          <Link href="/" onClick={playPopSound} className="flex items-center gap-3 group cursor-pointer">
+            <div className="bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700 p-2.5 rounded-2xl text-white group-hover:scale-105 transition-transform shadow-md shadow-purple-600/25">
+              <Leaf size={22} className="fill-white" />
             </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-black tracking-tight text-slate-900 leading-none">
+                Mee<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600">va</span>
+              </span>
+              <span className="text-[10px] font-extrabold text-purple-700/80 uppercase tracking-widest leading-none mt-0.5">
+                Surplus Rescue Engine
+              </span>
+            </div>
+          </Link>
+          
+          {/* Nav Links */}
+          <div className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-bold text-slate-700">
+            <Link href="/deals" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
+              <Flame size={16} className="text-purple-600" /> Deals Feed
+            </Link>
+            <Link href="/map" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-600 animate-ping" />
+              Live Radar Map
+            </Link>
+            <Link href="/pantry" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
+              <Sparkles size={16} className="text-amber-500" /> AI Pantry
+            </Link>
+            <Link href="/shop" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
+              <Store size={16} className="text-slate-400" /> Store Portal
+            </Link>
+            <Link href="/admin" onClick={playPopSound} className="hover:text-purple-800 text-purple-800 bg-purple-50 border border-purple-200/80 px-3 py-1 rounded-xl transition-all cursor-pointer font-extrabold text-xs flex items-center gap-1">
+              <ShieldCheck size={14} /> Admin
+            </Link>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <MagneticButton>
-              <Link href="/auth?tab=login" onClick={playPopSound} className="text-xs md:text-sm font-bold text-emerald-700 px-3 md:px-5 py-2 md:py-2.5 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer">
+              <Link href="/auth?tab=login" onClick={playPopSound} className="text-xs sm:text-sm font-bold text-purple-700 px-3.5 sm:px-5 py-2 sm:py-2.5 border border-purple-200/80 rounded-xl hover:bg-purple-50/80 hover:border-purple-300 transition-all duration-300 cursor-pointer bg-white shadow-2xs">
                 Sign in
               </Link>
             </MagneticButton>
             <MagneticButton>
-              <Link href="/auth?tab=signup" onClick={playPopSound} className="text-xs md:text-sm font-black text-white bg-emerald-600 px-3 md:px-5 py-2 md:py-2.5 rounded-xl hover:bg-emerald-500 hover:shadow-[0_4px_12px_rgba(16,185,129,0.3)] transition-all duration-300 cursor-pointer">
+              <Link href="/auth?tab=signup" onClick={playPopSound} className="text-xs sm:text-sm font-black text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-700 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl hover:from-purple-500 hover:to-indigo-500 hover:shadow-[0_6px_20px_rgba(124,58,237,0.35)] transition-all duration-300 cursor-pointer">
                 Get Started
               </Link>
             </MagneticButton>
           </div>
         </nav>
-      </div>
+      </header>
 
-      {/* Hero Section */}
-      <main className="max-w-5xl mx-auto px-4 pt-16 md:pt-24 pb-24 flex flex-col items-center text-center relative z-10">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9, y: 20 }} 
-          animate={{ opacity: 1, scale: 1, y: 0 }} 
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 px-5 py-2 rounded-full text-xs md:text-sm font-semibold mb-8 backdrop-blur-md shadow-[0_4px_12px_rgba(16,185,129,0.06)]"
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
-          Live in Chennai • 240+ shops onboard
-        </motion.div>
-
-        <motion.h1 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-          className="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tighter mb-6 leading-[1.05] text-slate-900"
-        >
-          Don&apos;t waste it.<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-800 drop-shadow-sm">Grab it</span> before it&apos;s <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 drop-shadow-sm">gone.</span>
-        </motion.h1>
-
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-          className="text-lg md:text-xl text-slate-600 max-w-2xl mb-10 font-medium leading-relaxed"
-        >
-          Near-expiry products from local shops — at up to 70% off. Save money, fight food waste, shop smarter.
-        </motion.p>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="flex flex-wrap items-center justify-center gap-3.5 w-full mb-16"
-        >
-          <MagneticButton className="w-full sm:w-auto">
-            <Link href="/deals" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-3.5 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-500 hover:shadow-[0_8px_24px_rgba(16,185,129,0.25)] transition-all duration-300 transform cursor-pointer text-base">
-              <MapPin size={20} />
-              Browse Deals
-            </Link>
-          </MagneticButton>
-          <MagneticButton className="w-full sm:w-auto">
-            <Link href="/map" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-3.5 bg-[#FF5B26] text-white rounded-2xl font-bold hover:bg-[#E54B18] hover:shadow-[0_8px_24px_rgba(255,91,38,0.25)] transition-all duration-300 transform cursor-pointer text-base">
-              🏪 Live Radar Map
-            </Link>
-          </MagneticButton>
-          <MagneticButton className="w-full sm:w-auto">
-            <Link href="/shop/setup" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-3.5 bg-white border border-emerald-200 text-slate-800 rounded-2xl font-bold hover:bg-emerald-50/50 hover:border-emerald-300 transition-all duration-300 cursor-pointer text-base shadow-sm">
-              List your shop <ArrowRight size={18} />
-            </Link>
-          </MagneticButton>
-        </motion.div>
-
-
-        {/* Interactive Map */}
-        <motion.div 
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.8, ease: "easeOut" }}
-          className="w-full max-w-4xl h-[400px] md:h-[450px] relative rounded-3xl overflow-hidden shadow-xl shadow-emerald-950/5 border border-emerald-100/50"
-        >
-          <HeroMap />
-        </motion.div>
-      </main>
-
-      {/* Divider */}
-      <div className="h-px w-full max-w-7xl mx-auto bg-gradient-to-r from-transparent via-emerald-100 to-transparent" />
-      {/* Live Deals Section from Backend */}
-      <LiveDealsSection />
-
-      {/* Divider */}
-      <div className="h-px w-full max-w-7xl mx-auto bg-gradient-to-r from-transparent via-emerald-100 to-transparent" />
-
-      {/* Impact Section with Animated Counters */}
-      <section className="max-w-5xl mx-auto px-4 py-24 relative z-10">
-        <motion.div {...fadeInUp} className="mb-12 text-center md:text-left">
-          <h3 className="text-emerald-600 font-bold text-sm tracking-widest uppercase mb-3">Our Impact</h3>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight text-slate-900">Every deal = less waste</h2>
-        </motion.div>
-
-        <motion.div 
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-50px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          <motion.div variants={staggerItem} className="bg-gradient-to-br from-[#EAFDF4] to-[#C9F2DC] rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-lg shadow-emerald-950/5 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/40 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-700" />
-            <div className="text-5xl md:text-6xl font-black text-[#0D6B42] mb-4 drop-shadow-sm flex items-end justify-center">
-              <AnimatedCounter value={6.2} decimals={1} />
-              <span className="text-2xl ml-1 mb-1">tons</span>
-            </div>
-            <div className="text-[#15803D] font-bold text-base max-w-[200px] leading-snug">food waste prevented this month</div>
-          </motion.div>
-
-          <motion.div variants={staggerItem} className="bg-gradient-to-br from-[#E6FCF5] to-[#BFEFE0] rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-lg shadow-emerald-950/5 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/40 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-700" />
-            <div className="text-5xl md:text-6xl font-black text-[#0D6B5A] mb-4 drop-shadow-sm flex items-end justify-center">
-              <AnimatedCounter value={15.5} decimals={1} />
-              <span className="text-2xl ml-1 mb-1">tons</span>
-            </div>
-            <div className="text-[#0F766E] font-bold text-base max-w-[200px] leading-snug">CO₂ emissions saved (2.5x ratio)</div>
-          </motion.div>
+      {/* ── EXPANSIVE PURPLE & WHITE HERO SECTION (Edge-to-Edge Desktop Terminal) ── */}
+      <main className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 lg:pt-14 pb-16 lg:pb-24 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 xl:gap-16 items-center">
           
-          <motion.div variants={staggerItem} className="bg-gradient-to-br from-[#FFF4E6] to-[#FFE2BF] rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-lg shadow-emerald-950/5 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/40 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-700" />
-            <div className="text-5xl md:text-6xl font-black text-[#9A621E] mb-4 drop-shadow-sm flex items-end justify-center">
-              <AnimatedCounter value={18} prefix="₹" suffix="L+" />
-            </div>
-            <div className="text-[#B45309] font-bold text-base max-w-[200px] leading-snug">saved by shoppers in Chennai</div>
-          </motion.div>
-          
-          <motion.div variants={staggerItem} className="bg-gradient-to-br from-[#F0F2FF] to-[#D5DAF9] rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-lg shadow-emerald-950/5 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/40 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-700" />
-            <div className="text-5xl md:text-6xl font-black text-[#4F46E5] mb-4 drop-shadow-sm flex items-end justify-center">
-              <AnimatedCounter value={240} suffix="+" />
-            </div>
-            <div className="text-[#4338CA] font-bold text-base max-w-[200px] leading-snug">local shops onboarded on platform</div>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* Why ExpiryGo Section */}
-      <section className="max-w-5xl mx-auto px-4 py-24 pb-32 relative z-10">
-        <motion.div {...fadeInUp} className="mb-14 text-center md:text-left">
-          <h3 className="text-emerald-600 font-bold text-sm tracking-widest uppercase mb-3">Why ExpiryGo</h3>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight text-slate-900">Built for real people</h2>
-          <p className="text-slate-600 font-medium text-lg">Not another food delivery app — a smart, local deal engine designed for sustainability.</p>
-        </motion.div>
-
-        <motion.div 
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, margin: "-50px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {[
-            { icon: MapPin, color: "text-emerald-600", bg: "bg-emerald-50", title: "Hyper-local discovery", desc: "See deals within walking distance, sorted by expiry urgency and discount." },
-            { icon: Clock, color: "text-amber-600", bg: "bg-amber-50", title: "Expiry countdown rings", desc: "Visual urgency indicators show exactly how much time is left — no guesswork." },
-            { icon: BarChart3, color: "text-indigo-600", bg: "bg-indigo-50", title: "Owner analytics", desc: "Revenue, waste saved, most viewed items — everything a shop owner needs." },
-            { icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", title: "Eco score & badges", desc: "Shops earn sustainability ratings. Customers see who&apos;s reducing waste most." },
-            { icon: Bell, color: "text-amber-600", bg: "bg-amber-50", title: "Smart notifications", desc: "&quot;50% off near you&quot; — get alerted when your favourite category drops a deal." },
-            { icon: ShieldCheck, color: "text-pink-600", bg: "bg-pink-50", title: "Verified shops only", desc: "Every listing is from a verified local business. Trust built in by default." }
-          ].map((feature, i) => (
-            <motion.div key={i} variants={staggerItem} className="bg-white border border-emerald-100/60 p-8 rounded-[2.5rem] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-950/5 hover:border-emerald-300 transition-all duration-300 group cursor-default shadow-sm">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${feature.bg}`}>
-                <feature.icon className={feature.color} size={28} />
-              </div>
-              <h4 className="font-bold text-xl mb-3 text-slate-900">{feature.title}</h4>
-              <p className="text-slate-600 text-sm leading-relaxed font-medium">{feature.desc}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Luxury Footer */}
-      <footer className="bg-emerald-50/50 border-t border-emerald-100/50 pt-20 pb-10 relative z-10 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-200/10 rounded-[100%] blur-[120px] pointer-events-none" />
-        
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-            <div className="lg:col-span-1">
-              <Link href="/" className="flex items-center gap-2 group mb-6 inline-block">
-                <span className="text-2xl font-bold tracking-tight text-slate-900">Expiry<span className="text-emerald-600 drop-shadow-[0_0_8px_rgba(16,185,129,0.2)]">Go</span></span>
-              </Link>
-              <p className="text-slate-600 text-sm font-medium leading-relaxed mb-8">
-                Fighting food waste while saving you money. We connect communities with local shops to rescue near-expiry goods.
-              </p>
-              <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center text-emerald-800 hover:text-white hover:border-emerald-600 hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-950/10 transition-all duration-300">
-                  <MessageCircle size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center text-emerald-800 hover:text-white hover:border-emerald-600 hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-950/10 transition-all duration-300">
-                  <Camera size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center text-emerald-800 hover:text-white hover:border-emerald-600 hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-950/10 transition-all duration-300">
-                  <Briefcase size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-white border border-emerald-200 flex items-center justify-center text-emerald-800 hover:text-white hover:border-emerald-600 hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-950/10 transition-all duration-300">
-                  <Code size={18} />
-                </a>
-              </div>
+          {/* Left Column: Mission, Headlines, Location Selector & Search */}
+          <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left">
+            
+            {/* Live City Badge */}
+            <div className="inline-flex items-center gap-2.5 bg-purple-50 border border-purple-200/90 text-purple-800 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold mb-6 backdrop-blur-md shadow-xs">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-600"></span>
+              </span>
+              <span>Live in Chennai & 12+ Metro Cities • 240+ Verified Stores</span>
             </div>
 
-            <div>
-              <h4 className="text-slate-900 font-bold mb-6">Product</h4>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">Browse Deals</a></li>
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">For Shop Owners</a></li>
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">Pricing</a></li>
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">Download App</a></li>
-              </ul>
-            </div>
+            {/* Main Headline */}
+            <h1 className="text-4xl sm:text-6xl lg:text-[4.2rem] xl:text-[4.8rem] font-black tracking-tight mb-6 leading-[1.06] text-slate-900">
+              Rescue surplus food.<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-700">Shop hyper-local</span> deals at <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">70% off.</span>
+            </h1>
 
-            <div>
-              <h4 className="text-slate-900 font-bold mb-6">Company</h4>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">About Us</a></li>
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">Impact Report</a></li>
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">Careers</a></li>
-                <li><a href="#" className="text-slate-600 hover:text-emerald-600 transition-colors text-sm font-medium">Contact</a></li>
-              </ul>
-            </div>
+            {/* Subtitle */}
+            <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-2xl mb-8 font-medium leading-relaxed">
+              Near-expiry surplus groceries, artisan bakery breads, and dairy from local supermarkets — at up to <span className="font-extrabold text-purple-700">70% off</span>. Save money, fight food waste, shop smarter.
+            </p>
 
-            <div>
-              <h4 className="text-slate-900 font-bold mb-6">Stay Updated</h4>
-              <p className="text-slate-600 text-sm font-medium mb-4">Get the best deals delivered directly to your inbox.</p>
-              <div className="flex gap-2">
-                <input 
-                  type="email" 
-                  placeholder="Enter your email" 
-                  className="bg-white border border-emerald-200 rounded-xl px-4 py-3 w-full text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all shadow-sm"
+            {/* Integrated Location & Keyword Search Bar */}
+            <form 
+              onSubmit={handleHeroSearch}
+              className="w-full max-w-2xl bg-white p-2.5 rounded-2xl border border-purple-200/90 shadow-[0_12px_40px_rgba(124,58,237,0.08)] flex flex-col sm:flex-row items-stretch gap-2 mb-4"
+            >
+              {/* Location Pill */}
+              <div className="flex items-center gap-2.5 px-3.5 py-3 bg-purple-50/70 hover:bg-purple-50 rounded-xl border border-purple-100 text-slate-800 sm:w-5/12 transition">
+                <MapPin size={18} className="text-purple-600 shrink-0" />
+                <input
+                  type="text"
+                  value={locationText}
+                  onChange={(e) => setLocationText(e.target.value)}
+                  className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-800 outline-none truncate"
+                  placeholder="Location / Area..."
                 />
-                <button className="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl transition-colors shadow-sm cursor-pointer">
-                  <ArrowRight size={20} />
+                <button
+                  type="button"
+                  onClick={handleLocateMe}
+                  disabled={isLocating}
+                  title="Auto GPS"
+                  className="text-slate-400 hover:text-purple-600 p-0.5 cursor-pointer shrink-0"
+                >
+                  <Locate size={16} className={isLocating ? "animate-spin text-purple-600" : ""} />
                 </button>
               </div>
+
+              {/* Keyword Search */}
+              <div className="flex items-center gap-2.5 px-3 py-3 bg-transparent flex-1">
+                <Search size={18} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search sourdough, milk, yogurt, paneer..."
+                  value={heroSearch}
+                  onChange={(e) => setHeroSearch(e.target.value)}
+                  className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none"
+                />
+              </div>
+
+              {/* Search Button */}
+              <button
+                type="submit"
+                className="px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-purple-600/20 transition active:scale-95 cursor-pointer shrink-0"
+              >
+                Find Deals
+              </button>
+            </form>
+
+            {/* Category Quick Selector Chips */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-8 text-xs font-bold text-slate-600">
+              <span className="text-slate-400 font-medium">Quick Filters:</span>
+              <Link href="/deals?cat=bakery" className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-100 transition">🥐 Bakery</Link>
+              <Link href="/deals?cat=dairy" className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-100 transition">🥛 Dairy</Link>
+              <Link href="/deals?cat=produce" className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-100 transition">🥗 Produce</Link>
+              <Link href="/deals?cat=meat" className="px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-100 transition">🥩 Meat</Link>
+              <Link href="/pantry" className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-100 transition">✨ AI Recipe Matcher</Link>
+            </div>
+
+            {/* Primary Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3.5 w-full mb-10">
+              <MagneticButton className="w-full sm:w-auto">
+                <Link href="/deals" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-bold hover:from-purple-500 hover:to-indigo-500 hover:shadow-[0_8px_25px_rgba(124,58,237,0.35)] transition-all duration-300 transform cursor-pointer text-base shadow-md shadow-purple-600/20">
+                  <MapPin size={20} />
+                  Browse Live Deals
+                </Link>
+              </MagneticButton>
+              <MagneticButton className="w-full sm:w-auto">
+                <Link href="/map" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-7 py-4 bg-white border-2 border-purple-200 text-purple-900 rounded-2xl font-bold hover:bg-purple-50/70 hover:border-purple-300 transition-all duration-300 transform cursor-pointer text-base shadow-xs">
+                  <Compass size={20} className="text-purple-600" />
+                  Live Radar Map
+                </Link>
+              </MagneticButton>
+              <MagneticButton className="w-full sm:w-auto">
+                <Link href="/shop/setup" onClick={playPopSound} className="w-full sm:w-auto flex justify-center items-center gap-2 px-6 py-4 bg-white border border-slate-200 text-slate-800 rounded-2xl font-bold hover:bg-slate-50 transition-all duration-300 cursor-pointer text-base shadow-2xs">
+                  <Store size={18} className="text-purple-600" />
+                  List your shop <ArrowRight size={18} />
+                </Link>
+              </MagneticButton>
+            </div>
+
+            {/* Real Impact Proof Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-purple-100 w-full">
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900">⭐ 4.9 / 5</div>
+                <div className="text-xs font-bold text-slate-500">2,400+ reviews</div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-purple-700">240+ Stores</div>
+                <div className="text-xs font-bold text-slate-500">Verified local shops</div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-indigo-700">15.5 Tons</div>
+                <div className="text-xs font-bold text-slate-500">CO₂ emissions saved</div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-violet-700">Zero Fees</div>
+                <div className="text-xs font-bold text-slate-500">Instant UPI & pickup</div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Right Column: Live Interactive Deal Radar Terminal Card */}
+          <div className="lg:col-span-5 w-full">
+            <div className="w-full h-[480px] sm:h-[520px] lg:h-[550px] xl:h-[580px] relative rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(124,58,237,0.12)] border-2 border-purple-200/90 bg-white">
+              
+              {/* Floating Top Radar Status Bar */}
+              <div className="absolute top-4 inset-x-4 z-20 flex items-center justify-between pointer-events-none">
+                <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl border border-purple-200 shadow-md flex items-center gap-2 pointer-events-auto">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-600 animate-ping" />
+                  <span className="text-xs font-black text-slate-900 tracking-tight">
+                    📡 Live Neighbourhood Deal Radar
+                  </span>
+                </div>
+                <Link
+                  href="/map"
+                  className="bg-purple-600 hover:bg-purple-500 text-white px-3.5 py-2 rounded-2xl shadow-md text-xs font-bold transition flex items-center gap-1 pointer-events-auto"
+                >
+                  Full Map <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              {/* Embedded Interactive Map Canvas */}
+              <HeroMap />
+
+              {/* Floating Bottom Quick Deal Preview Card */}
+              <div className="absolute bottom-4 inset-x-4 z-20 pointer-events-none">
+                <div className="bg-white/95 backdrop-blur-xl p-3.5 rounded-2xl border border-purple-100 shadow-xl flex items-center justify-between gap-3 pointer-events-auto">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-xl shrink-0">
+                      🥐
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-900 leading-tight">Fresh Sourdough Bread (2 left)</p>
+                      <p className="text-[11px] font-semibold text-purple-700 mt-0.5">Green Valley Supermarket • 2.4 km</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-black text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                      70% OFF
+                    </span>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div className="border-t border-emerald-100/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-slate-500 text-xs font-medium">
-              &copy; {new Date().getFullYear()} ExpiryGo. All rights reserved.
+        </div>
+      </main>
+
+      {/* ── 4 PROPRIETARY FEATURE SHOWCASE PILLARS ── */}
+      <section className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10 border-t border-purple-100">
+        <div className="mb-10 text-center md:text-left">
+          <span className="text-xs font-black text-purple-600 uppercase tracking-widest mb-1 block">Platform Pillars</span>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">How Meeva Works</h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          {/* Pillar 1: Dynamic Markdown Deals */}
+          <div className="bg-white border border-purple-100 rounded-3xl p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-xs">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 mb-4">
+                <Percent size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Auto-Dynamic Markdowns</h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                As expiry dates draw near (24h to 48h), prices drop automatically up to 70% off.
+              </p>
+            </div>
+            <Link href="/deals" className="mt-6 text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1">
+              Browse Active Deals <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Pillar 2: Hyper-Local Radar */}
+          <div className="bg-white border border-purple-100 rounded-3xl p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-xs">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 mb-4">
+                <Compass size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">GPS Deal Radar</h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Explore verified neighborhood stores within walking distance with live store pins.
+              </p>
+            </div>
+            <Link href="/map" className="mt-6 text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+              Open Store Map <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Pillar 3: AI Recipe Cook */}
+          <div className="bg-white border border-purple-100 rounded-3xl p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-xs">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-4">
+                <ChefHat size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">AI Zero-Waste Chef</h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Bundle leftover surplus ingredients into chef-crafted gourmet meals in seconds.
+              </p>
+            </div>
+            <Link href="/pantry" className="mt-6 text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1">
+              Try Recipe Cook <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Pillar 4: QR Instant Pickup */}
+          <div className="bg-white border border-purple-100 rounded-3xl p-6 hover:border-purple-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-xs">
+            <div>
+              <div className="w-12 h-12 rounded-2xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 mb-4">
+                <QrCode size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Instant QR Pickup</h3>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Reserve in 1 click, show your 6-digit pickup code at the store counter, and take it home.
+              </p>
+            </div>
+            <Link href="/reservations" className="mt-6 text-xs font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1">
+              View Cart & Pickups <ArrowRight size={14} />
+            </Link>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── LIVE NEIGHBOURHOOD DEALS SECTION ── */}
+      <LiveDealsSection />
+
+      {/* ── IMPACT & ESG SUSTAINABILITY METRICS ── */}
+      <section className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 relative z-10">
+        <div className="bg-gradient-to-br from-[#1E1B4B] via-[#2E1065] to-[#0F172A] rounded-3xl p-8 sm:p-12 lg:p-16 text-white shadow-2xl relative overflow-hidden">
+          
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="max-w-3xl mb-12 relative z-10">
+            <span className="text-xs sm:text-sm font-black text-purple-400 tracking-widest uppercase mb-2 block">
+              Sustainability & Carbon Impact
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
+              Real Impact. Measurable Waste Reduction.
+            </h2>
+            <p className="text-purple-200/80 text-base sm:text-lg font-medium">
+              Every item you rescue prevents methane emissions from organic landfill decomposition while saving you hard-earned money.
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+            <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
+              <div className="text-4xl sm:text-5xl font-black text-purple-300 mb-2 flex items-baseline">
+                <AnimatedCounter value={6.2} decimals={1} />
+                <span className="text-xl ml-1">tons</span>
+              </div>
+              <p className="text-sm font-bold text-purple-100">Food waste prevented this month</p>
+            </div>
+
+            <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
+              <div className="text-4xl sm:text-5xl font-black text-indigo-300 mb-2 flex items-baseline">
+                <AnimatedCounter value={15.5} decimals={1} />
+                <span className="text-xl ml-1">tons</span>
+              </div>
+              <p className="text-sm font-bold text-purple-100">CO₂ greenhouse emissions saved</p>
+            </div>
+
+            <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
+              <div className="text-4xl sm:text-5xl font-black text-pink-300 mb-2 flex items-baseline">
+                <AnimatedCounter value={18} prefix="₹" suffix="L+" />
+              </div>
+              <p className="text-sm font-bold text-purple-100">Saved by smart shoppers in Chennai</p>
+            </div>
+
+            <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
+              <div className="text-4xl sm:text-5xl font-black text-violet-300 mb-2 flex items-baseline">
+                <AnimatedCounter value={240} suffix="+" />
+              </div>
+              <p className="text-sm font-bold text-purple-100">Registered local supermarkets & bakeries</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── WHY MEEVA SECTION ── */}
+      <section className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 pb-28 relative z-10">
+        <div className="mb-12">
+          <span className="text-xs sm:text-sm font-black text-purple-600 tracking-widest uppercase mb-2 block">
+            Why Choose Meeva
+          </span>
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900">
+            Built for Smart Consumers & Local Merchants
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { icon: MapPin, color: "text-purple-600", bg: "bg-purple-50", title: "Hyper-Local Deal Radar", desc: "Discover nearby surplus inventory from walking-distance bakeries and supermarkets with live GPS." },
+            { icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50", title: "Real Expiry Countdown", desc: "Visual urgency indicators show exactly how many hours remain — total transparency with zero guessing." },
+            { icon: Sparkles, color: "text-amber-600", bg: "bg-amber-50", title: "AI Recipe Suggestions", desc: "Got surplus items? Our built-in AI Chef generates delicious zero-waste recipes instantly." },
+            { icon: Leaf, color: "text-emerald-600", bg: "bg-emerald-50", title: "Personal Eco Milestone", desc: "Track every kilogram of CO₂ you save and earn green shopper achievement badges." },
+            { icon: Bell, color: "text-pink-600", bg: "bg-pink-50", title: "Instant Clearance Alerts", desc: "Get notified immediately when your favourite shopkeeper posts a 70% clearance deal." },
+            { icon: ShieldCheck, color: "text-blue-600", bg: "bg-blue-50", title: "100% Verified Stores", desc: "Every shop is verified with OpenStreetMap and platform administrator identity checks." }
+          ].map((feature, i) => (
+            <div key={i} className="bg-white border border-purple-100/90 p-8 rounded-3xl shadow-xs hover:shadow-lg transition-all duration-300">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${feature.bg}`}>
+                <feature.icon className={feature.color} size={28} />
+              </div>
+              <h4 className="font-extrabold text-xl mb-2 text-slate-900">{feature.title}</h4>
+              <p className="text-slate-600 text-sm leading-relaxed font-medium">{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── LUXURY PURPLE FOOTER ── */}
+      <footer className="bg-[#0F111E] text-white pt-20 pb-12 border-t border-purple-950">
+        <div className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-16">
+            
+            <div className="lg:col-span-2">
+              <Link href="/" className="flex items-center gap-2.5 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-black">
+                  <Leaf size={18} />
+                </div>
+                <span className="text-2xl font-black tracking-tight text-white">
+                  Mee<span className="text-purple-400">va</span>
+                </span>
+              </Link>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-6 font-medium">
+                The smart hyper-local surplus food rescue engine. Connecting conscious shoppers with neighborhood supermarkets and bakeries to fight food waste.
+              </p>
+              <div className="flex gap-3">
+                <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
+                  <MessageCircle size={18} />
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
+                  <Camera size={18} />
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
+                  <Briefcase size={18} />
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">Platform</h4>
+              <ul className="space-y-3 text-sm font-semibold text-slate-400">
+                <li><Link href="/deals" className="hover:text-purple-400 transition">Deals Feed</Link></li>
+                <li><Link href="/map" className="hover:text-purple-400 transition">Store Radar Map</Link></li>
+                <li><Link href="/pantry" className="hover:text-purple-400 transition">AI Digital Pantry</Link></li>
+                <li><Link href="/reservations" className="hover:text-purple-400 transition">Pickup Cart</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">For Merchants</h4>
+              <ul className="space-y-3 text-sm font-semibold text-slate-400">
+                <li><Link href="/shop/setup" className="hover:text-purple-400 transition">Register Store</Link></li>
+                <li><Link href="/shop" className="hover:text-purple-400 transition">Storekeeper Portal</Link></li>
+                <li><Link href="/admin" className="hover:text-purple-400 transition">Admin Moderation</Link></li>
+                <li><Link href="/mobile" className="hover:text-purple-400 transition">Mobile App</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">Clearance Alerts</h4>
+              <p className="text-xs text-slate-400 mb-3">Get 70% off clearance deal alerts.</p>
+              <form onSubmit={(e) => { e.preventDefault(); alert("Subscribed!"); }} className="flex flex-col gap-2">
+                <input 
+                  type="email" 
+                  placeholder="Enter your email..."
+                  required
+                  className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-400"
+                />
+                <button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer">
+                  Subscribe Free
+                </button>
+              </form>
+            </div>
+
+          </div>
+
+          <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+            <p>&copy; {new Date().getFullYear()} Meeva Technologies Inc. All rights reserved.</p>
             <div className="flex gap-6">
-              <a href="#" className="text-slate-500 hover:text-emerald-600 transition-colors text-xs font-medium">Privacy Policy</a>
-              <a href="#" className="text-slate-500 hover:text-emerald-600 transition-colors text-xs font-medium">Terms of Service</a>
-              <a href="#" className="text-slate-500 hover:text-emerald-600 transition-colors text-xs font-medium">Cookies Settings</a>
+              <a href="#" className="hover:text-slate-300">Privacy Policy</a>
+              <a href="#" className="hover:text-slate-300">Terms of Service</a>
+              <a href="#" className="hover:text-slate-300">Sustainability Disclosure</a>
             </div>
           </div>
         </div>

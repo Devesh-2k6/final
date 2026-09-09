@@ -74,7 +74,7 @@ function LeafletMapInner({
   longitude,
   address,
   onChange,
-  zoom = 15,
+  zoom = 18,
 }: {
   latitude: number;
   longitude: number;
@@ -159,7 +159,7 @@ function LeafletMapInner({
     useMapEvents({
       click(e: LeafletMouseEvent) {
         const { lat, lng } = e.latlng;
-        onChange({ latitude: lat, longitude: lng });
+        onChange({ latitude: parseFloat(lat.toFixed(6)), longitude: parseFloat(lng.toFixed(6)) });
       },
     });
     return null;
@@ -172,7 +172,7 @@ function LeafletMapInner({
         const marker = markerRef.current;
         if (marker != null) {
           const { lat, lng } = marker.getLatLng();
-          onChange({ latitude: lat, longitude: lng });
+          onChange({ latitude: parseFloat(lat.toFixed(6)), longitude: parseFloat(lng.toFixed(6)) });
         }
       },
     }),
@@ -188,8 +188,9 @@ function LeafletMapInner({
       attributionControl={false}
     >
       <TileLayer
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        maxZoom={19}
       />
       <Marker
         draggable
@@ -202,7 +203,7 @@ function LeafletMapInner({
           <div className="text-center p-1">
             <div className="text-xs font-black text-emerald-700">📍 Shop Location Selected</div>
             <div className="text-[11px] text-gray-600 mt-1 max-w-[200px] truncate">
-              {address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`}
+              {address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`}
             </div>
             <div className="text-[10px] text-gray-400 font-semibold mt-1">
               ✨ Drag pin or click map to adjust
@@ -243,7 +244,7 @@ export default function InteractiveMapPicker({
   shopName,
   onLocationSelect,
   className = "w-full h-80",
-  zoom = 15,
+  zoom = 18,
 }: InteractiveMapPickerProps) {
   // Default to Chennai or given coords
   const currentLat = latitude ?? initialLat ?? 13.06158;
@@ -273,8 +274,8 @@ export default function InteractiveMapPicker({
     async (lat: number, lon: number) => {
       if (
         lastGeocodedCoords.current &&
-        Math.abs(lastGeocodedCoords.current.lat - lat) < 0.0001 &&
-        Math.abs(lastGeocodedCoords.current.lng - lon) < 0.0001
+        Math.abs(lastGeocodedCoords.current.lat - lat) < 0.00001 &&
+        Math.abs(lastGeocodedCoords.current.lng - lon) < 0.00001
       ) {
         return;
       }
@@ -283,9 +284,10 @@ export default function InteractiveMapPicker({
 
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&format=json`,
           {
             headers: {
+              "Accept-Language": "en",
               "User-Agent": "ExpiryGo-InteractivePicker/1.0",
             },
           }
@@ -293,8 +295,8 @@ export default function InteractiveMapPicker({
         const data = await res.json();
         if (data && data.display_name) {
           notifyChange({
-            latitude: lat,
-            longitude: lon,
+            latitude: parseFloat(lat.toFixed(6)),
+            longitude: parseFloat(lon.toFixed(6)),
             address: data.display_name,
             matchedName: data.name || undefined,
           });
@@ -310,8 +312,13 @@ export default function InteractiveMapPicker({
 
   const handleLocationChange = useCallback(
     (newVal: LocationPickerValue) => {
-      notifyChange(newVal);
-      reverseGeocode(newVal.latitude, newVal.longitude);
+      const preciseVal = {
+        ...newVal,
+        latitude: parseFloat(newVal.latitude.toFixed(6)),
+        longitude: parseFloat(newVal.longitude.toFixed(6)),
+      };
+      notifyChange(preciseVal);
+      reverseGeocode(preciseVal.latitude, preciseVal.longitude);
     },
     [notifyChange, reverseGeocode]
   );
@@ -328,6 +335,7 @@ export default function InteractiveMapPicker({
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5`,
         {
           headers: {
+            "Accept-Language": "en",
             "User-Agent": "ExpiryGo-InteractivePicker/1.0",
           },
         }
@@ -346,8 +354,8 @@ export default function InteractiveMapPicker({
   };
 
   const handleSelectSearchResult = (item: any) => {
-    const lat = parseFloat(item.lat);
-    const lon = parseFloat(item.lon);
+    const lat = parseFloat(parseFloat(item.lat).toFixed(6));
+    const lon = parseFloat(parseFloat(item.lon).toFixed(6));
     setSearchResults([]);
     setSearchQuery(item.display_name);
     notifyChange({
@@ -364,8 +372,8 @@ export default function InteractiveMapPicker({
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
+          const lat = parseFloat(pos.coords.latitude.toFixed(6));
+          const lon = parseFloat(pos.coords.longitude.toFixed(6));
           setIsLocating(false);
           handleLocationChange({ latitude: lat, longitude: lon });
         },
@@ -373,17 +381,17 @@ export default function InteractiveMapPicker({
           console.warn("GPS failed, falling back to IP:", err);
           fetchIpGeolocation()
             .then((data) => {
-              handleLocationChange({ latitude: data.latitude, longitude: data.longitude });
+              handleLocationChange({ latitude: parseFloat(data.latitude.toFixed(6)), longitude: parseFloat(data.longitude.toFixed(6)) });
             })
             .catch(() => alert("Could not detect location: " + err.message))
             .finally(() => setIsLocating(false));
         },
-        { enableHighAccuracy: true, timeout: 6000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
       fetchIpGeolocation()
         .then((data) => {
-          handleLocationChange({ latitude: data.latitude, longitude: data.longitude });
+          handleLocationChange({ latitude: parseFloat(data.latitude.toFixed(6)), longitude: parseFloat(data.longitude.toFixed(6)) });
         })
         .catch(() => alert("Geolocation not supported."))
         .finally(() => setIsLocating(false));
@@ -491,7 +499,7 @@ export default function InteractiveMapPicker({
           <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-md flex items-center gap-2 text-[11px] font-mono font-bold text-slate-700 dark:text-gray-200">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>
-              {currentLat.toFixed(5)}, {currentLng.toFixed(5)}
+              {currentLat.toFixed(6)}, {currentLng.toFixed(6)}
             </span>
             {isReverseGeocoding && (
               <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-sans">

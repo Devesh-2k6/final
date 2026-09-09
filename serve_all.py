@@ -1,5 +1,5 @@
 """
-ExpiryGo Unified Web Server Orchestrator
+Meeva Unified Web Server Orchestrator
 Runs both the FastAPI Backend (port 8000) and Next.js Web Frontend (port 3000) concurrently.
 Handles graceful shutdown (Ctrl+C), live health monitoring, and browser launch.
 """
@@ -54,7 +54,7 @@ def main():
     lan_ip = get_lan_ip()
     
     print("\n" + "=" * 65)
-    print("   🚀 EXPIRYGO UNIFIED WEB SERVER ORCHESTRATOR")
+    print("   🚀 MEEVA UNIFIED WEB SERVER ORCHESTRATOR")
     print("=" * 65)
     print(f"  • Web Frontend:    http://localhost:3000")
     print(f"  • Local LAN Web:   http://{lan_ip}:3000")

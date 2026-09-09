@@ -317,7 +317,7 @@ export const DigitalFridgeScreen: React.FC<{ navigation: any }> = ({ navigation 
             <Text style={styles.emptyEmoji}>🧊</Text>
             <Text style={styles.emptyTitle}>Your Digital Fridge is Empty</Text>
             <Text style={styles.emptySubtitle}>
-              Items you reserve on ExpiryGo, scan from your kitchen, or add manually will automatically track their expiration timers here!
+              Items you reserve on Meeva, scan from your kitchen, or add manually will automatically track their expiration timers here!
             </Text>
             <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
               <TouchableOpacity

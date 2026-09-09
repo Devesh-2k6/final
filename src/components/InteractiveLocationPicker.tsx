@@ -225,7 +225,7 @@ export default function InteractiveLocationPicker({
     const parsedLng = parseFloat(manualLngStr);
     if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat >= -90 && parsedLat <= 90 && parsedLng >= -180 && parsedLng <= 180) {
       handlePositionChange(parsedLat, parsedLng);
-      setSearchStatusMsg({ type: "success", text: `✓ Applied exact GPS coordinates: ${parsedLat.toFixed(5)}, ${parsedLng.toFixed(5)}` });
+      setSearchStatusMsg({ type: "success", text: `✓ Applied exact GPS coordinates: ${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}` });
       setTimeout(() => setSearchStatusMsg(null), 4000);
     } else {
       setSearchStatusMsg({ type: "error", text: "Invalid coordinates. Latitude must be -90 to 90, Longitude -180 to 180." });
@@ -288,7 +288,7 @@ export default function InteractiveLocationPicker({
     const directCoords = extractCoordinatesFromText(query);
     if (directCoords) {
       handlePositionChange(directCoords.lat, directCoords.lng);
-      setSearchStatusMsg({ type: "success", text: `✓ Jumped to exact coordinates: ${directCoords.lat.toFixed(5)}, ${directCoords.lng.toFixed(5)}` });
+      setSearchStatusMsg({ type: "success", text: `✓ Jumped to exact coordinates: ${directCoords.lat.toFixed(6)}, ${directCoords.lng.toFixed(6)}` });
       setTimeout(() => setSearchStatusMsg(null), 4000);
       return;
     }
@@ -540,7 +540,7 @@ export default function InteractiveLocationPicker({
           style={{ width: "100%", height: "100%" }}
         >
           {mapLayerType === "streets" ? (
-            /* Official OpenStreetMap Global Street Map TileLayer */
+            /* Official OpenStreetMap Global Street Map TileLayer (100% Free - 0 Key - 0 Watermark) */
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -591,7 +591,7 @@ export default function InteractiveLocationPicker({
               <div className="p-1 text-center font-sans">
                 <div className="text-xs font-black text-orange-600 mb-0.5">🏪 Storefront Pin</div>
                 <div className="text-[11px] text-slate-600 leading-snug">{address || "Selected Storefront Location"}</div>
-                <div className="text-[10px] text-slate-400 mt-1 font-mono">{lat.toFixed(5)}, {lng.toFixed(5)}</div>
+                <div className="text-[10px] text-slate-400 mt-1 font-mono">{lat.toFixed(6)}, {lng.toFixed(6)}</div>
               </div>
             </Popup>
           </Marker>
@@ -604,7 +604,7 @@ export default function InteractiveLocationPicker({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-white font-mono">
-            {lat.toFixed(5)}, {lng.toFixed(5)}
+            {lat.toFixed(6)}, {lng.toFixed(6)}
           </span>
         </div>
 

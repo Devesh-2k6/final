@@ -96,13 +96,15 @@ export default function LeafletInteractiveMapPicker({
   initialLat = 13.0827,
   initialLng = 80.2707,
   initialAddress = "",
+  onLocationChange,
   onLocationSelect,
   shopName = "Your Store",
   className = "w-full h-80 sm:h-96",
-}: InteractiveMapPickerProps) {
+}: InteractiveMapPickerProps & { onLocationChange?: (loc: { lat: number; lng: number; address?: string }) => void }) {
+  const notifySelect = onLocationSelect || onLocationChange || (() => {});
   const [lat, setLat] = useState<number>(initialLat);
   const [lng, setLng] = useState<number>(initialLng);
-  const [zoom, setZoom] = useState(15);
+  const [zoom, setZoom] = useState(18);
   const [searchQuery, setSearchQuery] = useState(initialAddress);
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -112,27 +114,32 @@ export default function LeafletInteractiveMapPicker({
   const markerRef = useRef<L.Marker | null>(null);
   const shopIcon = createDraggableShopIcon();
 
-  // Reverse geocode whenever pin changes
+  // Reverse geocode whenever pin changes with street-level zoom=18 precision
   const reverseGeocode = useCallback(
     async (latitude: number, longitude: number) => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-          { headers: { "User-Agent": "ExpiryGo-App/1.0" } }
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&format=json`,
+          {
+            headers: {
+              "Accept-Language": "en",
+              "User-Agent": "ExpiryGo-App/1.0",
+            },
+          }
         );
         const data = await res.json();
         if (data && data.display_name) {
           setDetectedAddress(data.display_name);
           setSearchQuery(data.display_name);
-          onLocationSelect({ lat: latitude, lng: longitude, address: data.display_name });
+          notifySelect({ lat: latitude, lng: longitude, address: data.display_name });
           return;
         }
       } catch {
         // Fallback silently if offline/network error
       }
-      onLocationSelect({ lat: latitude, lng: longitude });
+      notifySelect({ lat: latitude, lng: longitude });
     },
-    [onLocationSelect]
+    [notifySelect]
   );
 
   // Sync props when initialLat/initialLng changes from parent preset button
@@ -148,18 +155,22 @@ export default function LeafletInteractiveMapPicker({
   }, [initialLat, initialLng, initialAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMapClick = (newLat: number, newLng: number) => {
-    setLat(newLat);
-    setLng(newLng);
-    reverseGeocode(newLat, newLng);
+    const preciseLat = parseFloat(newLat.toFixed(6));
+    const preciseLng = parseFloat(newLng.toFixed(6));
+    setLat(preciseLat);
+    setLng(preciseLng);
+    reverseGeocode(preciseLat, preciseLng);
   };
 
   const handleMarkerDragEnd = () => {
     const marker = markerRef.current;
     if (marker) {
       const pos = marker.getLatLng();
-      setLat(pos.lat);
-      setLng(pos.lng);
-      reverseGeocode(pos.lat, pos.lng);
+      const preciseLat = parseFloat(pos.lat.toFixed(6));
+      const preciseLng = parseFloat(pos.lng.toFixed(6));
+      setLat(preciseLat);
+      setLng(preciseLng);
+      reverseGeocode(preciseLat, preciseLng);
     }
   };
 
@@ -171,20 +182,25 @@ export default function LeafletInteractiveMapPicker({
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery.trim()
-        )}&limit=5`,
-        { headers: { "User-Agent": "ExpiryGo-App/1.0" } }
+        )}&addressdetails=1&limit=5`,
+        {
+          headers: {
+            "Accept-Language": "en",
+            "User-Agent": "ExpiryGo-App/1.0",
+          },
+        }
       );
       const data = await res.json();
       if (data && data.length > 0) {
         setSuggestions(data);
         const first = data[0];
-        const newLat = parseFloat(first.lat);
-        const newLng = parseFloat(first.lon);
+        const newLat = parseFloat(parseFloat(first.lat).toFixed(6));
+        const newLng = parseFloat(parseFloat(first.lon).toFixed(6));
         setLat(newLat);
         setLng(newLng);
-        setZoom(16);
+        setZoom(18);
         setDetectedAddress(first.display_name);
-        onLocationSelect({ lat: newLat, lng: newLng, address: first.display_name });
+        notifySelect({ lat: newLat, lng: newLng, address: first.display_name });
       } else {
         alert("Location not found. Please try searching with city name (e.g., 'T. Nagar, Chennai').");
       }
@@ -196,15 +212,15 @@ export default function LeafletInteractiveMapPicker({
   };
 
   const handleSelectSuggestion = (sug: { display_name: string; lat: string; lon: string }) => {
-    const newLat = parseFloat(sug.lat);
-    const newLng = parseFloat(sug.lon);
+    const newLat = parseFloat(parseFloat(sug.lat).toFixed(6));
+    const newLng = parseFloat(parseFloat(sug.lon).toFixed(6));
     setLat(newLat);
     setLng(newLng);
-    setZoom(16);
+    setZoom(18);
     setDetectedAddress(sug.display_name);
     setSearchQuery(sug.display_name);
     setSuggestions([]);
-    onLocationSelect({ lat: newLat, lng: newLng, address: sug.display_name });
+    notifySelect({ lat: newLat, lng: newLng, address: sug.display_name });
   };
 
   const handleLocateMe = () => {
@@ -215,11 +231,11 @@ export default function LeafletInteractiveMapPicker({
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const userLat = pos.coords.latitude;
-        const userLng = pos.coords.longitude;
+        const userLat = parseFloat(pos.coords.latitude.toFixed(6));
+        const userLng = parseFloat(pos.coords.longitude.toFixed(6));
         setLat(userLat);
         setLng(userLng);
-        setZoom(17);
+        setZoom(18);
         setIsLocating(false);
         reverseGeocode(userLat, userLng);
       },
@@ -227,7 +243,7 @@ export default function LeafletInteractiveMapPicker({
         setIsLocating(false);
         alert(`Could not retrieve GPS location: ${err.message}`);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -301,8 +317,9 @@ export default function LeafletInteractiveMapPicker({
           attributionControl={false}
         >
           <TileLayer
-            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            maxZoom={19}
           />
 
           {/* 100-meter verification halo radius */}
@@ -332,6 +349,7 @@ export default function LeafletInteractiveMapPicker({
               <div className="p-1 text-center">
                 <p className="font-extrabold text-xs text-slate-900">{shopName}</p>
                 <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Drag to adjust exact entrance</p>
+                <p className="text-[9px] text-slate-400 font-mono mt-0.5">{lat.toFixed(6)}, {lng.toFixed(6)}</p>
               </div>
             </Popup>
           </Marker>
@@ -344,7 +362,7 @@ export default function LeafletInteractiveMapPicker({
         <div className="absolute bottom-3 left-3 right-3 z-[1000] pointer-events-none flex items-center justify-between">
           <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-emerald-200/80 dark:border-gray-700 text-[11px] font-bold text-slate-700 dark:text-gray-300 shadow-md flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            <span className="font-mono">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
+            <span className="font-mono">{lat.toFixed(6)}, {lng.toFixed(6)}</span>
           </div>
 
           <div className="bg-emerald-600 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-xl shadow-md flex items-center gap-1">

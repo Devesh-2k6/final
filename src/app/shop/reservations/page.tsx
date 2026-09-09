@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { getShopReservations, verifyReservation } from "@/services/reservations";
-import { getShopOrders, updateOrderStatus } from "@/services/orders";
+import { getShopOrders, updateOrderStatus, verifyOrderPayment, verifyOrderDeliveryPin } from "@/services/orders";
 import type { ApiReservation, ApiOrder, OrderStatus } from "@/types/product";
-import { Loader2, CheckCircle, Package, Clock, ShieldCheck, XCircle, Truck, ShoppingBag } from "lucide-react";
+import { Loader2, CheckCircle, Package, Clock, ShieldCheck, XCircle, Truck, ShoppingBag, QrCode, KeyRound, AlertTriangle } from "lucide-react";
 import { getErrorMessage } from "@/api/errors";
 
 export default function ShopReservations() {
@@ -23,6 +23,8 @@ export default function ShopReservations() {
 
   // Updating Order State
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [deliveryPins, setDeliveryPins] = useState<Record<string, string>>({});
+  const [activePinPromptOrderId, setActivePinPromptOrderId] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -65,6 +67,47 @@ export default function ShopReservations() {
       setError(getErrorMessage(err));
     } finally {
       setVerifyingId(null);
+    }
+  };
+
+  const handleVerifyPayment = async (orderId: string) => {
+    setError(null);
+    setSuccess(null);
+    setUpdatingOrderId(orderId);
+    try {
+      await verifyOrderPayment(orderId, true);
+      setSuccess("UPI payment successfully verified and credited! You can now accept and pack the order.");
+      await loadData();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleVerifyPinAndDeliver = async (orderId: string) => {
+    setError(null);
+    setSuccess(null);
+    const pin = deliveryPins[orderId]?.trim();
+    if (!pin || pin.length !== 4) {
+      setError("Please enter the exact 4-digit PIN provided by the customer at the door.");
+      return;
+    }
+    setUpdatingOrderId(orderId);
+    try {
+      await verifyOrderDeliveryPin(orderId, pin);
+      setSuccess("Delivery PIN verified successfully! Order marked as DELIVERED.");
+      setActivePinPromptOrderId(null);
+      setDeliveryPins((prev) => {
+        const copy = { ...prev };
+        delete copy[orderId];
+        return copy;
+      });
+      await loadData();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 

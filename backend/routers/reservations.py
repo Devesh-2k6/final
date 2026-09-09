@@ -79,7 +79,7 @@ def create_reservation(
                     </div>
                     <p>Please present the <strong>Pickup Code</strong> at the shop to collect your items before they expire.</p>
                     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                    <p style="font-size: 0.8em; color: #999;">Thank you for using ExpiryGo to fight food waste!</p>
+                    <p style="font-size: 0.8em; color: #999;">Thank you for using Meeva to fight food waste!</p>
                 </div>
             </body>
         </html>
@@ -238,7 +238,7 @@ def verify_reservation(
                         <p style="margin: 5px 0;"><strong>CO2 Saved:</strong> {(0.5 * reservation.quantity):.1f} kg</p>
                     </div>
                     <p>Every saved meal counts in our mission to fight food waste and protect the environment.</p>
-                    <p>Keep tracking your impact stats on the ExpiryGo dashboard!</p>
+                    <p>Keep tracking your impact stats on the Meeva dashboard!</p>
                     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
                     <p style="font-size: 0.8em; color: #999;">Thank you for being part of the solution!</p>
                 </div>

@@ -64,9 +64,9 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None, purpose: 
     if "@" in clean_id:
         display_name = (name or "").strip() or "Valued User"
         is_reset = purpose == "reset_password"
-        subject = f"🔐 Reset Your ExpiryGo Password: {otp_code}" if is_reset else f"🔐 Your ExpiryGo Login Code: {otp_code}"
+        subject = f"🔐 Reset Your Meeva Password: {otp_code}" if is_reset else f"🔐 Your Meeva Login Code: {otp_code}"
         title_text = "Password Reset Request" if is_reset else "Your One-Time Login Code"
-        body_text = "Use the 6-digit verification code below to securely reset your ExpiryGo account password:" if is_reset else "Use the 6-digit verification code below to securely log in or verify your ExpiryGo account:"
+        body_text = "Use the 6-digit verification code below to securely reset your Meeva account password:" if is_reset else "Use the 6-digit verification code below to securely log in or verify your Meeva account:"
         action_note = "If you did not request a password reset, please ignore this email. Your password will remain unchanged." if is_reset else "If you did not request this code, you can safely ignore this email. Never share this code with anyone."
 
         html_content = f"""<!DOCTYPE html>
@@ -82,9 +82,9 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None, purpose: 
             <td align="center">
                 <table role="presentation" width="100%" max-width="540" style="max-width: 540px; background-color: #ffffff; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; overflow: hidden; text-align: left;">
                     <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 36px; text-align: center;">
+                        <td style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 32px 36px; text-align: center;">
                             <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 18px; border-radius: 9999px; margin-bottom: 8px;">
-                                <span style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px;">🌱 Expiry<span style="color: #d1fae5;">Go</span></span>
+                                <span style="font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px;">🌱 Mee<span style="color: #ede9fe;">va</span></span>
                             </div>
                             <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700; color: #ffffff;">{title_text}</h1>
                         </td>
@@ -95,8 +95,8 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None, purpose: 
                             <p style="font-size: 15px; color: #334155; margin: 12px 0 24px 0;">
                                 {body_text}
                             </p>
-                            <div style="text-align: center; margin: 28px 0; background: #f1f5f9; border-radius: 16px; padding: 24px; border: 2px dashed #cbd5e1;">
-                                <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #059669; font-family: monospace;">
+                            <div style="text-align: center; margin: 28px 0; background: #faf5ff; border-radius: 16px; padding: 24px; border: 2px dashed #d8b4fe;">
+                                <div style="font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #7c3aed; font-family: monospace;">
                                     {otp_code}
                                 </div>
                                 <p style="font-size: 12px; color: #64748b; margin: 12px 0 0 0; font-weight: 600;">
@@ -110,7 +110,7 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None, purpose: 
                     </tr>
                     <tr>
                         <td style="background-color: #f1f5f9; padding: 20px 36px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-                            <p style="margin: 0;">&copy; ExpiryGo Surplus Marketplace. Safe & Secure Login.</p>
+                            <p style="margin: 0;">&copy; Meeva Surplus Marketplace. Safe & Secure Login.</p>
                         </td>
                     </tr>
                 </table>
@@ -121,13 +121,13 @@ def generate_and_send_otp(identifier: str, name: Optional[str] = None, purpose: 
 </html>"""
         text_fallback = f"""Hello {display_name},
 
-Your 6-digit ExpiryGo verification code is: {otp_code}
+Your 6-digit Meeva verification code is: {otp_code}
 
 {body_text}
 This code is valid for 10 minutes. Do not share this code with anyone.
 
 ---
-ExpiryGo Team
+Meeva Team
 """
         send_email_notification(
             to_email=clean_id,

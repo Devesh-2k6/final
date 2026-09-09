@@ -374,6 +374,33 @@ export default function ShopDashboardOverview() {
         </div>
       )}
 
+      {/* Missing UPI Delivery Banner for Existing Vendors */}
+      {isApproved && (!shop.upi_id || !shop.upi_id.trim()) && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950 flex-shrink-0 mt-0.5 shadow-md shadow-amber-500/20">
+                <AlertTriangle size={22} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-amber-950 dark:text-amber-100">
+                  Add Your UPI ID to Enable Delivery Orders
+                </h3>
+                <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300/90 font-medium leading-relaxed max-w-2xl">
+                  Delivery fulfillment is currently paused for your store until you configure a valid UPI ID. Customers can still place in-store pickup orders as normal.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/shop/settings"
+              className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-5 py-3 rounded-2xl text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 whitespace-nowrap"
+            >
+              Configure UPI ID <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Main Shop Header Card */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

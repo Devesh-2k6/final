@@ -117,7 +117,7 @@ def verify_email(
     logger.info(f"[VERIFIED] User email verified successfully: {user.email}")
     return schemas.VerifyEmailResponse(
         success=True,
-        message="Email verified successfully! You now have full access to ExpiryGo.",
+        message="Email verified successfully! You now have full access to Meeva.",
         email=user.email,
         user=user_to_dict(user)
     )
@@ -473,6 +473,7 @@ def vendor_register(
             photo_url=body.photo_url,
             document_url=body.document_url,
             verification_document_url=body.document_url,
+            upi_id=body.upi_id.strip() if getattr(body, "upi_id", None) else None,
         )
         db.add(shop)
     else:
@@ -484,6 +485,8 @@ def vendor_register(
         shop.photo_url = body.photo_url
         shop.document_url = body.document_url
         shop.verification_document_url = body.document_url
+        if getattr(body, "upi_id", None) and body.upi_id.strip():
+            shop.upi_id = body.upi_id.strip()
     db.commit()
     db.refresh(shop)
 

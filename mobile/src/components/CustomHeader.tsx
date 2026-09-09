@@ -16,7 +16,7 @@ interface CustomHeaderProps {
 }
 
 export const CustomHeader: React.FC<CustomHeaderProps> = ({
-  title = "ExpiryGo",
+  title = "Meeva",
   subtitle,
   onPressNotifications,
   onPressScanner,

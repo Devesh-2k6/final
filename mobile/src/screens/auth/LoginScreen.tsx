@@ -598,7 +598,7 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
               <Zap size={22} color="#FFFFFF" fill="#FFFFFF" />
             </View>
             <Text style={styles.brandTitle}>
-              Expiry<Text style={{ color: Colors.primaryBright }}>Go</Text>
+              Mee<Text style={{ color: Colors.primaryBright }}>va</Text>
             </Text>
             <Text style={styles.brandSubtitle}>
               {tab === "signup"
@@ -746,7 +746,7 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                       <Mail size={16} color={Colors.textMuted} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder={roleMode === "admin" ? "admin@expirygo.com" : "name@example.com"}
+                        placeholder={roleMode === "admin" ? "admin@meeva.com" : "name@example.com"}
                         placeholderTextColor={Colors.textMuted}
                         value={loginEmail}
                         onChangeText={setLoginEmail}

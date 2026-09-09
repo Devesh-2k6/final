@@ -18,7 +18,7 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
 export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   en: {
     // Brand & Header
-    "brand.name": "ExpiryGo",
+    "brand.name": "Meeva",
     "brand.subtitle": "Grab it before it's gone",
     
     // Bottom Tabs
@@ -108,7 +108,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   hi: {
     // Brand & Header
-    "brand.name": "ExpiryGo",
+    "brand.name": "Meeva",
     "brand.subtitle": "खत्म होने से पहले बचाएं",
     
     // Bottom Tabs
@@ -198,7 +198,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   ta: {
     // Brand & Header
-    "brand.name": "ExpiryGo",
+    "brand.name": "Meeva",
     "brand.subtitle": "முடிவதற்குள் சேமியுங்கள்",
     
     // Bottom Tabs
@@ -288,7 +288,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   te: {
     // Brand & Header
-    "brand.name": "ExpiryGo",
+    "brand.name": "Meeva",
     "brand.subtitle": "ముగిసేలోపే పొందండి",
     
     // Bottom Tabs
@@ -378,7 +378,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   },
   kn: {
     // Brand & Header
-    "brand.name": "ExpiryGo",
+    "brand.name": "Meeva",
     "brand.subtitle": "ಮುಗಿಯುವ ಮುನ್ನ ಉಳಿಸಿ",
     
     // Bottom Tabs

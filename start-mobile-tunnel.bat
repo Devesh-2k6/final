@@ -1,7 +1,7 @@
 @echo off
-title ExpiryGo Mobile - Cloudflare Zero-Config Tunnel
+title Meeva Mobile - Cloudflare Zero-Config Tunnel
 echo ============================================================
-echo   📱 EXPIRYGO MOBILE - GLOBAL CLOUD TUNNEL (EXPO GO)
+echo   📱 MEEVA MOBILE - GLOBAL CLOUD TUNNEL (EXPO GO)
 echo ============================================================
 echo.
 echo Tunnel mode works over ANY Wi-Fi, Mobile Hotspot, and 4G/5G data!

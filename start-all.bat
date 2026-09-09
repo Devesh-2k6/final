@@ -1,8 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
-title ExpiryGo Ecosystem Launcher
+title Meeva Ecosystem Launcher
 echo ============================================================
-echo   🚀 EXPIRYGO - UNIFIED ECOSYSTEM LAUNCHER (WEB + MOBILE + API)
+echo   🚀 MEEVA - UNIFIED ECOSYSTEM LAUNCHER (WEB + MOBILE + API)
 echo ============================================================
 echo.
 
@@ -26,17 +26,17 @@ echo.
 
 :: 4. Start Backend API
 echo [2/4] Starting Backend FastAPI Server (http://0.0.0.0:8000)...
-start "ExpiryGo Backend API" cmd /k "title ExpiryGo Backend API && cd backend && python run_server.py"
+start "Meeva Backend API" cmd /k "title Meeva Backend API && cd backend && python run_server.py"
 echo.
 
 :: 5. Start Next.js Web App
 echo [3/4] Starting Next.js Web Server (http://localhost:3000)...
-start "ExpiryGo Web App" cmd /k "title ExpiryGo Web App && python serve_web.py"
+start "Meeva Web App" cmd /k "title Meeva Web App && python serve_web.py"
 echo.
 
 :: 6. Start React Native Expo Go Mobile Server with QR Scanner
 echo [4/4] Starting React Native Expo Go Mobile Server (%LAN_IP%:8081)...
-start "ExpiryGo Mobile App" cmd /k "title ExpiryGo Expo Go Server && cd mobile && set REACT_NATIVE_PACKAGER_HOSTNAME=%LAN_IP% && npx expo start --go --host lan -c"
+start "Meeva Mobile App" cmd /k "title Meeva Expo Go Server && cd mobile && set REACT_NATIVE_PACKAGER_HOSTNAME=%LAN_IP% && npx expo start --go --host lan -c"
 echo.
 
 :: 7. Open Browser Companion

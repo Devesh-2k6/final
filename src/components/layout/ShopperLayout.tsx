@@ -57,7 +57,7 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
               <Leaf size={20} className="fill-current" />
             </div>
             <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-              Expiry<span className="text-[#FF5B26]">Go</span>
+              Mee<span className="text-[#FF5B26]">va</span>
             </span>
           </Link>
         </div>

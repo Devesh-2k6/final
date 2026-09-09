@@ -236,7 +236,7 @@ export const ShopOrdersScreen: React.FC<ShopOrdersScreenProps> = ({ navigation }
           <View style={styles.pinInputCard}>
             <Text style={styles.pinCardTitle}>Or Enter 6-Digit Pickup PIN</Text>
             <Text style={styles.pinCardSub}>
-              Type the code shown on the customer&apos;s ExpiryGo screen:
+              Type the code shown on the customer&apos;s Meeva screen:
             </Text>
 
             <View style={styles.pinRow}>

@@ -179,7 +179,7 @@ function VerifyEmailContent() {
           <Leaf size={24} />
         </div>
         <span className="text-3xl font-black tracking-tight">
-          Expiry<span className="text-emerald-600 dark:text-emerald-400">Go</span>
+          Mee<span className="text-purple-600 dark:text-purple-400">va</span>
         </span>
       </Link>
 
@@ -198,7 +198,7 @@ function VerifyEmailContent() {
                 Verifying Your Email
               </h2>
               <p className="text-sm text-slate-500 dark:text-gray-400 font-medium">
-                Validating your cryptographic security token with ExpiryGo servers...
+                Validating your cryptographic security token with Meeva servers...
               </p>
             </div>
           </div>
@@ -329,7 +329,7 @@ function VerifyEmailContent() {
                 Already Verified!
               </h2>
               <p className="text-sm text-slate-600 dark:text-gray-300 font-medium">
-                Your email address is already verified and your account is in good standing. You can proceed directly to ExpiryGo.
+                Your email address is already verified and your account is in good standing. You can proceed directly to Meeva.
               </p>
             </div>
 

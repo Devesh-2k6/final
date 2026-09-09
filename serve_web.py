@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # Allow socket address reuse immediately
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("0.0.0.0", PORT), CleanUrlHTTPRequestHandler) as httpd:
-        print(f"🚀 ExpiryGo Web App running at http://localhost:{PORT} (Serving {DIRECTORY})", flush=True)
+        print(f"🚀 Meeva Web App running at http://localhost:{PORT} (Serving {DIRECTORY})", flush=True)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

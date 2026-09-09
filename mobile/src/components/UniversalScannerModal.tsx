@@ -496,7 +496,7 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
             </View>
             <Text style={styles.permissionTitle}>Camera Access Required</Text>
             <Text style={styles.permissionSub}>
-              ExpiryGo uses your camera in Expo Go to scan barcodes, verify pickup QR codes, and extract expiry dates with AI vision.
+              Meeva uses your camera in Expo Go to scan barcodes, verify pickup QR codes, and extract expiry dates with AI vision.
             </Text>
             <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission} activeOpacity={0.85}>
               <Text style={styles.permissionBtnText}>Enable Camera in Expo Go</Text>

@@ -121,6 +121,12 @@ class Shop(Base):
     location_override_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     location_override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Delivery & UPI Configuration
+    delivery_enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True, nullable=False)
+    upi_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    delivery_fee: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    min_order_amount: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
     owner: Mapped["User"] = relationship(back_populates="shop")
     products: Mapped[list["Product"]] = relationship(back_populates="shop", cascade="all, delete-orphan")
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="shop", cascade="all, delete-orphan")
@@ -238,8 +244,14 @@ class Order(Base):
     shop_id: Mapped[str] = mapped_column(String(36), ForeignKey("shops.id"), index=True, nullable=False)
     product_id: Mapped[str] = mapped_column(String(36), ForeignKey("products.id"), index=True, nullable=False)
     
-    order_type: Mapped[str] = mapped_column(String(50), default="PICKUP", nullable=False) # "PICKUP" or "DELIVERY"
+    order_type: Mapped[str] = mapped_column(String(50), default="PICKUP", index=True, nullable=False) # "PICKUP" or "DELIVERY"
     status: Mapped[str] = mapped_column(String(50), default="PENDING", index=True, nullable=False) # "PENDING", "ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"
+    payment_method: Mapped[str] = mapped_column(String(50), default="UPI", nullable=False) # "UPI"
+    payment_status: Mapped[str] = mapped_column(String(50), default="UNPAID", index=True, nullable=False) # "UNPAID", "CUSTOMER_REPORTED_UNVERIFIED", "PAID"
+    upi_transaction_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    payment_reported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    payment_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     total_price: Mapped[float] = mapped_column(Float, nullable=False)
     delivery_fee: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
@@ -247,6 +259,19 @@ class Order(Base):
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     customer_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # 4-digit handover delivery PIN with rate-limiting
+    delivery_pin: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    delivery_pin_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    delivery_pin_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Cancellation audit trail
+    cancelled_by: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    previous_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    previous_payment_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, index=True, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

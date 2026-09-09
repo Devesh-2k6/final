@@ -57,6 +57,7 @@ class VendorRegisterRequest(BaseModel):
     shop_name: str
     email: str
     phone_number: str
+    upi_id: str = Field(..., description="Vendor UPI ID / VPA for receiving customer payments (e.g. merchant@okhdfcbank)")
     password: Optional[str] = None
     photo_url: str = Field(..., description="Storefront photo URL from /auth/upload")
     document_url: str = Field(..., description="Business license document URL from /auth/upload")
@@ -70,6 +71,17 @@ class VendorRegisterRequest(BaseModel):
         v_clean = v.strip().lower()
         if not v_clean or "@" not in v_clean or "." not in v_clean.split("@")[-1]:
             raise ValueError("Please enter a valid email address.")
+        return v_clean
+
+    @field_validator('upi_id')
+    @classmethod
+    def validate_upi(cls, v: str) -> str:
+        import re
+        v_clean = (v or "").strip().lower()
+        if not v_clean:
+            raise ValueError("UPI ID is mandatory for vendor registration to accept payments.")
+        if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", v_clean):
+            raise ValueError("Please enter a valid UPI ID (e.g. merchant@okhdfcbank or 9876543210@paytm).")
         return v_clean
 
     @field_validator('shop_name')
@@ -329,6 +341,10 @@ class ShopBase(BaseModel):
     description: Optional[str] = None
     verification_document_url: Optional[str] = None
     verification_document_name: Optional[str] = None
+    upi_id: Optional[str] = None
+    delivery_enabled: bool = True
+    delivery_fee: float = Field(default=0.0, ge=0.0)
+    min_order_amount: float = Field(default=0.0, ge=0.0)
 
     @field_validator('latitude')
     @classmethod
@@ -346,8 +362,47 @@ class ShopBase(BaseModel):
             raise ValueError("Longitude cannot be NaN or Infinity")
         return v
 
+    @field_validator('upi_id')
+    @classmethod
+    def check_upi(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v_clean = v.strip().lower()
+        if not v_clean:
+            return None
+        import re
+        if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", v_clean):
+            raise ValueError("Invalid UPI ID format (e.g. merchant@okhdfcbank).")
+        return v_clean
+
 class ShopCreate(ShopBase):
     pass
+
+class ShopUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    description: Optional[str] = None
+    verification_document_url: Optional[str] = None
+    verification_document_name: Optional[str] = None
+    upi_id: Optional[str] = None
+    delivery_enabled: Optional[bool] = None
+    delivery_fee: Optional[float] = None
+    min_order_amount: Optional[float] = None
+
+    @field_validator('upi_id')
+    @classmethod
+    def check_upi(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v_clean = v.strip().lower()
+        if not v_clean:
+            return None
+        import re
+        if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", v_clean):
+            raise ValueError("Invalid UPI ID format (e.g. merchant@okhdfcbank).")
+        return v_clean
 
 class ShopResponse(BaseModel):
     id: str
@@ -362,6 +417,10 @@ class ShopResponse(BaseModel):
     rating_count: int = 0
     deal_count: Optional[int] = 0
     is_active: bool = False
+    delivery_enabled: bool = True
+    upi_id: Optional[str] = None
+    delivery_fee: float = 0.0
+    min_order_amount: float = 0.0
     location_verified: bool = False
     location_verified_at: Optional[datetime] = None
     location_verification_provider: Optional[str] = None
@@ -379,8 +438,6 @@ class ShopResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    model_config = ConfigDict(from_attributes=True)
-
 class ShopSummary(BaseModel):
     id: str
     name: str
@@ -390,6 +447,10 @@ class ShopSummary(BaseModel):
     average_rating: float = 0.0
     rating_count: int = 0
     is_active: bool = False
+    delivery_enabled: bool = True
+    upi_id: Optional[str] = None
+    delivery_fee: float = 0.0
+    min_order_amount: float = 0.0
     location_verified: bool = False
 
     model_config = ConfigDict(from_attributes=True)
@@ -609,17 +670,52 @@ class ProductOptimizeResponse(BaseModel):
 
 
 # =========================
-# ORDERS
+# ORDERS & UPI PAYMENTS
 # =========================
 
-class OrderCreate(BaseModel):
+class OrderItemCreate(BaseModel):
     product_id: str
-    order_type: str # "PICKUP" or "DELIVERY"
     quantity: int = Field(default=1, gt=0, description="Quantity must be a positive number")
+
+class OrderCreate(BaseModel):
+    product_id: Optional[str] = None
+    quantity: int = Field(default=1, gt=0, description="Quantity must be a positive number")
+    items: Optional[List[OrderItemCreate]] = None
+    order_type: str = "DELIVERY" # "PICKUP" or "DELIVERY"
     delivery_fee: float = 0.0
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
     delivery_address: Optional[str] = None
+    delivery_notes: Optional[str] = None
+
+class OrderReportPaymentRequest(BaseModel):
+    upi_transaction_id: str = Field(..., min_length=6, max_length=64, description="12-digit UPI UTR / Transaction Reference Number")
+
+    @field_validator('upi_transaction_id')
+    @classmethod
+    def validate_utr(cls, v: str) -> str:
+        v_clean = v.strip().replace(" ", "").upper()
+        if len(v_clean) < 6:
+            raise ValueError("Please provide a valid UPI transaction reference / UTR number (at least 6 characters).")
+        return v_clean
+
+class OrderVerifyPaymentRequest(BaseModel):
+    confirmed: bool = True
+    notes: Optional[str] = None
+
+class OrderVerifyPinRequest(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=4, description="4-digit handover delivery PIN")
+
+    @field_validator('pin')
+    @classmethod
+    def validate_pin(cls, v: str) -> str:
+        v_clean = v.strip()
+        if not v_clean.isdigit() or len(v_clean) != 4:
+            raise ValueError("Delivery PIN must be exactly 4 numeric digits.")
+        return v_clean
+
+class OrderCancelRequest(BaseModel):
+    reason: Optional[str] = "Customer requested cancellation"
 
 class OrderResponse(BaseModel):
     id: str
@@ -629,12 +725,27 @@ class OrderResponse(BaseModel):
     product_id: str
     order_type: str
     status: str
+    payment_method: str = "UPI"
+    payment_status: str = "UNPAID" # "UNPAID", "CUSTOMER_REPORTED_UNVERIFIED", "PAID"
+    upi_transaction_id: Optional[str] = None
+    payment_reported_at: Optional[datetime] = None
+    payment_verified_at: Optional[datetime] = None
     quantity: int
     total_price: float
     delivery_fee: float
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
     delivery_address: Optional[str] = None
+    delivery_notes: Optional[str] = None
+    delivery_pin: Optional[str] = None
+    delivery_pin_attempts: int = 0
+    delivery_pin_locked: bool = False
+    cancelled_by: Optional[str] = None
+    cancelled_at: Optional[datetime] = None
+    cancellation_reason: Optional[str] = None
+    refund_guidance: Optional[str] = None
+    is_payment_stuck: bool = False
+    payment_stuck_minutes: int = 0
     created_at: datetime
     completed_at: Optional[datetime] = None
     product: ProductWithShop

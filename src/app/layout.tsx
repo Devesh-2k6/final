@@ -14,11 +14,11 @@ import { MobileAppFloatingButton } from "@/components/ui/MobileAppFloatingButton
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ExpiryGo | Grab it before it's gone.",
-  description: "Near-expiry products from local shops at up to 70% off. Save money, fight food waste, shop smarter.",
-  keywords: ["deals", "local shops", "food waste", "discounts", "near-expiry"],
+  title: "Meeva | Surplus Food & Grocery Rescue",
+  description: "Rescue surplus near-expiry products from local shops at up to 70% off. Save money, fight food waste, shop smarter.",
+  keywords: ["deals", "local shops", "food waste", "discounts", "near-expiry", "surplus"],
   openGraph: {
-    title: "ExpiryGo | Grab it before it's gone.",
+    title: "Meeva | Surplus Food & Grocery Rescue",
     description: "Near-expiry products from local shops at up to 70% off.",
     type: "website",
   }
@@ -33,9 +33,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#10b981" />
+        <meta name="theme-color" content="#7C3AED" />
       </head>
-      <body className={`${inter.className} min-h-screen bg-[#111111] text-white selection:bg-emerald-500/30 overflow-x-hidden relative`} suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen bg-[#FAFAFE] text-slate-900 selection:bg-purple-500/25 overflow-x-hidden relative`} suppressHydrationWarning>
         <HydrationZapper />
         <AppInitializer />
         <LanguageProvider>

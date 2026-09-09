@@ -248,7 +248,56 @@ export default function MyReservations() {
                         <p><strong>Pickup Address:</strong> {item.product.shop?.address || 'N/A'}</p>
                       </>
                     )}
+                    {item.payment_status && (
+                      <p>
+                        <strong>Payment:</strong>{' '}
+                        <span className={`font-mono text-[11px] font-bold ${
+                          item.payment_status === 'PAID' ? 'text-emerald-500' :
+                          item.payment_status === 'CUSTOMER_REPORTED_UNVERIFIED' ? 'text-amber-400' : 'text-gray-400'
+                        }`}>
+                          {item.payment_status} ({item.payment_method || 'UPI'})
+                        </span>
+                        {item.upi_transaction_id && (
+                          <span className="text-gray-400 text-[10px] ml-1.5 font-mono">
+                            UTR: {item.upi_transaction_id}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
+
+                  {/* Delivery Handover PIN */}
+                  {item.order_type === "DELIVERY" && item.delivery_pin && item.status !== "CANCELLED" && (
+                    <div className="mt-2 p-3 rounded-xl bg-gradient-to-r from-purple-950/40 to-slate-900/60 border border-purple-500/30 text-white text-center space-y-1">
+                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
+                        4-Digit Delivery Handover PIN
+                      </span>
+                      <div className="font-mono text-xl font-black tracking-[0.25em] text-purple-300 py-1 px-4 bg-purple-950/70 rounded-lg border border-purple-500/40 inline-block">
+                        {item.delivery_pin.split("").join(" ")}
+                      </div>
+                      <p className="text-[10px] text-gray-400">
+                        Share this PIN with the delivery person only after receiving and inspecting your items.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Payment Stuck Warning */}
+                  {item.is_payment_stuck && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+                      <p className="font-bold text-[11px]">Payment verification delayed ({item.payment_stuck_minutes}m)</p>
+                      <p className="text-[10px] text-amber-300/80 mt-0.5">
+                        Merchant verification is taking longer than usual. You can reach out directly to {item.product.shop?.name} or cancel below.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Refund Guidance Note */}
+                  {item.refund_guidance && item.status === "CANCELLED" && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs">
+                      <p className="font-bold text-[11px] text-blue-200">Refund Instructions</p>
+                      <p className="text-[10px] text-blue-300/90 mt-0.5">{item.refund_guidance}</p>
+                    </div>
+                  )}
                 </div>
               )}
 

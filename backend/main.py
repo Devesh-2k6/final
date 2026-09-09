@@ -77,8 +77,8 @@ async def lifespan(_app: FastAPI):
         pass
 
 app = FastAPI(
-    title="ExpiryGo API",
-    description="ExpiryGo API — Supabase + JWT Authentication + ML Forecast & Optimization",
+    title="Meeva API",
+    description="Meeva API — Supabase + JWT Authentication + ML Forecast & Optimization",
     version="1.0.0",
     lifespan=lifespan
 )

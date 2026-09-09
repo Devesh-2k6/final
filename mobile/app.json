@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ExpiryGo",
-    "slug": "expirygo",
+    "name": "Meeva",
+    "slug": "meeva",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -12,15 +12,15 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.expirygo.app",
+      "bundleIdentifier": "com.meeva.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "ExpiryGo needs camera access to scan expiration dates and product barcodes with AI.",
-        "NSLocationWhenInUseUsageDescription": "ExpiryGo needs your location to show nearby grocery and bakery discounts.",
-        "NSPhotoLibraryUsageDescription": "ExpiryGo allows you to upload product deal photos from your library."
+        "NSCameraUsageDescription": "Meeva needs camera access to scan expiration dates and product barcodes with AI.",
+        "NSLocationWhenInUseUsageDescription": "Meeva needs your location to show nearby grocery and bakery discounts.",
+        "NSPhotoLibraryUsageDescription": "Meeva allows you to upload product deal photos from your library."
       }
     },
     "android": {
-      "package": "com.expirygo.app",
+      "package": "com.meeva.app",
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
@@ -33,13 +33,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow ExpiryGo to access your camera to scan expiry labels and barcodes."
+          "cameraPermission": "Allow Meeva to access your camera to scan expiry labels and barcodes."
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow ExpiryGo to use your location to calculate distance to deals."
+          "locationAlwaysAndWhenInUsePermission": "Allow Meeva to use your location to calculate distance to deals."
         }
       ]
     ]

@@ -114,7 +114,7 @@ export const AddEditProductScreen: React.FC<AddEditProductScreenProps> = ({
         setImageUri(uri);
         Alert.alert(
           "Scan Product Dates?",
-          "Would you like ExpiryGo AI to scan this image for manufacturing and expiry dates?",
+          "Would you like Meeva AI to scan this image for manufacturing and expiry dates?",
           [
             { text: "No, Just Use Photo", style: "cancel" },
             {

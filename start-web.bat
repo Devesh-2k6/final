@@ -1,8 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
-title ExpiryGo Web Ecosystem (Backend + Frontend)
+title Meeva Web Ecosystem (Backend + Frontend)
 echo ============================================================
-echo   🚀 EXPIRYGO - FULL-STACK WEB LAUNCHER (FRONTEND + BACKEND)
+echo   🚀 MEEVA - FULL-STACK WEB LAUNCHER (FRONTEND + BACKEND)
 echo ============================================================
 echo.
 
@@ -26,12 +26,12 @@ echo.
 
 :: 3. Start Backend FastAPI Server
 echo [2/3] Starting FastAPI Backend Server on port 8000...
-start "ExpiryGo Backend API (Port 8000)" cmd /k "title ExpiryGo Backend API && cd backend && python run_server.py"
+start "Meeva Backend API (Port 8000)" cmd /k "title Meeva Backend API && cd backend && python run_server.py"
 echo.
 
 :: 4. Start Next.js Frontend Web Server
 echo [3/3] Starting Next.js Web Frontend on port 3000...
-start "ExpiryGo Web Frontend (Port 3000)" cmd /k "title ExpiryGo Web Frontend && npm run dev"
+start "Meeva Web Frontend (Port 3000)" cmd /k "title Meeva Web Frontend && npm run dev"
 echo.
 
 :: 5. Open Web Browser
@@ -40,7 +40,7 @@ timeout /t 3 /nobreak >nul
 start http://localhost:3000
 
 echo ============================================================
-echo   ✅ SUCCESS! ExpiryGo Web Application is Live:
+echo   ✅ SUCCESS! Meeva Web Application is Live:
 echo.
 echo   🌐 Web Frontend:    http://localhost:3000
 echo   📱 Mobile Devices:  http://%LAN_IP%:3000 (same Wi-Fi)
