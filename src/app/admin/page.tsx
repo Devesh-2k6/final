@@ -24,6 +24,12 @@ import {
   FileText,
   Compass,
   Loader2,
+  ArrowLeft,
+  X,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Download,
 } from "lucide-react";
 import {
   getAllShops,
@@ -157,6 +163,43 @@ export default function AdminDashboardPage() {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
   };
+
+  // Document / Photo Inspection Modal State
+  const [inspectModalOpen, setInspectModalOpen] = useState(false);
+  const [inspectData, setInspectData] = useState<{
+    url: string;
+    title: string;
+    subtitle: string;
+    isPdf: boolean;
+  } | null>(null);
+  const [inspectZoom, setInspectZoom] = useState(1);
+  const [inspectRotation, setInspectRotation] = useState(0);
+
+  const handleOpenInspect = (url: string, title: string, subtitle: string) => {
+    const fullUrl = getFullMediaUrl(url);
+    const isPdf = fullUrl.toLowerCase().endsWith(".pdf") || fullUrl.toLowerCase().includes(".pdf");
+    setInspectData({ url: fullUrl, title, subtitle, isPdf });
+    setInspectZoom(1);
+    setInspectRotation(0);
+    setInspectModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (!inspectModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setInspectModalOpen(false);
+      } else if (e.key === "Backspace") {
+        const tag = (document.activeElement?.tagName || "").toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          e.preventDefault();
+          setInspectModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [inspectModalOpen]);
 
   const handleOpenLocationEdit = (shop: AdminShop) => {
     setSelectedShopForLocationEdit(shop);
@@ -939,11 +982,35 @@ export default function AdminDashboardPage() {
                         <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-purple-100 dark:border-gray-700">
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">📸 Storefront Photo</p>
                           {shop.photo_url ? (
-                            <div className="space-y-1">
-                              <img src={getFullMediaUrl(shop.photo_url)} alt="Storefront" className="w-full h-28 object-cover rounded-lg border" />
-                              <a href={getFullMediaUrl(shop.photo_url)} target="_blank" rel="noreferrer" className="text-[11px] text-purple-600 font-bold hover:underline flex items-center gap-1">
-                                View Full Photo <ExternalLink size={10} />
-                              </a>
+                            <div className="space-y-1.5">
+                              <div
+                                onClick={() => handleOpenInspect(shop.photo_url!, "Storefront Photo", shop.name)}
+                                className="relative group cursor-pointer overflow-hidden rounded-lg border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900"
+                                title="Click to Inspect Storefront Photo"
+                              >
+                                <img src={getFullMediaUrl(shop.photo_url)} alt="Storefront" className="w-full h-28 object-cover group-hover:scale-105 transition duration-300" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[2px]">
+                                  <Eye size={14} /> Inspect
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenInspect(shop.photo_url!, "Storefront Photo", shop.name)}
+                                  className="text-[11px] text-purple-600 dark:text-purple-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye size={12} /> Inspect Photo
+                                </button>
+                                <a
+                                  href={getFullMediaUrl(shop.photo_url)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5"
+                                  title="Open raw file in separate tab"
+                                >
+                                  Raw <ExternalLink size={9} />
+                                </a>
+                              </div>
                             </div>
                           ) : (
                             <p className="text-[11px] text-slate-400 italic py-4 text-center">No storefront photo uploaded</p>
@@ -954,18 +1021,34 @@ export default function AdminDashboardPage() {
                         <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-purple-100 dark:border-gray-700">
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">📄 Business License / GST / FSSAI</p>
                           {(shop.document_url || shop.verification_document_url) ? (
-                            <div className="space-y-1">
-                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            <div className="space-y-1.5">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate" title={shop.verification_document_name || "Business License Document"}>
                                 📎 {shop.verification_document_name || "Business License Document"}
                               </p>
-                              <a
-                                href={getFullMediaUrl(shop.document_url || shop.verification_document_url)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-200 transition"
-                              >
-                                Inspect Document <ExternalLink size={11} />
-                              </a>
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleOpenInspect(
+                                      (shop.document_url || shop.verification_document_url)!,
+                                      shop.verification_document_name || "Business License / Verification Document",
+                                      shop.name
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1.5 text-[11px] bg-purple-600 hover:bg-purple-700 active:scale-95 text-white px-3 py-1.5 rounded-lg font-bold transition shadow-sm cursor-pointer"
+                                >
+                                  <Eye size={12} /> Inspect Document
+                                </button>
+                                <a
+                                  href={getFullMediaUrl(shop.document_url || shop.verification_document_url)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-0.5"
+                                  title="Open raw file in separate tab"
+                                >
+                                  Raw <ExternalLink size={9} />
+                                </a>
+                              </div>
                             </div>
                           ) : (
                             <p className="text-[11px] text-slate-400 italic py-4 text-center">No license document attached</p>
@@ -1520,6 +1603,159 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Document / Photo In-App Inspection Modal */}
+      {inspectModalOpen && inspectData && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setInspectModalOpen(false)}
+        >
+          {/* Top Bar with Prominent Back to Admin Button */}
+          <div
+            className="w-full max-w-6xl flex items-center justify-between gap-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-gray-700 shadow-2xl z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Left: Back / Close button */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                type="button"
+                onClick={() => setInspectModalOpen(false)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-black text-xs sm:text-sm shadow-md transition active:scale-95 cursor-pointer flex-shrink-0"
+                title="Return to Admin verification panel (or press Backspace / Esc)"
+              >
+                <ArrowLeft size={16} />
+                <span>← Back to Admin</span>
+                <span className="hidden sm:inline-block ml-1 text-[10px] opacity-70 px-1.5 py-0.5 rounded bg-white/20 dark:bg-black/10 font-mono">Esc</span>
+              </button>
+
+              <div className="hidden md:block h-6 w-px bg-slate-200 dark:bg-gray-700 flex-shrink-0" />
+
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                  {inspectData.title}
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium truncate">
+                  Store: <strong className="text-purple-600 dark:text-purple-400">{inspectData.subtitle}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Controls (Zoom, Rotate, Download, New Tab, Close) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              {!inspectData.isPdf && (
+                <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-gray-800 p-1 rounded-xl border border-slate-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => setInspectZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition cursor-pointer"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut size={16} />
+                  </button>
+                  <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-gray-300 px-1 min-w-[40px] text-center">
+                    {Math.round(inspectZoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setInspectZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition cursor-pointer"
+                    title="Zoom In"
+                  >
+                    <ZoomIn size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInspectRotation((r) => (r + 90) % 360)}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition cursor-pointer"
+                    title="Rotate 90°"
+                  >
+                    <RotateCw size={16} />
+                  </button>
+                </div>
+              )}
+
+              <a
+                href={inspectData.url}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                title="Download Document"
+              >
+                <Download size={15} />
+                <span className="hidden md:inline">Download</span>
+              </a>
+
+              <a
+                href={inspectData.url}
+                target="_blank"
+                rel="noreferrer"
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                title="Open raw file in external browser tab"
+              >
+                <ExternalLink size={15} />
+                <span className="hidden md:inline">New Tab</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setInspectModalOpen(false)}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-gray-800 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400 text-slate-500 transition cursor-pointer"
+                title="Close and Return (Esc / Backspace)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Main Inspection Canvas */}
+          <div
+            className="w-full max-w-6xl flex-1 my-3 overflow-auto flex items-center justify-center rounded-3xl bg-black/40 border border-white/10 p-2 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {inspectData.isPdf ? (
+              <iframe
+                src={inspectData.url}
+                title={inspectData.title}
+                className="w-full h-full min-h-[65vh] rounded-2xl bg-white border-0 shadow-2xl"
+              />
+            ) : (
+              <div className="relative max-h-[75vh] flex items-center justify-center overflow-auto p-4">
+                <img
+                  src={inspectData.url}
+                  alt={inspectData.title}
+                  style={{
+                    transform: `scale(${inspectZoom}) rotate(${inspectRotation}deg)`,
+                    transition: "transform 0.15s ease-out",
+                  }}
+                  className="max-h-[70vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/20 select-none bg-white/5"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Bar: Back to Admin Confirmation & Help */}
+          <div className="w-full max-w-6xl flex items-center justify-between text-xs text-white/80 font-medium px-2">
+            <button
+              type="button"
+              onClick={() => setInspectModalOpen(false)}
+              className="inline-flex items-center gap-1.5 hover:text-white transition font-bold cursor-pointer"
+            >
+              <ArrowLeft size={14} /> Back to Applications List
+            </button>
+            <div className="text-center">
+              <span>Press <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-white font-mono text-[10px]">Backspace</kbd> or <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-white font-mono text-[10px]">Esc</kbd> anytime to come out</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setInspectModalOpen(false)}
+              className="hover:text-red-300 transition font-bold cursor-pointer"
+            >
+              ✕ Close
+            </button>
           </div>
         </div>
       )}
