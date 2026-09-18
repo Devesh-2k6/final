@@ -629,7 +629,7 @@ export default function AuthPage() {
             <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-gray-400 mb-1.5">
               Select Role
             </label>
-            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-gray-800/80 p-1 rounded-2xl">
+            <div className={`grid ${tab === "login" ? "grid-cols-3" : "grid-cols-2"} gap-1.5 bg-slate-100 dark:bg-gray-800/80 p-1 rounded-2xl transition-all`}>
               <button
                 type="button"
                 onClick={() => {
