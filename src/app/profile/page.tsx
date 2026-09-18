@@ -207,7 +207,7 @@ export default function ProfilePage() {
                   </div>
 
                   <ImpactTracker
-                    data={[1.2, 2.5, 1.8, 3.4, 4.2, 3.8, user.co2_saved_kg || 0]}
+                    data={user.co2_saved_kg && user.co2_saved_kg > 0 ? [0, 0, 0, 0, 0, 0, user.co2_saved_kg] : [0, 0, 0, 0, 0, 0, 0]}
                     label="CO2 Offset Progress (Weekly)"
                     color="#10b981"
                   />

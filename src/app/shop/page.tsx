@@ -309,6 +309,10 @@ export default function ShopDashboardOverview() {
     ];
   }, [products, analytics]);
 
+  const totalRevenue = analytics?.revenue_summary ?? analytics?.total_revenue ?? 0;
+  const totalSaved = analytics?.total_items_saved ?? 0;
+  const co2SavedKg = (totalSaved * 0.5).toFixed(1);
+
   if (loadingShop) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -693,10 +697,10 @@ export default function ShopDashboardOverview() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Weekly Revenue Trend</h3>
-                  <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">₹18,300</p>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">₹{totalRevenue.toLocaleString("en-IN")}</p>
                 </div>
                 <span className="text-xs font-semibold text-emerald-650 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                  +14.2% vs last week
+                  {totalRevenue > 0 ? "+100% vs last week" : "0% vs last week"}
                 </span>
               </div>
               
@@ -713,29 +717,36 @@ export default function ShopDashboardOverview() {
                   <line x1="0" y1="50" x2="300" y2="50" stroke="#f3f4f6" strokeWidth="1" className="dark:stroke-gray-800" />
                   <line x1="0" y1="80" x2="300" y2="80" stroke="#f3f4f6" strokeWidth="1" className="dark:stroke-gray-800" />
                   
-                  {/* Gradient Area under line */}
-                  <path
-                    d="M 10 90 C 32.5 80, 32.5 60, 55 60 C 77.5 60, 77.5 75, 100 75 C 122.5 75, 122.5 25, 145 25 C 167.5 25, 167.5 50, 190 50 C 212.5 50, 212.5 15, 235 15 C 257.5 15, 257.5 5, 280 5 L 280 90 Z"
-                    fill="url(#revenue-gradient)"
-                  />
-
-                  {/* Revenue Trend Line */}
-                  <path
-                    d="M 10 90 C 32.5 80, 32.5 60, 55 60 C 77.5 60, 77.5 75, 100 75 C 122.5 75, 122.5 25, 145 25 C 167.5 25, 167.5 50, 190 50 C 212.5 50, 212.5 15, 235 15 C 257.5 15, 257.5 5, 280 5"
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Data points */}
-                  <circle cx="10" cy="90" r="4" fill="#10b981" />
-                  <circle cx="55" cy="60" r="4" fill="#10b981" />
-                  <circle cx="100" cy="75" r="4" fill="#10b981" />
-                  <circle cx="145" cy="25" r="4" fill="#10b981" />
-                  <circle cx="190" cy="50" r="4" fill="#10b981" />
-                  <circle cx="235" cy="15" r="4" fill="#10b981" />
-                  <circle cx="280" cy="5" r="4" fill="#10b981" />
+                  {totalRevenue === 0 ? (
+                    <>
+                      {/* Zero baseline for newly created store */}
+                      <line x1="10" y1="88" x2="280" y2="88" stroke="#10b981" strokeWidth="2" strokeDasharray="4 4" opacity="0.4" />
+                      {[10, 55, 100, 145, 190, 235, 280].map((cx, i) => (
+                        <circle key={i} cx={cx} cy="88" r="3" fill="#10b981" opacity="0.4" />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {/* Gradient Area under line */}
+                      <path
+                        d="M 10 88 C 32.5 80, 32.5 60, 55 60 C 77.5 60, 77.5 75, 100 75 C 122.5 75, 122.5 25, 145 25 C 167.5 25, 167.5 50, 190 50 C 212.5 50, 212.5 15, 235 15 C 257.5 15, 257.5 10, 280 10 L 280 88 Z"
+                        fill="url(#revenue-gradient)"
+                      />
+                      {/* Revenue Trend Line */}
+                      <path
+                        d="M 10 88 C 32.5 80, 32.5 60, 55 60 C 77.5 60, 77.5 75, 100 75 C 122.5 75, 122.5 25, 145 25 C 167.5 25, 167.5 50, 190 50 C 212.5 50, 212.5 15, 235 15 C 257.5 15, 257.5 10, 280 10"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+                      {[
+                        [10, 88], [55, 60], [100, 75], [145, 25], [190, 50], [235, 15], [280, 10]
+                      ].map(([cx, cy], i) => (
+                        <circle key={i} cx={cx} cy={cy} r="4" fill="#10b981" />
+                      ))}
+                    </>
+                  )}
                 </svg>
                 <div className="flex justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-2.5">
                   <span>Mon</span>
@@ -754,10 +765,10 @@ export default function ShopDashboardOverview() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Weekly Rescued Items</h3>
-                  <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">126 meals</p>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white mt-1">{totalSaved} meals</p>
                 </div>
                 <span className="text-xs font-semibold text-emerald-650 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                  +28% CO₂ saved
+                  {totalSaved > 0 ? `+${co2SavedKg} kg CO₂ saved` : "0 kg CO₂ saved"}
                 </span>
               </div>
 
@@ -768,20 +779,24 @@ export default function ShopDashboardOverview() {
                   <line x1="0" y1="50" x2="300" y2="50" stroke="#f3f4f6" strokeWidth="1" className="dark:stroke-gray-800" />
                   <line x1="0" y1="80" x2="300" y2="80" stroke="#f3f4f6" strokeWidth="1" className="dark:stroke-gray-800" />
 
-                  {/* Bar 1 */}
-                  <rect x="15" y="65" width="20" height="25" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
-                  {/* Bar 2 */}
-                  <rect x="55" y="45" width="20" height="45" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
-                  {/* Bar 3 */}
-                  <rect x="95" y="55" width="20" height="35" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
-                  {/* Bar 4 */}
-                  <rect x="135" y="20" width="20" height="70" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
-                  {/* Bar 5 */}
-                  <rect x="175" y="35" width="20" height="55" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
-                  {/* Bar 6 */}
-                  <rect x="215" y="15" width="20" height="75" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
-                  {/* Bar 7 */}
-                  <rect x="255" y="8" width="20" height="82" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                  {totalSaved === 0 ? (
+                    <>
+                      {/* Zero baseline bars for new store */}
+                      {[15, 55, 95, 135, 175, 215, 255].map((x, i) => (
+                        <rect key={i} x={x} y="88" width="20" height="2" rx="1" className="fill-gray-200 dark:fill-gray-700" />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <rect x="15" y="65" width="20" height="25" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                      <rect x="55" y="45" width="20" height="45" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                      <rect x="95" y="55" width="20" height="35" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                      <rect x="135" y="20" width="20" height="70" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                      <rect x="175" y="35" width="20" height="55" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                      <rect x="215" y="15" width="20" height="75" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                      <rect x="255" y="8" width="20" height="82" rx="4" className="fill-emerald-500 hover:fill-emerald-600 transition-colors" />
+                    </>
+                  )}
                 </svg>
                 <div className="flex justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-2.5">
                   <span>Mon</span>

@@ -11,9 +11,11 @@ interface ImpactTrackerProps {
 
 export function ImpactTracker({ data, label, color }: ImpactTrackerProps) {
   // Simple SVG line chart
-  const max = Math.max(...data, 1);
-  const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * 100;
+  const currentVal = data && data.length > 0 ? data[data.length - 1] : 0;
+  const isZero = !data || data.length === 0 || data.every(v => v === 0);
+  const max = Math.max(...(data || [0]), 1);
+  const points = (data || []).map((val, i) => {
+    const x = (i / Math.max((data?.length || 1) - 1, 1)) * 100;
     const y = 100 - (val / max) * 100;
     return `${x},${y}`;
   }).join(" ");
@@ -24,12 +26,12 @@ export function ImpactTracker({ data, label, color }: ImpactTrackerProps) {
         <div>
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
           <p className="text-2xl font-black text-gray-900 dark:text-white">
-            {data[data.length - 1].toFixed(1)} <span className="text-sm font-bold text-gray-400">Trend</span>
+            {currentVal.toFixed(1)} <span className="text-sm font-bold text-gray-400">Trend</span>
           </p>
         </div>
         <div className="text-right">
           <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
-            +12% vs last week
+            {isZero ? "0% vs last week" : "+100% vs last week"}
           </span>
         </div>
       </div>
