@@ -111,3 +111,55 @@ export async function updateShopLocationByAdmin(
   });
 }
 
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "CUSTOMER" | "VENDOR" | "ADMIN";
+  email_verified: boolean;
+  created_at?: string;
+  phone_number?: string;
+  co2_saved_kg?: number;
+  total_money_saved?: number;
+  total_items_saved?: number;
+};
+
+export async function getAdminUsers(params?: { search?: string; role?: string }): Promise<{ total: number; users: AdminUser[] }> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.role && params.role !== "ALL") query.set("role", params.role);
+  const qStr = query.toString();
+  return apiRequest<{ total: number; users: AdminUser[] }>(`/admin/users${qStr ? `?${qStr}` : ""}`);
+}
+
+export async function updateAdminUserRole(userId: string, role: string): Promise<{ status: string; role: string }> {
+  return apiRequest<{ status: string; role: string }>(`/admin/users/${userId}/role`, {
+    method: "PATCH",
+    json: { role },
+  });
+}
+
+export type AdminOrder = {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  customer_email?: string;
+  shop_id: string;
+  shop_name: string;
+  product_name: string;
+  order_type: string;
+  status: string;
+  payment_status: string;
+  total_amount: number;
+  quantity: number;
+  created_at?: string;
+};
+
+export async function getAdminOrders(params?: { status?: string }): Promise<{ total: number; orders: AdminOrder[] }> {
+  const query = new URLSearchParams();
+  if (params?.status && params.status !== "ALL") query.set("status", params.status);
+  const qStr = query.toString();
+  return apiRequest<{ total: number; orders: AdminOrder[] }>(`/admin/orders${qStr ? `?${qStr}` : ""}`);
+}
+
+

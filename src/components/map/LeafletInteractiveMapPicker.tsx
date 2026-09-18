@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search, Navigation, Loader2, CheckCircle2, MapPin, Sparkles } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 function createDraggableShopIcon() {
   return new L.DivIcon({
@@ -101,6 +102,7 @@ export default function LeafletInteractiveMapPicker({
   shopName = "Your Store",
   className = "w-full h-80 sm:h-96",
 }: InteractiveMapPickerProps & { onLocationChange?: (loc: { lat: number; lng: number; address?: string }) => void }) {
+  const { toast } = useToast();
   const notifySelect = onLocationSelect || onLocationChange || (() => {});
   const [lat, setLat] = useState<number>(initialLat);
   const [lng, setLng] = useState<number>(initialLng);
@@ -164,7 +166,7 @@ export default function LeafletInteractiveMapPicker({
 
   const handleMarkerDragEnd = () => {
     const marker = markerRef.current;
-    if (marker) {
+    if (marker != null) {
       const pos = marker.getLatLng();
       const preciseLat = parseFloat(pos.lat.toFixed(6));
       const preciseLng = parseFloat(pos.lng.toFixed(6));
@@ -180,9 +182,9 @@ export default function LeafletInteractiveMapPicker({
     setIsSearching(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          searchQuery.trim()
-        )}&addressdetails=1&limit=5`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          searchQuery
+        )}&format=json&addressdetails=1&limit=5&countrycodes=in`,
         {
           headers: {
             "Accept-Language": "en",
@@ -202,10 +204,10 @@ export default function LeafletInteractiveMapPicker({
         setDetectedAddress(first.display_name);
         notifySelect({ lat: newLat, lng: newLng, address: first.display_name });
       } else {
-        alert("Location not found. Please try searching with city name (e.g., 'T. Nagar, Chennai').");
+        toast.warning("Location not found. Please try searching with city name (e.g., 'T. Nagar, Chennai').");
       }
     } catch {
-      alert("Failed to search location. Please check your internet connection.");
+      toast.error("Failed to search location. Please check your internet connection.");
     } finally {
       setIsSearching(false);
     }
@@ -225,7 +227,7 @@ export default function LeafletInteractiveMapPicker({
 
   const handleLocateMe = () => {
     if (!("geolocation" in navigator)) {
-      alert("Geolocation is not supported by your browser.");
+      toast.error("Geolocation is not supported by your browser.");
       return;
     }
     setIsLocating(true);
@@ -241,7 +243,7 @@ export default function LeafletInteractiveMapPicker({
       },
       (err) => {
         setIsLocating(false);
-        alert(`Could not retrieve GPS location: ${err.message}`);
+        toast.error(`Could not retrieve GPS location: ${err.message}`);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );

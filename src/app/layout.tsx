@@ -10,6 +10,8 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { LiveDealToast } from "@/components/ui/LiveDealToast";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { MobileAppFloatingButton } from "@/components/ui/MobileAppFloatingButton";
+import { ToastProvider } from "@/components/ui/Toast";
+import { RouteProgressBar } from "@/components/ui/RouteProgressBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -38,14 +40,17 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen bg-[#FAFAFE] text-slate-900 selection:bg-purple-500/25 overflow-x-hidden relative`} suppressHydrationWarning>
         <HydrationZapper />
         <AppInitializer />
-        <LanguageProvider>
-          <AuthenticationProvider>
-            <EmailVerificationBanner />
-            {children}
-            <LiveDealToast />
-            <MobileAppFloatingButton />
-          </AuthenticationProvider>
-        </LanguageProvider>
+        <RouteProgressBar />
+        <ToastProvider>
+          <LanguageProvider>
+            <AuthenticationProvider>
+              <EmailVerificationBanner />
+              {children}
+              <LiveDealToast />
+              <MobileAppFloatingButton />
+            </AuthenticationProvider>
+          </LanguageProvider>
+        </ToastProvider>
       </body>
     </html>
   );

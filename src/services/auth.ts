@@ -45,6 +45,7 @@ export type VendorSignupInput = {
   shop_name: string;
   email: string;
   phone_number: string;
+  upi_id?: string;
   password?: string;
   photo_url?: string;
   document_url?: string;

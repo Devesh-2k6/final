@@ -2,7 +2,6 @@ backend/serviceAccountKey.json
 backend/write_key.py
 *.db
 *.sqlite
-.env
 .env.local
 .env*.local
 node_modules/

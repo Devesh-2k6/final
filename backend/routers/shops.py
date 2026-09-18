@@ -132,6 +132,7 @@ def verify_shop_location_precheck(
     )
 
 
+@router.get("")
 @router.get("/")
 @cache(expire=60)
 def list_shops(db: Annotated[Session, Depends(get_db)]):

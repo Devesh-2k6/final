@@ -34,9 +34,15 @@ import {
   reactivateShop,
   reverifyShopLocation,
   updateShopLocationByAdmin,
+  getAdminUsers,
+  updateAdminUserRole,
+  getAdminOrders,
   type AdminShop,
   type AdminStats,
+  type AdminUser,
+  type AdminOrder,
 } from "@/services/admin";
+import { ConfirmModal } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { getErrorMessage } from "@/api/errors";
 import { getPublicApiBaseUrl } from "@/config/env";
@@ -108,6 +114,41 @@ export default function AdminDashboardPage() {
   const [editAddress, setEditAddress] = useState<string>("");
   const [editReason, setEditReason] = useState<string>("Admin live map calibration");
   const [editLocationError, setEditLocationError] = useState<string>("");
+
+  // Module Tab: SHOPS, USERS, ORDERS (Gaps #13 & #14)
+  const [moduleTab, setModuleTab] = useState<"SHOPS" | "USERS" | "ORDERS">("SHOPS");
+
+  // Users State (Gap #13)
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersTotal, setUsersTotal] = useState<number>(0);
+  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+  const [userSearch, setUserSearch] = useState<string>("");
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("ALL");
+
+  // Orders State (Gap #14)
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [ordersTotal, setOrdersTotal] = useState<number>(0);
+  const [loadingOrders, setLoadingOrders] = useState<boolean>(false);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("ALL");
+
+  // Suspend Shop Modal State (replaces prompt)
+  const [suspendModalOpen, setSuspendModalOpen] = useState(false);
+  const [selectedShopForSuspend, setSelectedShopForSuspend] = useState<AdminShop | null>(null);
+  const [suspendReason, setSuspendReason] = useState("Policy review / temporary suspension");
+
+  // Reusable Confirm Dialog State (replaces confirm)
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    danger?: boolean;
+    confirmLabel?: string;
+    action: () => Promise<void>;
+  }>({
+    title: "",
+    message: "",
+    action: async () => {},
+  });
 
   // Toast State
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -201,17 +242,25 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to APPROVE '${shop.name}' and activate live selling?`)) return;
-    setActionLoading(shop.id);
-    try {
-      await approveShop(shop.id);
-      showToast(`Shop '${shop.name}' has been APPROVED and activated!`);
-      await loadData();
-    } catch (err: unknown) {
-      showToast(getErrorMessage(err) || "Failed to approve shop.", "error");
-    } finally {
-      setActionLoading(null);
-    }
+    setConfirmConfig({
+      title: "Approve Shop",
+      message: `Are you sure you want to APPROVE '${shop.name}' and activate live selling?`,
+      confirmLabel: "Approve & Activate",
+      danger: false,
+      action: async () => {
+        setActionLoading(shop.id);
+        try {
+          await approveShop(shop.id);
+          showToast(`Shop '${shop.name}' has been APPROVED and activated!`);
+          await loadData();
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || "Failed to approve shop.", "error");
+        } finally {
+          setActionLoading(null);
+        }
+      },
+    });
+    setConfirmOpen(true);
   };
 
   const handleConfirmOverrideApproval = async (e: React.FormEvent) => {
@@ -288,13 +337,21 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleSuspend = async (shop: AdminShop) => {
-    const reason = prompt(`Enter reason for suspending '${shop.name}':`, "Policy review / temporary suspension");
-    if (reason === null) return;
-    setActionLoading(shop.id);
+  const handleSuspend = (shop: AdminShop) => {
+    setSelectedShopForSuspend(shop);
+    setSuspendReason("Policy review / temporary suspension");
+    setSuspendModalOpen(true);
+  };
+
+  const handleConfirmSuspend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShopForSuspend) return;
+    setActionLoading(selectedShopForSuspend.id);
     try {
-      await suspendShop(shop.id, reason);
-      showToast(`Shop '${shop.name}' suspended.`);
+      await suspendShop(selectedShopForSuspend.id, suspendReason.trim());
+      showToast(`Shop '${selectedShopForSuspend.name}' suspended.`);
+      setSuspendModalOpen(false);
+      setSelectedShopForSuspend(null);
       await loadData();
     } catch (err: unknown) {
       showToast(getErrorMessage(err) || "Failed to suspend shop.", "error");
@@ -303,17 +360,68 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleReactivate = async (shop: AdminShop) => {
-    if (!confirm(`Reactivate shop '${shop.name}'?`)) return;
-    setActionLoading(shop.id);
+  const handleReactivate = (shop: AdminShop) => {
+    setConfirmConfig({
+      title: "Reactivate Shop",
+      message: `Reactivate shop '${shop.name}' and restore its live selling status?`,
+      confirmLabel: "Reactivate Shop",
+      danger: false,
+      action: async () => {
+        setActionLoading(shop.id);
+        try {
+          await reactivateShop(shop.id);
+          showToast(`Shop '${shop.name}' reactivated!`);
+          await loadData();
+        } catch (err: unknown) {
+          showToast(getErrorMessage(err) || "Failed to reactivate shop.", "error");
+        } finally {
+          setActionLoading(null);
+        }
+      },
+    });
+    setConfirmOpen(true);
+  };
+
+  // Gap #13: Load users
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true);
     try {
-      await reactivateShop(shop.id);
-      showToast(`Shop '${shop.name}' reactivated!`);
-      await loadData();
-    } catch (err: unknown) {
-      showToast(getErrorMessage(err) || "Failed to reactivate shop.", "error");
+      const res = await getAdminUsers({ search: userSearch, role: userRoleFilter });
+      setUsers(res.users);
+      setUsersTotal(res.total);
+    } catch (err) {
+      console.error("Error loading admin users:", err);
     } finally {
-      setActionLoading(null);
+      setLoadingUsers(false);
+    }
+  }, [userSearch, userRoleFilter]);
+
+  // Gap #14: Load orders
+  const loadOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    try {
+      const res = await getAdminOrders({ status: orderStatusFilter });
+      setOrders(res.orders);
+      setOrdersTotal(res.total);
+    } catch (err) {
+      console.error("Error loading admin orders:", err);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, [orderStatusFilter]);
+
+  useEffect(() => {
+    if (moduleTab === "USERS") void loadUsers();
+    if (moduleTab === "ORDERS") void loadOrders();
+  }, [moduleTab, loadUsers, loadOrders]);
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      await updateAdminUserRole(userId, newRole);
+      showToast(`User role updated to ${newRole}!`);
+      await loadUsers();
+    } catch {
+      showToast("Failed to update user role.", "error");
     }
   };
 
@@ -469,7 +577,45 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Main Review Section */}
+      {/* Module Selector (Gaps #13 & #14) */}
+      <div className="flex bg-slate-200/70 dark:bg-gray-800 p-1.5 rounded-2xl w-full sm:w-max border border-slate-200 dark:border-gray-700 shadow-sm">
+        <button
+          onClick={() => setModuleTab("SHOPS")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+            moduleTab === "SHOPS"
+              ? "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm"
+              : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <Store size={16} />
+          Shops Moderation ({pendingCount})
+        </button>
+        <button
+          onClick={() => setModuleTab("USERS")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+            moduleTab === "USERS"
+              ? "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm"
+              : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <Users size={16} />
+          User Management ({stats?.total_users ?? usersTotal})
+        </button>
+        <button
+          onClick={() => setModuleTab("ORDERS")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+            moduleTab === "ORDERS"
+              ? "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm"
+              : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <ShoppingBag size={16} />
+          Platform Orders
+        </button>
+      </div>
+
+      {/* Main Review Section for Shops */}
+      {moduleTab === "SHOPS" && (
       <div className="bg-white dark:bg-gray-800 rounded-3xl border border-slate-200/80 dark:border-gray-700 shadow-sm overflow-hidden">
         {/* Controls: Tabs & Search */}
         <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-gray-700 flex flex-col md:flex-row gap-4 md:items-center justify-between bg-slate-50/50 dark:bg-gray-850">
@@ -847,6 +993,261 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Gap #13: Users Management Tab */}
+      {moduleTab === "USERS" && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-slate-200/80 dark:border-gray-700 shadow-sm overflow-hidden">
+          {/* Controls */}
+          <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-gray-700 flex flex-col sm:flex-row gap-4 sm:items-center justify-between bg-slate-50/50 dark:bg-gray-850">
+            <div className="flex items-center gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void loadUsers(); }}
+                  placeholder="Search user by name or email..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs text-slate-900 dark:text-white outline-none focus:border-emerald-500 font-medium"
+                />
+              </div>
+              <button
+                onClick={() => void loadUsers()}
+                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+              >
+                Search
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400">Filter Role:</span>
+              <select
+                value={userRoleFilter}
+                onChange={(e) => {
+                  setUserRoleFilter(e.target.value);
+                  setTimeout(() => void loadUsers(), 50);
+                }}
+                className="px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-xs font-bold text-slate-800 dark:text-gray-200 outline-none"
+              >
+                <option value="ALL">All Roles</option>
+                <option value="CUSTOMER">Customers Only</option>
+                <option value="VENDOR">Vendors Only</option>
+                <option value="ADMIN">Admins Only</option>
+              </select>
+            </div>
+          </div>
+
+          {/* User Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/50 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  <th className="py-3.5 px-6">User / Account</th>
+                  <th className="py-3.5 px-6">Role</th>
+                  <th className="py-3.5 px-6">Email Status</th>
+                  <th className="py-3.5 px-6">Impact Stats</th>
+                  <th className="py-3.5 px-6">Joined Date</th>
+                  <th className="py-3.5 px-6 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-800 text-xs font-medium text-slate-700 dark:text-gray-200">
+                {loadingUsers ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-400 font-bold">
+                      Loading user accounts...
+                    </td>
+                  </tr>
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-400 font-bold">
+                      No user accounts found matching your query.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-750/50 transition">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-black text-xs flex items-center justify-center shrink-0">
+                            {u.name?.[0]?.toUpperCase() || "U"}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white">{u.name}</p>
+                            <p className="text-[11px] text-slate-400">{u.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            u.role === "ADMIN"
+                              ? "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300"
+                              : u.role === "VENDOR"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              : "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                          }`}
+                        >
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {u.email_verified ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 size={13} /> Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                            <Clock size={13} /> Unverified
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="font-bold text-slate-900 dark:text-white">
+                          {u.co2_saved_kg ? `${u.co2_saved_kg.toFixed(1)} kg CO₂` : "0 kg CO₂"}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          ₹{u.total_money_saved?.toFixed(0) || 0} saved
+                        </p>
+                      </td>
+                      <td className="py-4 px-6 text-slate-400 text-[11px]">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {u.role !== "VENDOR" && (
+                            <button
+                              onClick={() => void handleRoleChange(u.id, "VENDOR")}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-[11px] font-bold transition cursor-pointer"
+                            >
+                              Make Vendor
+                            </button>
+                          )}
+                          {u.role !== "CUSTOMER" && (
+                            <button
+                              onClick={() => void handleRoleChange(u.id, "CUSTOMER")}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:bg-slate-100 text-[11px] font-bold transition cursor-pointer"
+                            >
+                              Set Customer
+                            </button>
+                          )}
+                          {u.role !== "ADMIN" && (
+                            <button
+                              onClick={() => void handleRoleChange(u.id, "ADMIN")}
+                              className="px-2.5 py-1 rounded-lg border border-purple-300 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-[11px] font-bold transition cursor-pointer"
+                            >
+                              Grant Admin
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Gap #14: Platform Orders Overview Tab */}
+      {moduleTab === "ORDERS" && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-slate-200/80 dark:border-gray-700 shadow-sm overflow-hidden">
+          {/* Status Tabs */}
+          <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-gray-700 flex flex-wrap gap-2 bg-slate-50/50 dark:bg-gray-850">
+            {["ALL", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP", "PAID", "DELIVERED", "CANCELLED"].map((st) => (
+              <button
+                key={st}
+                onClick={() => {
+                  setOrderStatusFilter(st);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black tracking-wider uppercase transition cursor-pointer ${
+                  orderStatusFilter === st
+                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm"
+                    : "bg-white dark:bg-gray-800 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-gray-700 hover:bg-slate-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                {st.replace(/_/g, " ")}
+              </button>
+            ))}
+          </div>
+
+          {/* Orders Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/50 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  <th className="py-3.5 px-6">Order ID & Date</th>
+                  <th className="py-3.5 px-6">Customer</th>
+                  <th className="py-3.5 px-6">Shop Storefront</th>
+                  <th className="py-3.5 px-6">Product / Items</th>
+                  <th className="py-3.5 px-6">Type</th>
+                  <th className="py-3.5 px-6">Amount</th>
+                  <th className="py-3.5 px-6">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-800 text-xs font-medium text-slate-700 dark:text-gray-200">
+                {loadingOrders ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400 font-bold">
+                      Loading platform orders...
+                    </td>
+                  </tr>
+                ) : orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-slate-400 font-bold">
+                      No orders found under selected filter.
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map((o) => (
+                    <tr key={o.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-750/50 transition">
+                      <td className="py-4 px-6">
+                        <p className="font-mono font-bold text-slate-900 dark:text-white">#{o.id.slice(0, 8)}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {o.created_at ? new Date(o.created_at).toLocaleDateString() : "Recent"}
+                        </p>
+                      </td>
+                      <td className="py-4 px-6">
+                        <p className="font-bold text-slate-900 dark:text-white">{o.customer_name}</p>
+                        <p className="text-[11px] text-slate-400">{o.customer_email || "—"}</p>
+                      </td>
+                      <td className="py-4 px-6 font-bold text-slate-900 dark:text-white">
+                        {o.shop_name}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="font-bold">{o.product_name}</span>
+                        <span className="text-slate-400 ml-1">× {o.quantity}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300 text-[10px] font-black">
+                          {o.order_type}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 font-black text-emerald-600 dark:text-emerald-400">
+                        ₹{o.total_amount?.toFixed(0)}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            o.status === "DELIVERED" || o.status === "COMPLETED"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              : o.status === "CANCELLED"
+                              ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                          }`}
+                        >
+                          {o.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Override Approval Modal */}
       {overrideModalOpen && selectedShopForOverride && (
@@ -1074,6 +1475,70 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Suspend Modal */}
+      {suspendModalOpen && selectedShopForSuspend && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-700 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Suspend Food Store</h3>
+                <p className="text-xs text-slate-500">{selectedShopForSuspend.name}</p>
+              </div>
+            </div>
+            <form onSubmit={handleConfirmSuspend} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1.5">
+                  Suspension Reason
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  placeholder="e.g. Policy violation or food safety audit"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-slate-900 dark:text-white px-3.5 py-2.5 text-xs outline-none focus:border-amber-500 font-medium"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-gray-800">
+                <button
+                  type="button"
+                  onClick={() => setSuspendModalOpen(false)}
+                  className="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-gray-700 text-xs font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading !== null}
+                  className="px-5 py-2.5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black transition shadow-md shadow-amber-600/25 cursor-pointer"
+                >
+                  {actionLoading ? "Suspending..." : "Confirm Suspension"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reusable Confirm Dialog */}
+      <ConfirmModal
+        open={confirmOpen}
+        options={{
+          title: confirmConfig.title,
+          message: confirmConfig.message,
+          confirmLabel: confirmConfig.confirmLabel,
+          danger: confirmConfig.danger,
+        }}
+        onConfirm={async () => {
+          setConfirmOpen(false);
+          await confirmConfig.action();
+        }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

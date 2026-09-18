@@ -11,6 +11,7 @@ import type { ApiNotification } from "@/types/product";
 import { getErrorMessage } from "@/api/errors";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { ShopperLayout } from "@/components/layout/ShopperLayout";
+import { apiRequest } from "@/api/client";
 
 export default function Notifications() {
   const router = useRouter();
@@ -47,7 +48,20 @@ export default function Notifications() {
         prev.map((n) => ({ ...n, is_read: true }))
       );
     } catch (err) {
-      alert("Failed to mark notifications as read: " + getErrorMessage(err));
+      setError("Failed to mark notifications as read: " + getErrorMessage(err));
+    }
+  };
+
+  // Gap #10 — mark individual notification as read
+  const handleMarkOneAsRead = async (notif: ApiNotification) => {
+    if (notif.is_read) return;
+    try {
+      await apiRequest(`/notifications/${notif.id}/read`, { method: "PATCH" });
+      setNotifications((prev) =>
+        prev.map((n) => n.id === notif.id ? { ...n, is_read: true } : n)
+      );
+    } catch {
+      // silent fail for individual mark
     }
   };
 
@@ -168,7 +182,8 @@ export default function Notifications() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   key={notif.id}
-                  className={`bg-white dark:bg-gray-900 p-4 sm:p-5 rounded-2xl flex gap-4 border transition hover:shadow-md ${
+                  onClick={() => handleMarkOneAsRead(notif)}
+                  className={`bg-white dark:bg-gray-900 p-4 sm:p-5 rounded-2xl flex gap-4 border transition hover:shadow-md cursor-pointer ${
                     !notif.is_read
                       ? "border-emerald-200 dark:border-emerald-500/30 shadow-sm"
                       : "border-gray-100 dark:border-gray-800"

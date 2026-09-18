@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { fetchIpGeolocation } from "@/lib/geolocation";
 import type { LatLngExpression, LeafletMouseEvent, Marker as LeafletMarkerType } from "leaflet";
+import { useToast } from "@/components/ui/Toast";
 
 export interface LocationPickerValue {
   latitude: number;
@@ -246,6 +247,7 @@ export default function InteractiveMapPicker({
   className = "w-full h-80",
   zoom = 18,
 }: InteractiveMapPickerProps) {
+  const { toast } = useToast();
   // Default to Chennai or given coords
   const currentLat = latitude ?? initialLat ?? 13.06158;
   const currentLng = longitude ?? initialLng ?? 80.26094;
@@ -268,90 +270,73 @@ export default function InteractiveMapPicker({
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
   // Debounced reverse geocode when coordinates change
-  const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
-
-  const reverseGeocode = useCallback(
-    async (lat: number, lon: number) => {
-      if (
-        lastGeocodedCoords.current &&
-        Math.abs(lastGeocodedCoords.current.lat - lat) < 0.00001 &&
-        Math.abs(lastGeocodedCoords.current.lng - lon) < 0.00001
-      ) {
-        return;
-      }
-      lastGeocodedCoords.current = { lat, lng: lon };
+  const handleLocationChange = useCallback(
+    async (coords: { latitude: number; longitude: number }) => {
       setIsReverseGeocoding(true);
-
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&format=json`,
+          `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json&zoom=18&addressdetails=1`,
           {
             headers: {
               "Accept-Language": "en",
-              "User-Agent": "ExpiryGo-InteractivePicker/1.0",
+              "User-Agent": "Meeva-Delivery/1.0",
             },
           }
         );
         const data = await res.json();
-        if (data && data.display_name) {
-          notifyChange({
-            latitude: parseFloat(lat.toFixed(6)),
-            longitude: parseFloat(lon.toFixed(6)),
-            address: data.display_name,
-            matchedName: data.name || undefined,
-          });
-        }
-      } catch (err) {
-        console.warn("Reverse geocode failed:", err);
+        const detectedAddress = data.display_name || `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`;
+        notifyChange({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          address: detectedAddress,
+          matchedName: data.name || undefined,
+        });
+      } catch (e) {
+        console.warn("Reverse geocode failed:", e);
+        notifyChange({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          address: currentAddress || `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+        });
       } finally {
         setIsReverseGeocoding(false);
       }
     },
-    [notifyChange]
+    [notifyChange, currentAddress]
   );
 
-  const handleLocationChange = useCallback(
-    (newVal: LocationPickerValue) => {
-      const preciseVal = {
-        ...newVal,
-        latitude: parseFloat(newVal.latitude.toFixed(6)),
-        longitude: parseFloat(newVal.longitude.toFixed(6)),
-      };
-      notifyChange(preciseVal);
-      reverseGeocode(preciseVal.latitude, preciseVal.longitude);
-    },
-    [notifyChange, reverseGeocode]
-  );
-
-  // Search Address on Nominatim
-  const handleSearchSubmit = async (e?: React.FormEvent) => {
+  // Search places via Nominatim
+  const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const q = searchQuery.trim();
-    if (!q) return;
+    if (!searchQuery.trim()) return;
 
     setIsSearching(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=5`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          searchQuery.trim()
+        )}&format=json&addressdetails=1&limit=5&countrycodes=in`,
         {
           headers: {
             "Accept-Language": "en",
-            "User-Agent": "ExpiryGo-InteractivePicker/1.0",
+            "User-Agent": "Meeva-Delivery/1.0",
           },
         }
       );
       const data = await res.json();
       setSearchResults(data || []);
       if (!data || data.length === 0) {
-        alert("No locations found for this query. Try adding a city name (e.g. 'Spencer Plaza, Chennai').");
+        toast.warning("No locations found for this query. Try adding a city name (e.g. 'Spencer Plaza, Chennai').");
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to search location. Please check your network connection.");
+      toast.error("Failed to search location. Please check your network connection.");
     } finally {
       setIsSearching(false);
     }
   };
+
+  const handleSearchSubmit = handleSearch;
 
   const handleSelectSearchResult = (item: any) => {
     const lat = parseFloat(parseFloat(item.lat).toFixed(6));
@@ -383,7 +368,7 @@ export default function InteractiveMapPicker({
             .then((data) => {
               handleLocationChange({ latitude: parseFloat(data.latitude.toFixed(6)), longitude: parseFloat(data.longitude.toFixed(6)) });
             })
-            .catch(() => alert("Could not detect location: " + err.message))
+            .catch(() => toast.error("Could not detect location: " + err.message))
             .finally(() => setIsLocating(false));
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -393,7 +378,7 @@ export default function InteractiveMapPicker({
         .then((data) => {
           handleLocationChange({ latitude: parseFloat(data.latitude.toFixed(6)), longitude: parseFloat(data.longitude.toFixed(6)) });
         })
-        .catch(() => alert("Geolocation not supported."))
+        .catch(() => toast.error("Geolocation not supported."))
         .finally(() => setIsLocating(false));
     }
   };

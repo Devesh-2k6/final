@@ -390,3 +390,109 @@ def update_shop_location_by_admin(
     db.commit()
     db.refresh(shop)
     return _serialize_admin_shop(shop)
+
+
+@router.get("/users")
+def list_users_for_admin(
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+    search: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
+    limit: int = Query(50, le=100),
+    offset: int = 0,
+):
+    """
+    Lists users in the platform with search and role filter for admin management.
+    """
+    from db.models import User
+    query = db.query(User)
+    if role and role.upper() != "ALL":
+        query = query.filter(User.role == role.upper())
+    if search:
+        search_fmt = f"%{search.strip()}%"
+        query = query.filter((User.name.ilike(search_fmt)) | (User.email.ilike(search_fmt)))
+    total = query.count()
+    users = query.order_by(User.created_at.desc()).offset(offset).limit(limit).all()
+    return {
+        "total": total,
+        "users": [
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "role": u.role,
+                "email_verified": u.email_verified,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+                "phone_number": u.phone_number,
+                "co2_saved_kg": u.co2_saved_kg,
+                "total_money_saved": u.total_money_saved,
+                "total_items_saved": u.total_items_saved,
+            }
+            for u in users
+        ],
+    }
+
+
+@router.patch("/users/{user_id}/role")
+def update_user_role_by_admin(
+    user_id: str,
+    body: dict,
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """
+    Allows administrator to update a user's role (CUSTOMER, VENDOR, ADMIN).
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    new_role = body.get("role")
+    if new_role and new_role.upper() in ["CUSTOMER", "VENDOR", "ADMIN"]:
+        user.role = new_role.upper()
+    db.commit()
+    db.refresh(user)
+    return {"status": "success", "user_id": user.id, "role": user.role}
+
+
+@router.get("/orders")
+def list_orders_for_admin(
+    admin_user: Annotated[User, Depends(get_current_admin)],
+    db: Annotated[Session, Depends(get_db)],
+    status: Optional[str] = Query(None),
+    limit: int = Query(50, le=100),
+    offset: int = 0,
+):
+    """
+    Returns platform-wide orders for administrative monitoring and auditing.
+    """
+    from db.models import Order
+    query = db.query(Order).options(
+        joinedload(Order.customer),
+        joinedload(Order.shop),
+        joinedload(Order.product),
+    )
+    if status and status.upper() != "ALL":
+        query = query.filter(Order.status == status.upper())
+    total = query.count()
+    orders = query.order_by(Order.created_at.desc()).offset(offset).limit(limit).all()
+    return {
+        "total": total,
+        "orders": [
+            {
+                "id": o.id,
+                "customer_id": o.customer_id,
+                "customer_name": o.customer.name if o.customer else "Customer",
+                "customer_email": o.customer.email if o.customer else None,
+                "shop_id": o.shop_id,
+                "shop_name": o.shop.name if o.shop else "Store",
+                "product_name": o.product.name if o.product else "Deal Product",
+                "order_type": o.order_type,
+                "status": o.status,
+                "payment_status": o.payment_status,
+                "total_amount": o.total_amount,
+                "quantity": o.quantity,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+            }
+            for o in orders
+        ],
+    }

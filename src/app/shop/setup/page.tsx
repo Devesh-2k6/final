@@ -18,8 +18,15 @@ import {
   UploadCloud,
   FileCheck,
   X,
+  Smartphone,
+  Truck,
+  CreditCard,
+  QrCode,
 } from "lucide-react";
 import InteractiveMapPicker from "@/components/map/InteractiveMapPicker";
+import { useToast } from "@/components/ui/Toast";
+
+const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 
 const SAMPLE_FOOD_SHOPS = [
   {
@@ -29,6 +36,7 @@ const SAMPLE_FOOD_SHOPS = [
     address: "Anna Salai, Thousand Lights, Chennai, Tamil Nadu, 600002, India",
     lat: 13.06158,
     lon: 80.26094,
+    upi_id: "spencer.plaza@okhdfcbank",
     description: "Supermarket offering fresh bakery goods, dairy, vegetables, and beverages.",
   },
   {
@@ -38,6 +46,7 @@ const SAMPLE_FOOD_SHOPS = [
     address: "Connaught Place, New Delhi, Delhi, 110001, India",
     lat: 28.6304,
     lon: 77.2177,
+    upi_id: "devisweets@paytm",
     description: "Fresh daily artisan bread, bakery items, pastries, and sweets.",
   },
   {
@@ -47,6 +56,7 @@ const SAMPLE_FOOD_SHOPS = [
     address: "MG Road, Bengaluru, Karnataka, 560001, India",
     lat: 12.9716,
     lon: 77.5946,
+    upi_id: "greenvalley@icici",
     description: "Organic groceries, farm milk, fresh fruits, and daily essentials.",
   },
   {
@@ -56,6 +66,7 @@ const SAMPLE_FOOD_SHOPS = [
     address: "T. Nagar, Chennai, Tamil Nadu, 600017, India",
     lat: 13.0418,
     lon: 80.2341,
+    upi_id: "nilgiris@oksbi",
     description: "Dairy, fresh cakes, cookies, juices, and packaged groceries.",
   },
 ];
@@ -63,6 +74,7 @@ const SAMPLE_FOOD_SHOPS = [
 export default function ShopSetupPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const isEmailVerified = user?.email_verified ?? false;
 
@@ -73,6 +85,12 @@ export default function ShopSetupPage() {
 
   const [latitude, setLatitude] = useState<number>(13.06158);
   const [longitude, setLongitude] = useState<number>(80.26094);
+
+  // Delivery & Direct UPI Settlement State
+  const [upiId, setUpiId] = useState("");
+  const [upiError, setUpiError] = useState<string | null>(null);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+  const [deliveryFee, setDeliveryFee] = useState("35");
 
   // Document Upload State
   const [docFile, setDocFile] = useState<File | null>(null);
@@ -105,6 +123,16 @@ export default function ShopSetupPage() {
     { id: "supermarket", label: "Supermarket", icon: Store },
     { id: "cafe", label: "Cafe & Eatery", icon: Store },
   ];
+
+  const handleUpiChange = (val: string) => {
+    const clean = val.trim();
+    setUpiId(clean);
+    if (clean && !UPI_REGEX.test(clean)) {
+      setUpiError("Invalid UPI format. Must be format: username@bank (e.g. merchant@okhdfcbank)");
+    } else {
+      setUpiError(null);
+    }
+  };
 
   const runLocationVerification = useCallback(
     async (nameToVerify: string, addrToVerify: string, lat: number, lon: number) => {
@@ -142,6 +170,10 @@ export default function ShopSetupPage() {
     setDescription(preset.description);
     setLatitude(preset.lat);
     setLongitude(preset.lon);
+    if (preset.upi_id) {
+      setUpiId(preset.upi_id);
+      setUpiError(null);
+    }
 
     if (isEmailVerified) {
       runLocationVerification(preset.name, preset.address, preset.lat, preset.lon);
@@ -197,13 +229,19 @@ export default function ShopSetupPage() {
     setIsSubmitting(true);
 
     if (!isEmailVerified) {
-      alert("Please verify your email address before setting up a store.");
+      toast.warning("Email Verification Required", "Please verify your email address before setting up a store.");
       setIsSubmitting(false);
       return;
     }
 
     if (!shopName.trim() || !address.trim()) {
-      alert("Please fill out all required fields.");
+      toast.warning("Missing Fields", "Please fill out all required fields.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (upiId && !UPI_REGEX.test(upiId.trim())) {
+      toast.warning("Invalid UPI ID", "Please enter a valid UPI ID (e.g. merchant@okhdfcbank).");
       setIsSubmitting(false);
       return;
     }
@@ -215,10 +253,14 @@ export default function ShopSetupPage() {
         description: description.trim(),
         latitude,
         longitude,
+        upi_id: upiId.trim() || null,
+        delivery_enabled: deliveryEnabled,
+        delivery_fee: parseFloat(deliveryFee) || 35.0,
         verification_document_url: docUrl,
         verification_document_name: docFilename,
       });
       setIsSuccess(true);
+      toast.success("Shop registered successfully!", "Application submitted for admin review.");
       setTimeout(() => {
         router.push("/shop");
       }, 1500);
@@ -228,7 +270,7 @@ export default function ShopSetupPage() {
         error && typeof error === "object" && "message" in error
           ? String(error.message)
           : "Failed to create shop.";
-      alert(`Notice: ${errMsg}`);
+      toast.error("Notice", errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -498,6 +540,85 @@ export default function ShopSetupPage() {
               {docError && (
                 <p className="text-xs text-red-600 font-semibold">{docError}</p>
               )}
+            </div>
+
+            {/* Step 4: Merchant Direct UPI & Doorstep Delivery Settings */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold">4</span>
+                  <Smartphone size={20} className="text-emerald-500" /> Merchant UPI Settlement &amp; Delivery
+                </h3>
+                <span className="text-[11px] font-black uppercase text-purple-600 bg-purple-50 dark:bg-purple-950/40 px-2.5 py-0.5 rounded-full">
+                  100% Direct UPI
+                </span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Shoppers pay <strong>100% directly to your store's UPI VPA</strong> with zero gateway middleman fees when ordering for Doorstep Delivery or Counter Pickup.
+              </p>
+
+              {/* UPI ID Input */}
+              <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/40 space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Store UPI ID / VPA Handle <span className="text-red-500">*</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => handleUpiChange(e.target.value)}
+                    placeholder="e.g. yourstore@okhdfcbank or 9876543210@paytm"
+                    className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition text-xs font-mono font-bold text-gray-900 dark:text-white"
+                  />
+                </div>
+                {upiError ? (
+                  <p className="text-xs text-red-500 font-semibold">{upiError}</p>
+                ) : upiId ? (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Valid UPI VPA: Customers will scan QR &amp; pay to {upiId}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-gray-400">
+                    Supports Google Pay, PhonePe, Paytm, BHIM, Cred, and Bank UPI handles.
+                  </p>
+                )}
+              </div>
+
+              {/* Delivery Settings Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Toggle Delivery */}
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <Truck size={14} className="text-emerald-500" /> Doorstep Delivery
+                    </span>
+                    <p className="text-[10px] text-gray-400">Offer 30–45 min local doorstep drop-off</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={deliveryEnabled}
+                    onChange={(e) => setDeliveryEnabled(e.target.checked)}
+                    className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </div>
+
+                {/* Delivery Fee */}
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-1">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    Delivery Partner Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="200"
+                    value={deliveryFee}
+                    onChange={(e) => setDeliveryFee(e.target.value)}
+                    placeholder="35"
+                    disabled={!deliveryEnabled}
+                    className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 outline-none text-xs font-mono font-bold text-gray-900 dark:text-white disabled:opacity-50"
+                  />
+                </div>
+              </div>
             </div>
 
             <motion.button

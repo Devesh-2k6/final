@@ -9,7 +9,7 @@ export function MobileAppFloatingButton() {
 
   return (
     <>
-      <div className="fixed bottom-5 left-5 z-40">
+      <div className="fixed bottom-20 lg:bottom-6 right-6 z-40">
         <button
           onClick={() => setIsOpen(true)}
           className="group relative flex items-center gap-2.5 px-4 py-2.5 bg-zinc-900/90 hover:bg-zinc-800 border border-emerald-500/40 hover:border-emerald-400 text-white rounded-2xl shadow-xl shadow-black/60 backdrop-blur-md transition-all hover:scale-105 active:scale-95"

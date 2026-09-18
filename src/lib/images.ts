@@ -1,14 +1,46 @@
 import { getPublicApiBaseUrl } from "@/config/env";
 
 /**
+ * Returns a high-resolution, appetizing food image matching the product name or category.
+ */
+export function getSmartFallbackImage(name?: string, category?: string): string {
+  const n = (name || "").toLowerCase();
+  const c = (category || "").toUpperCase();
+
+  if (n.includes("turmeric") || n.includes("spice") || n.includes("masala") || n.includes("chilli") || n.includes("powder") || n.includes("pepper")) {
+    return "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=600";
+  }
+  if (n.includes("bread") || n.includes("croissant") || n.includes("cake") || n.includes("bun") || n.includes("cookie") || n.includes("biscuit") || c === "BAKERY") {
+    return "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=600";
+  }
+  if (n.includes("milk") || n.includes("paneer") || n.includes("curd") || n.includes("yogurt") || n.includes("cheese") || n.includes("butter") || c === "DAIRY") {
+    return "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=80&w=600";
+  }
+  if (n.includes("apple") || n.includes("banana") || n.includes("tomato") || n.includes("onion") || n.includes("potato") || n.includes("fruit") || n.includes("veg") || c === "PRODUCE") {
+    return "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=80&w=600";
+  }
+  if (n.includes("chicken") || n.includes("mutton") || n.includes("egg") || n.includes("fish") || n.includes("meat") || c === "MEAT") {
+    return "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&q=80&w=600";
+  }
+  if (n.includes("rice") || n.includes("dal") || n.includes("flour") || n.includes("atta") || n.includes("oil") || c === "PANTRY") {
+    return "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=80&w=600";
+  }
+  if (c === "PREPARED_FOOD" || n.includes("meal") || n.includes("snack") || n.includes("biryani") || n.includes("curry")) {
+    return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600";
+  }
+
+  return "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=600";
+}
+
+/**
  * Safely validates and formats an image URL for Next.js Image components.
  * Handles local API backend uploads, cloud storage, Unsplash, and fallback placeholders.
  */
-export function getSafeImageUrl(url: string | null | undefined): string {
-  const inlineSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 24 24" fill="none" stroke="%2310B981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background-color:%23F0FDF4"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 8h.01"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`;
+export function getSafeImageUrl(url: string | null | undefined, name?: string, category?: string): string {
+  const fallback = getSmartFallbackImage(name, category);
 
-  if (!url || typeof url !== "string" || !url.trim()) {
-    return inlineSvg;
+  if (!url || typeof url !== "string" || !url.trim() || url.includes("<svg") || url.startsWith("data:image/svg")) {
+    return fallback;
   }
 
   let safeUrl = url.trim();
@@ -53,7 +85,6 @@ export function getSafeImageUrl(url: string | null | undefined): string {
     if (isAllowed) {
       return safeUrl;
     }
-    // Return original URL for unoptimized images
     return safeUrl;
   } catch {
     if (safeUrl.startsWith("/") || safeUrl.startsWith("data:")) {
@@ -61,5 +92,6 @@ export function getSafeImageUrl(url: string | null | undefined): string {
     }
   }
 
-  return inlineSvg;
+  return fallback;
 }
+

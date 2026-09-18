@@ -31,32 +31,8 @@ export function useProducts(options?: {
   const fetcher = async (params: GetProductsParams) => {
     try {
       const data = await getProducts(params);
-      // Cache only genuine, non-empty results for offline resilience.
-      if (data && data.length > 0 && typeof window !== "undefined") {
-        const cacheKey = `expirygo_products_cache_${JSON.stringify(params)}`;
-        localStorage.setItem(
-          cacheKey,
-          JSON.stringify({ data, timestamp: Date.now() })
-        );
-      }
-      // Return the real result as-is — an empty list surfaces the honest "empty"
-      // state instead of fabricated products that 404 on reserve/order/edit.
-      return data ?? [];
+      return Array.isArray(data) ? data : [];
     } catch (err) {
-      // On failure fall back ONLY to a recent real cache; never to synthetic data.
-      if (typeof window !== "undefined") {
-        const cacheKey = `expirygo_products_cache_${JSON.stringify(params)}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
-              return parsed.data as ApiProduct[];
-            }
-          } catch {}
-        }
-      }
-      // No fresh cache -> propagate so the UI can show a real error state.
       throw err;
     }
   };

@@ -16,8 +16,18 @@ function formatFastApiDetail(detail: unknown): string {
   if (Array.isArray(detail)) {
     return detail
       .map((item) => {
-        if (item && typeof item === "object" && "msg" in item) {
-          return String((item as { msg: unknown }).msg);
+        if (item && typeof item === "object") {
+          const loc = Array.isArray((item as { loc?: unknown[] }).loc)
+            ? (item as { loc: unknown[] }).loc.filter((part) => part !== "body").join(" ")
+            : "";
+          const rawMsg = (item as { msg?: unknown }).msg ? String((item as { msg: unknown }).msg) : "";
+          const msg = rawMsg.replace(/^Value error,\s*/i, "");
+          if (loc && msg) {
+            const cleanLoc = loc.replace(/_/g, " ");
+            const formattedLoc = cleanLoc.charAt(0).toUpperCase() + cleanLoc.slice(1);
+            return `${formattedLoc}: ${msg}`;
+          }
+          if (msg) return msg;
         }
         return JSON.stringify(item);
       })

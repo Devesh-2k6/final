@@ -404,12 +404,12 @@ def test_order_flow(client: TestClient):
     assert ord1.json()["order_type"] == "PICKUP"
     assert ord1.json()["delivery_fee"] == 0.0
 
-    # Stock check - should still be 10
+    # Stock check - quantity atomically reserved on order placement (10 - 2 = 8)
     prod_db = client.get(f"/products/")
     prod_obj = next(p for p in prod_db.json() if p["id"] == prod_id)
-    assert prod_obj["quantity"] == 10
+    assert prod_obj["quantity"] == 8
 
-    # 2. Shopkeeper accepts Pickup Order -> stock reduces to 8
+    # 2. Shopkeeper accepts Pickup Order
     accept_res = client.patch(
         f"/orders/{ord1_id}/status",
         headers=shop_headers,
@@ -418,7 +418,7 @@ def test_order_flow(client: TestClient):
     assert accept_res.status_code == 200
     assert accept_res.json()["status"] == "ACCEPTED"
 
-    # Stock check - should be 8 now
+    # Stock check - remains 8
     prod_db = client.get(f"/products/")
     prod_obj = next(p for p in prod_db.json() if p["id"] == prod_id)
     assert prod_obj["quantity"] == 8

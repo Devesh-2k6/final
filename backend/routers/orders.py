@@ -134,7 +134,7 @@ def create_order(
         delivery_pin = f"{secrets.randbelow(10000):04d}"
         delivery_fee = max(0.0, float(order_in.delivery_fee or getattr(shop, "delivery_fee", 0.0)))
 
-    # 3. Calculate authoritative price and validate stock & expiry
+    # 3. Calculate authoritative price, reserve stock with row-level lock, and validate expiry
     total_order_price = 0.0
     total_order_qty = 0
 
@@ -152,9 +152,15 @@ def create_order(
         total_order_price += (unit_price * qty)
         total_order_qty += qty
 
+        # Atomically reserve stock
+        prod.quantity -= qty
+
     # Check minimum order amount if set
     min_amount = getattr(shop, "min_order_amount", 0.0)
     if min_amount > 0 and total_order_price < min_amount:
+        # Revert quantity deduction if min order not met
+        for pid, qty in items_to_process:
+            product_map[pid].quantity += qty
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Minimum order amount for '{shop.name}' is ₹{min_amount:.2f} (Current: ₹{total_order_price:.2f})."
@@ -186,7 +192,7 @@ def create_order(
     db.commit()
     db.refresh(order)
 
-    # Broadcast new order to shopkeeper WebSocket
+    # Broadcast new order and updated deal inventory
     try:
         manager.broadcast_sync({
             "type": "new_order",
@@ -197,6 +203,12 @@ def create_order(
             "order_type": order.order_type,
             "payment_status": order.payment_status,
         })
+        for pid, _ in items_to_process:
+            updated_p = product_map[pid]
+            manager.broadcast_sync({
+                "type": "update_deal",
+                "product": _serialize_product(updated_p, shop)
+            })
     except Exception:
         pass
 
@@ -502,11 +514,6 @@ def update_order_status(
                 detail=f"Cannot accept delivery order: payment status is '{order.payment_status}'. Please verify customer UPI payment first."
             )
 
-        # Deduct inventory stock
-        product = db.query(Product).filter(Product.id == order.product_id).with_for_update().first()
-        if not product or product.quantity < order.quantity:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Insufficient product stock to accept this order.")
-        product.quantity -= order.quantity
         order.status = "ACCEPTED"
 
     elif new_status == "OUT_FOR_DELIVERY":
@@ -530,7 +537,7 @@ def update_order_status(
     elif new_status == "CANCELLED":
         prev_st = order.status
         prev_pm = order.payment_status
-        if prev_st in ["ACCEPTED", "OUT_FOR_DELIVERY"]:
+        if prev_st in ["PENDING", "ACCEPTED", "OUT_FOR_DELIVERY"]:
             # Restore inventory stock
             product = db.query(Product).filter(Product.id == order.product_id).first()
             if product:
@@ -600,7 +607,7 @@ def cancel_order(
     prev_pm = order.payment_status
 
     # Restore stock if previously deducted
-    if prev_st in ["ACCEPTED", "OUT_FOR_DELIVERY"]:
+    if prev_st in ["PENDING", "ACCEPTED", "OUT_FOR_DELIVERY"]:
         product = db.query(Product).filter(Product.id == order.product_id).first()
         if product:
             product.quantity += order.quantity
@@ -623,6 +630,12 @@ def cancel_order(
             "shop_id": str(order.shop_id),
             "status": order.status
         })
+        if order.product:
+            updated_prod = _serialize_product(order.product, order.product.shop)
+            manager.broadcast_sync({
+                "type": "update_deal",
+                "product": updated_prod
+            })
     except Exception:
         pass
 

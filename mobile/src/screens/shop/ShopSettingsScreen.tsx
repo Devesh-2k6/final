@@ -21,6 +21,9 @@ import {
   ShoppingBag,
   Info,
   LogOut,
+  Smartphone,
+  Truck,
+  CreditCard,
 } from "lucide-react-native";
 import { Colors, Radius, Spacing, Typography } from "../../theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -39,6 +42,9 @@ export const ShopSettingsScreen: React.FC<ShopSettingsScreenProps> = ({ navigati
   const [longitude, setLongitude] = useState("77.2090");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
+  const [upiId, setUpiId] = useState("");
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+  const [deliveryFee, setDeliveryFee] = useState("35");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -54,6 +60,9 @@ export const ShopSettingsScreen: React.FC<ShopSettingsScreenProps> = ({ navigati
         setLongitude(String(data.longitude));
         if (data.phone_number) setPhone(data.phone_number);
         if (data.description) setDescription(data.description);
+        if (data.upi_id) setUpiId(data.upi_id);
+        if (data.delivery_enabled !== undefined) setDeliveryEnabled(data.delivery_enabled);
+        if (data.delivery_fee !== undefined) setDeliveryFee(String(data.delivery_fee));
       } catch {
         // Fallback for new shop setup
         setName("My Green Grocery & Bakery");
@@ -97,6 +106,9 @@ export const ShopSettingsScreen: React.FC<ShopSettingsScreenProps> = ({ navigati
         longitude: parseFloat(longitude) || 77.2090,
         phone_number: phone.trim() || undefined,
         description: description.trim() || undefined,
+        upi_id: upiId.trim() || undefined,
+        delivery_enabled: deliveryEnabled,
+        delivery_fee: parseFloat(deliveryFee) || 35.0,
       };
 
       if (shop?.id) {
@@ -104,7 +116,7 @@ export const ShopSettingsScreen: React.FC<ShopSettingsScreenProps> = ({ navigati
       } else {
         await createShop(payload);
       }
-      Alert.alert("Success", "Store profile saved successfully!");
+      Alert.alert("Success", "Store profile and UPI settings saved successfully!");
     } catch (err: any) {
       Alert.alert("Error", err.message || "Failed to update store settings.");
     } finally {
@@ -217,6 +229,39 @@ export const ShopSettingsScreen: React.FC<ShopSettingsScreenProps> = ({ navigati
                   placeholder="+91 98765 43210"
                   placeholderTextColor={Colors.textMuted}
                   keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Store UPI ID / VPA Handle (100% Direct Pay)</Text>
+              <View style={styles.inputContainer}>
+                <Smartphone size={18} color={Colors.primary} />
+                <TextInput
+                  style={styles.input}
+                  value={upiId}
+                  onChangeText={setUpiId}
+                  placeholder="e.g. yourstore@okhdfcbank or 9876543210@paytm"
+                  placeholderTextColor={Colors.textMuted}
+                  autoCapitalize="none"
+                />
+              </View>
+              <Text style={{ fontSize: 11, color: Colors.textSecondary, marginTop: 3 }}>
+                Shoppers scan QR or pay via GPay / PhonePe / Paytm directly to this UPI VPA.
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Doorstep Delivery Partner Fee (₹)</Text>
+              <View style={styles.inputContainer}>
+                <Truck size={18} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  value={deliveryFee}
+                  onChangeText={setDeliveryFee}
+                  placeholder="35"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="numeric"
                 />
               </View>
             </View>

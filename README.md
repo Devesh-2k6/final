@@ -77,16 +77,15 @@ npm run mobile
 
 ---
 
-## 🔑 Pre-Seeded Demo Accounts
+## 🔑 Authentication & Live Accounts
 
-The database comes pre-populated with active shops, categories, and discounted products:
+The application is configured for live, real-world onboarding with zero mock clutter:
 
 | Role | Email | Password | Access & Dashboard |
 |---|---|---|---|
-| **Customer** | `customer@test.com` | `password123` | Deals Feed, Store Pickups, Delivery Checkout, Recipe Chef |
-| **Shopkeeper 1** | `shop1@test.com` | `password123` | *Green Valley Supermarket* — Add Products, Analytics, Verify PINs |
-| **Shopkeeper 2** | `shop2@test.com` | `password123` | *Fresh Mart Express* — Manage Inventory & Orders |
-| **Shopkeeper 3** | `shop3@test.com` | `password123` | *Daily Bazaar* — Bakery & Produce Surplus |
+| **Platform Administrator** | `devpant2006@gmail.com` | `Sureshkumar12345@` | Global platform administration, shop approvals & compliance (`/admin`) |
+| **Customer / Shopper** | *(Register your own)* | *(Your password)* | Deals feed, live cart, store pickup & home delivery (`/deals`, `/auth`) |
+| **Merchant / Vendor** | *(Register your store)* | *(Your password)* | Storefront onboarding, inventory listing & PIN verification (`/shop`, `/auth`) |
 
 ---
 

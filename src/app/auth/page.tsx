@@ -108,6 +108,7 @@ export default function AuthPage() {
   const [vendorShopName, setVendorShopName] = useState("");
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorPhone, setVendorPhone] = useState("");
+  const [vendorUpiId, setVendorUpiId] = useState("");
   const [vendorPassword, setVendorPassword] = useState("");
   const [vendorConfirmPassword, setVendorConfirmPassword] = useState("");
   const [vendorPhotoUrl, setVendorPhotoUrl] = useState("");
@@ -284,6 +285,17 @@ export default function AuthPage() {
         nameToSend || undefined,
         isVendorMode
       );
+      
+      const actualRole = res.user.role === "ADMIN" ? "admin" : (res.user.role === "VENDOR" || res.user.is_shop_owner) ? "vendor" : "customer";
+      if (roleMode === "customer" && actualRole === "vendor") {
+        setError("This email is registered as a Merchant/Vendor account. Please switch to Vendor to sign in.");
+        return;
+      }
+      if (roleMode === "vendor" && actualRole === "customer") {
+        setError("This email is registered as a Shopper/Customer account. Please switch to Customer to sign in.");
+        return;
+      }
+
       loginUser(res.user, res.access_token);
 
       if (res.user.role === "ADMIN") {
@@ -363,6 +375,7 @@ export default function AuthPage() {
           shop_name: vendorShopName.trim(),
           email: cleanEmail,
           phone_number: vendorPhone.trim(),
+          upi_id: vendorUpiId.trim() || undefined,
           password: vendorPassword.trim() || undefined,
           photo_url: vendorPhotoUrl,
           document_url: vendorDocUrl,
@@ -394,6 +407,25 @@ export default function AuthPage() {
     try {
       const cleanEmail = loginEmail.trim().toLowerCase();
       const res = await login({ email: cleanEmail, password: loginPassword });
+
+      const actualRole = res.user.role === "ADMIN" ? "admin" : (res.user.role === "VENDOR" || res.user.is_shop_owner) ? "vendor" : "customer";
+
+      if (roleMode === "customer" && actualRole === "vendor") {
+        setError("This email is registered as a Merchant/Vendor account. Please switch to the Vendor tab above to sign in.");
+        setSubmitting(false);
+        return;
+      }
+      if (roleMode === "vendor" && actualRole === "customer") {
+        setError("This email is registered as a Shopper/Customer account. Please switch to the Customer tab above to sign in.");
+        setSubmitting(false);
+        return;
+      }
+      if (roleMode === "admin" && actualRole !== "admin") {
+        setError("This account does not have Administrator privileges. Please switch to Customer or Vendor to sign in.");
+        setSubmitting(false);
+        return;
+      }
+
       loginUser(res.user, res.access_token);
       if (res.user.role === "ADMIN") {
         router.replace("/admin");
@@ -553,6 +585,12 @@ export default function AuthPage() {
               onClick={() => {
                 setTab("login");
                 setError("");
+                setLoginEmail("");
+                setLoginPassword("");
+                setCustomerEmail("");
+                setCustomerPassword("");
+                setVendorEmail("");
+                setVendorPassword("");
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 tab === "login"
@@ -567,6 +605,12 @@ export default function AuthPage() {
               onClick={() => {
                 setTab("signup");
                 setError("");
+                setLoginEmail("");
+                setLoginPassword("");
+                setCustomerEmail("");
+                setCustomerPassword("");
+                setVendorEmail("");
+                setVendorPassword("");
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 tab === "signup"
@@ -591,6 +635,12 @@ export default function AuthPage() {
                 onClick={() => {
                   setRoleMode("customer");
                   setError("");
+                  setLoginEmail("");
+                  setLoginPassword("");
+                  setCustomerEmail("");
+                  setCustomerPassword("");
+                  setVendorEmail("");
+                  setVendorPassword("");
                 }}
                 className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold transition-all ${
                   roleMode === "customer"
@@ -605,6 +655,12 @@ export default function AuthPage() {
                 onClick={() => {
                   setRoleMode("vendor");
                   setError("");
+                  setLoginEmail("");
+                  setLoginPassword("");
+                  setCustomerEmail("");
+                  setCustomerPassword("");
+                  setVendorEmail("");
+                  setVendorPassword("");
                 }}
                 className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold transition-all ${
                   roleMode === "vendor"
@@ -620,6 +676,8 @@ export default function AuthPage() {
                   onClick={() => {
                     setRoleMode("admin");
                     setError("");
+                    setLoginEmail("");
+                    setLoginPassword("");
                   }}
                   className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold transition-all ${
                     roleMode === "admin"
@@ -913,7 +971,7 @@ export default function AuthPage() {
 
         {/* TAB: SIGN UP (CUSTOMER / VENDOR) */}
         {tab === "signup" && (
-          <form onSubmit={handleSignupSubmit} className="space-y-4">
+          <form onSubmit={handleSignupSubmit} autoComplete="off" className="space-y-4">
             {roleMode === "customer" ? (
               <>
                 <div>
@@ -922,6 +980,8 @@ export default function AuthPage() {
                   </label>
                   <input
                     type="text"
+                    name="cust_name_field"
+                    autoComplete="off"
                     required
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
@@ -935,6 +995,8 @@ export default function AuthPage() {
                   </label>
                   <input
                     type="email"
+                    name="cust_email_field"
+                    autoComplete="off"
                     required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
@@ -949,6 +1011,8 @@ export default function AuthPage() {
                     </label>
                     <input
                       type={showSignupPassword ? "text" : "password"}
+                      name="cust_password_field"
+                      autoComplete="new-password"
                       required
                       minLength={6}
                       value={customerPassword}
@@ -963,6 +1027,8 @@ export default function AuthPage() {
                     </label>
                     <input
                       type={showSignupPassword ? "text" : "password"}
+                      name="cust_confirm_password_field"
+                      autoComplete="new-password"
                       required
                       minLength={6}
                       value={customerConfirmPassword}
@@ -991,6 +1057,8 @@ export default function AuthPage() {
                   </label>
                   <input
                     type="text"
+                    name="vendor_shop_name_field"
+                    autoComplete="off"
                     required
                     value={vendorShopName}
                     onChange={(e) => setVendorShopName(e.target.value)}
@@ -1004,6 +1072,8 @@ export default function AuthPage() {
                   </label>
                   <input
                     type="email"
+                    name="vendor_email_field"
+                    autoComplete="off"
                     required
                     value={vendorEmail}
                     onChange={(e) => setVendorEmail(e.target.value)}
@@ -1013,15 +1083,34 @@ export default function AuthPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-gray-400 mb-1.5">
-                    Phone Number
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
+                    name="vendor_phone_field"
+                    autoComplete="off"
                     required
                     value={vendorPhone}
                     onChange={(e) => setVendorPhone(e.target.value)}
                     className="w-full rounded-2xl border border-orange-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-orange-500 text-sm font-medium"
                     placeholder="+91 9876543210"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-gray-400">
+                      Store UPI ID / VPA
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-medium">Optional</span>
+                  </div>
+                  <input
+                    type="text"
+                    name="vendor_upi_field"
+                    autoComplete="off"
+                    value={vendorUpiId}
+                    onChange={(e) => setVendorUpiId(e.target.value)}
+                    className="w-full rounded-2xl border border-orange-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-orange-500 text-sm font-medium"
+                    placeholder="e.g. merchant@okhdfcbank or 9876543210@paytm"
                   />
                 </div>
 
@@ -1032,6 +1121,8 @@ export default function AuthPage() {
                     </label>
                     <input
                       type={showSignupPassword ? "text" : "password"}
+                      name="vendor_pass_field"
+                      autoComplete="new-password"
                       required
                       minLength={6}
                       value={vendorPassword}
@@ -1046,6 +1137,8 @@ export default function AuthPage() {
                     </label>
                     <input
                       type={showSignupPassword ? "text" : "password"}
+                      name="vendor_confirm_pass_field"
+                      autoComplete="new-password"
                       required
                       minLength={6}
                       value={vendorConfirmPassword}
@@ -1169,13 +1262,15 @@ export default function AuthPage() {
             </div>
 
             {loginAuthType === "password" ? (
-              <form onSubmit={handlePasswordLoginSubmit} className="space-y-4">
+              <form onSubmit={handlePasswordLoginSubmit} autoComplete="off" className="space-y-4">
                 <div>
                   <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-gray-400 mb-1.5">
                     Email Address
                   </label>
                   <input
                     type="email"
+                    name="login_email_no_autofill"
+                    autoComplete="off"
                     required
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
@@ -1206,6 +1301,8 @@ export default function AuthPage() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      name="login_password_no_autofill"
+                      autoComplete="new-password"
                       required
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}

@@ -57,6 +57,24 @@ def db_health_check(db: Annotated[Session, Depends(get_db)]):
         "reservations": reservations,
     }
 
+
+@router.get("/platform-impact")
+def get_platform_impact(db: Annotated[Session, Depends(get_db)]):
+    total_co2 = db.query(func.sum(User.co2_saved_kg)).scalar() or 0.0
+    total_items = db.query(func.sum(User.total_items_saved)).scalar() or 0
+    total_money = db.query(func.sum(User.total_money_saved)).scalar() or 0.0
+    active_shops = db.query(func.count(Shop.id)).filter(Shop.is_active == True, Shop.approval_status == "APPROVED").scalar() or 0
+    active_products = db.query(func.count(Product.id)).filter(Product.is_active == True, Product.quantity > 0).scalar() or 0
+    return {
+        "status": "ok",
+        "total_co2_kg": round(total_co2, 2),
+        "total_items_rescued": total_items,
+        "total_money_saved_inr": round(total_money, 2),
+        "active_shops": active_shops,
+        "live_deals": active_products,
+        "water_saved_liters": int(total_items * 840),
+    }
+
 @router.get("/debug")
 def debug_db(
     user: Annotated[User, Depends(get_current_admin)],

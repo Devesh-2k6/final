@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -15,9 +15,13 @@ import {
   Bell,
   Loader2,
   ShieldCheck,
+  BarChart3,
+  CheckCircle2,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthenticationContext";
+import { getMyNotifications, markAllNotificationsAsRead } from "@/services/notifications";
+import type { ApiNotification } from "@/types/product";
 
 export default function ShopLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -30,9 +34,31 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
     { name: "Dashboard", href: "/shop", icon: LayoutDashboard },
     { name: "Products", href: "/shop/products", icon: Package },
     { name: "Add Product", href: "/shop/products/add", icon: PlusCircle },
-    { name: "Reservations", href: "/shop/reservations", icon: ShieldCheck },
+    { name: "Orders & Pickups", href: "/shop/reservations", icon: ShieldCheck },
+    { name: "Analytics", href: "/shop/analytics", icon: BarChart3 },
     { name: "Settings", href: "/shop/settings", icon: Settings },
   ];
+
+  const [notifications, setNotifications] = useState<ApiNotification[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  useEffect(() => {
+    if (!user) return;
+    getMyNotifications().then(setNotifications).catch(() => {});
+    const interval = setInterval(() => {
+      getMyNotifications().then(setNotifications).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch {}
+  };
 
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -46,11 +72,11 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
         router.replace("/auth?role=shop_owner&tab=login");
         return;
       }
-      if (!user.is_shop_owner) {
-        router.replace("/deals");
+      if (!user.is_shop_owner && !pathname.startsWith("/shop/setup")) {
+        router.replace("/shop/setup");
       }
     }
-  }, [isLoading, user, router]);
+  }, [isLoading, user, pathname, router]);
 
   const handleLogout = () => {
     logout();
@@ -149,14 +175,47 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
           </button>
 
           <div className="flex-1 flex justify-end items-center gap-4">
-            <button
-              type="button"
-              className="p-2 text-slate-500 hover:text-emerald-700 relative bg-emerald-50/40 rounded-xl border border-emerald-100/50 hover:bg-emerald-50 cursor-pointer transition"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-            </button>
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="p-2 text-slate-500 hover:text-emerald-700 relative bg-emerald-50/40 rounded-xl border border-emerald-100/50 hover:bg-emerald-50 cursor-pointer transition"
+                aria-label="Notifications"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1">{unreadCount}</span>
+                )}
+              </button>
+              {notifOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 border border-emerald-100 dark:border-gray-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-50 dark:border-gray-800">
+                      <p className="text-sm font-black text-slate-800 dark:text-white">Notifications</p>
+                      {unreadCount > 0 && (
+                        <button onClick={handleMarkAllRead} className="text-xs text-emerald-600 font-bold hover:text-emerald-800 transition flex items-center gap-1">
+                          <CheckCircle2 size={12} /> Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+                      {notifications.length === 0 ? (
+                        <p className="text-sm text-slate-400 text-center py-8">No notifications yet.</p>
+                      ) : notifications.slice(0, 10).map((n) => (
+                        <div key={n.id} className={`px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition ${!n.is_read ? "bg-emerald-50/40 dark:bg-emerald-500/5" : ""}`}>
+                          <p className={`text-xs font-bold ${!n.is_read ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>{n.title}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{n.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2.5">
+                      <Link href="/notifications" onClick={() => setNotifOpen(false)} className="text-xs text-emerald-600 font-bold hover:text-emerald-800 transition">View all notifications →</Link>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <div className="relative">
               <button
                 type="button"

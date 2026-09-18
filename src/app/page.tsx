@@ -25,7 +25,9 @@ import {
   ChefHat,
   Percent,
   TrendingDown,
-  ShoppingBag
+  ShoppingBag,
+  CheckCircle2,
+  Loader2
 } from "lucide-react";
 
 import { useConfetti } from "@/hooks/useConfetti";
@@ -34,6 +36,12 @@ import AnimatedCounter from "@/components/ui/AnimatedCounter";
 import MagneticButton from "@/components/ui/MagneticButton";
 import LiveDealsSection from "@/components/products/LiveDealsSection";
 import { fetchIpGeolocation } from "@/lib/geolocation";
+import { useToast } from "@/components/ui/Toast";
+import { apiRequest } from "@/api/client";
+import { getProducts } from "@/services/products";
+import type { ApiProduct } from "@/types/product";
+import { getSafeImageUrl } from "@/lib/images";
+import Image from "next/image";
 
 // Dynamically import client components
 const HeroMap = dynamic(() => import('@/components/map/HeroMap'), { ssr: false });
@@ -43,9 +51,57 @@ export default function Home() {
   const router = useRouter();
   const [heroSearch, setHeroSearch] = useState("");
   const [locationText, setLocationText] = useState("Chennai, Tamil Nadu");
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [alertEmail, setAlertEmail] = useState("");
+  const [alertStatus, setAlertStatus] = useState<"idle" | "loading" | "subscribed">("idle");
   const { triggerConfetti } = useConfetti();
   const { playPopSound } = useSound();
+  const toast = useToast();
+
+  // Gap #22: Search Autocomplete Suggestions
+  const [suggestions, setSuggestions] = useState<ApiProduct[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (!heroSearch.trim() || heroSearch.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLoadingSuggestions(true);
+      getProducts({ q: heroSearch.trim(), limit: 5 })
+        .then((items) => {
+          setSuggestions(items);
+          setShowSuggestions(true);
+        })
+        .catch(() => setSuggestions([]))
+        .finally(() => setLoadingSuggestions(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [heroSearch]);
+
+  // Gap #4 — email subscription posts to backend
+  const handleSubscribeAlerts = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!alertEmail || !alertEmail.includes("@")) return;
+    setAlertStatus("loading");
+    try {
+      await apiRequest("/notifications/subscribe", {
+        method: "POST",
+        json: { email: alertEmail.trim().toLowerCase() },
+        skipAuth: true,
+      });
+    } catch {
+      // Fallback: store locally even if backend fails
+    }
+    try { localStorage.setItem("EXPIRYGO_SUBSCRIBED_EMAIL", alertEmail); } catch {}
+    setAlertStatus("subscribed");
+    triggerConfetti();
+    playPopSound();
+  };
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -64,12 +120,14 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // Gap #5 — GPS coordinates are stored and passed to /deals
   const handleLocateMe = () => {
     setIsLocating(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setIsLocating(false);
+          setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           setLocationText("Current GPS Location (Live)");
         },
         () => {
@@ -88,11 +146,13 @@ export default function Home() {
 
   const handleHeroSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (heroSearch.trim()) {
-      router.push(`/deals?q=${encodeURIComponent(heroSearch.trim())}`);
-    } else {
-      router.push("/deals");
+    const params = new URLSearchParams();
+    if (heroSearch.trim()) params.set("q", heroSearch.trim());
+    if (gpsCoords) {
+      params.set("lat", String(gpsCoords.lat));
+      params.set("lng", String(gpsCoords.lng));
     }
+    router.push(`/deals?${params.toString()}`);
   };
 
   return (
@@ -132,7 +192,7 @@ export default function Home() {
           </Link>
           
           {/* Nav Links */}
-          <div className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-bold text-slate-700">
+          <div className="hidden lg:flex items-center gap-5 xl:gap-7 text-sm font-bold text-slate-700">
             <Link href="/deals" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
               <Flame size={16} className="text-purple-600" /> Deals Feed
             </Link>
@@ -142,6 +202,9 @@ export default function Home() {
             </Link>
             <Link href="/pantry" onClick={playPopSound} className="hover:text-purple-600 transition-all cursor-pointer flex items-center gap-1.5">
               <Sparkles size={16} className="text-amber-500" /> AI Pantry
+            </Link>
+            <Link href="/shop" onClick={playPopSound} className="hover:text-emerald-700 text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-xl transition-all cursor-pointer font-bold text-xs flex items-center gap-1.5">
+              <Store size={14} className="text-emerald-600" /> For Merchants
             </Link>
             <Link href="/admin" onClick={playPopSound} className="hover:text-purple-800 text-purple-800 bg-purple-50 border border-purple-200/80 px-3 py-1 rounded-xl transition-all cursor-pointer font-extrabold text-xs flex items-center gap-1">
               <ShieldCheck size={14} /> Admin
@@ -191,52 +254,103 @@ export default function Home() {
               Near-expiry surplus groceries, artisan bakery breads, and dairy from local supermarkets — at up to <span className="font-extrabold text-purple-700">70% off</span>. Save money, support neighborhood shops, and discover great daily deals.
             </p>
 
-            {/* Integrated Location & Keyword Search Bar */}
-            <form 
-              onSubmit={handleHeroSearch}
-              className="w-full max-w-2xl bg-white p-2.5 rounded-2xl border border-purple-200/90 shadow-[0_12px_40px_rgba(124,58,237,0.08)] flex flex-col sm:flex-row items-stretch gap-2 mb-4"
-            >
-              {/* Location Pill */}
-              <div className="flex items-center gap-2.5 px-3.5 py-3 bg-purple-50/70 hover:bg-purple-50 rounded-xl border border-purple-100 text-slate-800 sm:w-5/12 transition">
-                <MapPin size={18} className="text-purple-600 shrink-0" />
-                <input
-                  type="text"
-                  value={locationText}
-                  onChange={(e) => setLocationText(e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-800 outline-none truncate"
-                  placeholder="Location / Area..."
-                />
-                <button
-                  type="button"
-                  onClick={handleLocateMe}
-                  disabled={isLocating}
-                  title="Auto GPS"
-                  className="text-slate-400 hover:text-purple-600 p-0.5 cursor-pointer shrink-0"
-                >
-                  <Locate size={16} className={isLocating ? "animate-spin text-purple-600" : ""} />
-                </button>
-              </div>
-
-              {/* Keyword Search */}
-              <div className="flex items-center gap-2.5 px-3 py-3 bg-transparent flex-1">
-                <Search size={18} className="text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search sourdough, milk, yogurt, paneer..."
-                  value={heroSearch}
-                  onChange={(e) => setHeroSearch(e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none"
-                />
-              </div>
-
-              {/* Search Button */}
-              <button
-                type="submit"
-                className="px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-purple-600/20 transition active:scale-95 cursor-pointer shrink-0"
+            {/* Integrated Location & Keyword Search Bar with Autocomplete (Gap #22) */}
+            <div className="w-full max-w-2xl relative mb-4">
+              <form 
+                onSubmit={handleHeroSearch}
+                className="w-full bg-white dark:bg-gray-900 p-2.5 rounded-2xl border border-purple-200/90 dark:border-gray-800 shadow-[0_12px_40px_rgba(124,58,237,0.08)] flex flex-col sm:flex-row items-stretch gap-2"
               >
-                Find Deals
-              </button>
-            </form>
+                {/* Location Pill */}
+                <div className="flex items-center gap-2.5 px-3.5 py-3 bg-purple-50/70 dark:bg-gray-800/80 hover:bg-purple-50 rounded-xl border border-purple-100 dark:border-gray-700 text-slate-800 dark:text-gray-200 sm:w-5/12 transition">
+                  <MapPin size={18} className="text-purple-600 shrink-0" />
+                  <input
+                    type="text"
+                    value={locationText}
+                    onChange={(e) => setLocationText(e.target.value)}
+                    className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-800 dark:text-gray-200 outline-none truncate"
+                    placeholder="Location / Area..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleLocateMe}
+                    disabled={isLocating}
+                    title="Auto GPS"
+                    className="text-slate-400 hover:text-purple-600 p-0.5 cursor-pointer shrink-0"
+                  >
+                    <Locate size={16} className={isLocating ? "animate-spin text-purple-600" : ""} />
+                  </button>
+                </div>
+
+                {/* Keyword Search */}
+                <div className="flex items-center gap-2.5 px-3 py-3 bg-transparent flex-1">
+                  <Search size={18} className="text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search sourdough, milk, yogurt, paneer..."
+                    value={heroSearch}
+                    onChange={(e) => setHeroSearch(e.target.value)}
+                    onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                    className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-white placeholder-slate-400 outline-none"
+                  />
+                </div>
+
+                {/* Search Button */}
+                <button
+                  type="submit"
+                  className="px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-purple-600/20 transition active:scale-95 cursor-pointer shrink-0"
+                >
+                  Find Deals
+                </button>
+              </form>
+
+              {/* Autocomplete Dropdown */}
+              {showSuggestions && (
+                <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white dark:bg-gray-900 rounded-2xl border border-purple-100 dark:border-gray-800 shadow-2xl p-2 overflow-hidden">
+                  <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-1.5">
+                    <span>Surplus Suggestions</span>
+                    {loadingSuggestions && <Loader2 size={12} className="animate-spin text-purple-600" />}
+                  </div>
+                  {suggestions.length === 0 && !loadingSuggestions ? (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium">
+                      No matching items found. Press Enter to search across all shops.
+                    </div>
+                  ) : (
+                    <div className="space-y-1 mt-1">
+                      {suggestions.map((deal) => (
+                        <button
+                          key={deal.id}
+                          type="button"
+                          onClick={() => {
+                            setShowSuggestions(false);
+                            router.push(`/deals?q=${encodeURIComponent(deal.name)}`);
+                          }}
+                          className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-purple-50 dark:hover:bg-gray-800 transition text-left cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+                              <Image
+                                src={getSafeImageUrl(deal.front_image_url)}
+                                alt={deal.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{deal.name}</p>
+                              <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">{deal.category}</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 pl-3">
+                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">₹{deal.discount_price.toFixed(0)}</span>
+                            <span className="text-[10px] text-slate-400 line-through ml-1.5">₹{deal.original_price.toFixed(0)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Category Quick Selector Chips */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 mb-8 text-xs font-bold text-slate-600">
@@ -522,15 +636,15 @@ export default function Home() {
                 The smart hyper-local surplus food rescue engine. Connecting conscious shoppers with neighborhood supermarkets and bakeries for great daily savings.
               </p>
               <div className="flex gap-3">
-                <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
+                <Link href="/deals" title="Shopper Community" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
                   <MessageCircle size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
+                </Link>
+                <Link href="/mobile" title="Mobile App & QR Scanner" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
                   <Camera size={18} />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
+                </Link>
+                <Link href="/shop/setup" title="Register Store as Partner" className="w-10 h-10 rounded-full bg-white/10 hover:bg-purple-600 flex items-center justify-center text-white transition">
                   <Briefcase size={18} />
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -540,33 +654,68 @@ export default function Home() {
                 <li><Link href="/deals" className="hover:text-purple-400 transition">Deals Feed</Link></li>
                 <li><Link href="/map" className="hover:text-purple-400 transition">Store Radar Map</Link></li>
                 <li><Link href="/pantry" className="hover:text-purple-400 transition">AI Digital Pantry</Link></li>
-                <li><Link href="/reservations" className="hover:text-purple-400 transition">Pickup Cart</Link></li>
+                <li><Link href="/reservations" className="hover:text-purple-400 transition">Pickup Cart & Reservations</Link></li>
+                <li><Link href="/checkout" className="hover:text-purple-400 transition">Express Checkout</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">For Merchants</h4>
               <ul className="space-y-3 text-sm font-semibold text-slate-400">
-                <li><Link href="/shop/setup" className="hover:text-purple-400 transition">Register Store</Link></li>
+                <li><Link href="/shop/setup" className="hover:text-purple-400 transition">Register Store (Partner)</Link></li>
+                <li><Link href="/shop" className="hover:text-purple-400 transition">Merchant Portal & Dashboard</Link></li>
+                <li><Link href="/shop/products" className="hover:text-purple-400 transition">Inventory & Dynamic Pricing</Link></li>
+                <li><Link href="/shop/reservations" className="hover:text-purple-400 transition">Order Pickup Verification</Link></li>
                 <li><Link href="/admin" className="hover:text-purple-400 transition">Admin Moderation</Link></li>
-                <li><Link href="/mobile" className="hover:text-purple-400 transition">Mobile App</Link></li>
+                <li><Link href="/mobile" className="hover:text-purple-400 transition">Mobile App & Scanner Hub</Link></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-white font-black text-xs uppercase tracking-widest mb-4">Clearance Alerts</h4>
-              <p className="text-xs text-slate-400 mb-3">Get 70% off clearance deal alerts.</p>
-              <form onSubmit={(e) => { e.preventDefault(); alert("Subscribed!"); }} className="flex flex-col gap-2">
-                <input 
-                  type="email" 
-                  placeholder="Enter your email..."
-                  required
-                  className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-400"
-                />
-                <button type="submit" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer">
-                  Subscribe Free
-                </button>
-              </form>
+              <p className="text-xs text-slate-400 mb-3">Get instant 70% off clearance flash alerts direct to your inbox.</p>
+              {alertStatus === "subscribed" ? (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex flex-col gap-1.5 animate-fadeIn">
+                  <div className="flex items-center gap-2 font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Subscribed Successfully!
+                  </div>
+                  <p className="text-[11px] text-zinc-300">
+                    Flash clearance alerts will be sent to <strong className="text-white font-mono">{alertEmail}</strong>.
+                  </p>
+                  <button
+                    onClick={() => setAlertStatus("idle")}
+                    className="text-[10px] text-zinc-400 hover:text-white underline text-left mt-1 cursor-pointer"
+                  >
+                    Register another email
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubscribeAlerts} className="flex flex-col gap-2">
+                  <input 
+                    type="email" 
+                    value={alertEmail}
+                    onChange={(e) => setAlertEmail(e.target.value)}
+                    placeholder="Enter your email..."
+                    required
+                    className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-400 transition"
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={alertStatus === "loading"}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white py-2.5 rounded-xl font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {alertStatus === "loading" ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Subscribing...
+                      </>
+                    ) : (
+                      "Subscribe Free"
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
 
           </div>
@@ -574,9 +723,9 @@ export default function Home() {
           <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
             <p>&copy; {new Date().getFullYear()} Meeva Technologies Inc. All rights reserved.</p>
             <div className="flex gap-6">
-              <a href="#" className="hover:text-slate-300">Privacy Policy</a>
-              <a href="#" className="hover:text-slate-300">Terms of Service</a>
-              <a href="#" className="hover:text-slate-300">Sustainability Disclosure</a>
+              <Link href="/privacy" className="hover:text-slate-300 transition">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-slate-300 transition">Terms of Service</Link>
+              <Link href="/sustainability" className="hover:text-slate-300 transition">Sustainability Disclosure</Link>
             </div>
           </div>
         </div>

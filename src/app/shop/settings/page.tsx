@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { Store, MapPin, CheckCircle2, Loader2, Navigation, Save, QrCode, Truck, AlertCircle, ShieldCheck } from "lucide-react";
 import { getMyShop, updateShop } from "@/services/shops";
 import Map from "@/components/Map";
+import { useToast } from "@/components/ui/Toast";
 
 const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 
 export default function ShopSettingsPage() {
+  const { toast } = useToast();
   const [shopId, setShopId] = useState<string | null>(null);
   const [shopName, setShopName] = useState("");
   const [address, setAddress] = useState("");
@@ -54,15 +56,16 @@ export default function ShopSettingsPage() {
           setLatitude(position.coords.latitude);
           setLongitude(position.coords.longitude);
           setIsLocating(false);
+          toast.success("Location updated from GPS!");
         },
         () => {
           setIsLocating(false);
-          alert("Could not get your location. Please grant location permissions.");
+          toast.error("Could not get your location. Please grant location permissions.");
         }
       );
     } else {
       setIsLocating(false);
-      alert("Geolocation is not supported by your browser.");
+      toast.error("Geolocation is not supported by your browser.");
     }
   };
 
@@ -79,12 +82,12 @@ export default function ShopSettingsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopId || !shopName || !address || latitude === null || longitude === null) {
-      alert("Please fill out all required fields and set your location.");
+      toast.warning("Please fill out all required fields and set your location.");
       return;
     }
 
     if (upiId && !UPI_REGEX.test(upiId.trim())) {
-      alert("Please enter a valid UPI ID (e.g. merchant@okhdfcbank).");
+      toast.warning("Please enter a valid UPI ID (e.g. merchant@okhdfcbank).");
       return;
     }
 
@@ -104,9 +107,10 @@ export default function ShopSettingsPage() {
         min_order_amount: parseFloat(minOrderAmount) || 0.0,
       });
       setSaveSuccess(true);
+      toast.success("Shop settings saved successfully!");
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
-      alert("Failed to save changes. Please try again.");
+      toast.error("Failed to save changes. Please try again.");
     } finally {
       setIsSaving(false);
     }

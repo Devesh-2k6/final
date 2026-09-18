@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from websocket_manager import manager
@@ -103,6 +104,9 @@ AUTH_STRICT_RATE_LIMIT = int(os.getenv("AUTH_STRICT_RATE_LIMIT", os.getenv("MAX_
 
 @app.middleware("http")
 async def security_and_rate_limit_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # Support proxy headers for real client IP under NAT/Load Balancers
     client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
     path = request.url.path
@@ -191,3 +195,70 @@ app.include_router(admin.router)
 # Serve local static uploads fallback
 os.makedirs("static/uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Unified Web Hosting: Serve Next.js exported web frontend from out/ if present
+ROOT_DIR = Path(__file__).resolve().parent.parent
+OUT_DIR = ROOT_DIR / "out"
+
+if OUT_DIR.exists() and (OUT_DIR / "_next").exists():
+    app.mount("/_next", StaticFiles(directory=str(OUT_DIR / "_next")), name="next_static")
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_web_frontend(request: Request, full_path: str):
+    clean_path = full_path.strip("/")
+
+    if OUT_DIR.exists():
+        from fastapi.responses import FileResponse
+        # 1. Exact file match (e.g. favicon.ico, images, manifest.json)
+        if clean_path:
+            target_file = OUT_DIR / clean_path
+            if target_file.is_file():
+                return FileResponse(target_file)
+
+        # 2. Clean URL rewrite (e.g. /deals -> deals.html, /auth -> auth.html, /profile -> profile.html, /admin -> admin.html)
+        if clean_path:
+            html_file = OUT_DIR / f"{clean_path}.html"
+            if html_file.is_file():
+                return FileResponse(html_file)
+
+            # Directory index (e.g. /shop -> shop/index.html, /admin -> admin/index.html)
+            dir_index = OUT_DIR / clean_path / "index.html"
+            if dir_index.is_file():
+                return FileResponse(dir_index)
+
+        # 3. Root URL / -> index.html
+        if not clean_path:
+            index_file = OUT_DIR / "index.html"
+            if index_file.is_file():
+                return FileResponse(index_file)
+
+    # If not matching any static file, check if this is an unknown API route
+    api_prefixes = (
+        "auth", "shops", "products", "upload", "reservations", "orders",
+        "interactions", "analytics", "translate", "pantry", "admin",
+        "health", "ws", "static", "docs", "openapi.json", "redoc"
+    )
+    first_segment = clean_path.split("/")[0] if clean_path else ""
+    if first_segment in api_prefixes:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=404, content={"detail": f"API endpoint /{full_path} not found"})
+
+    # SPA Fallback for client-side navigation
+    if OUT_DIR.exists():
+        index_file = OUT_DIR / "index.html"
+        if index_file.is_file():
+            from fastapi.responses import FileResponse
+            return FileResponse(index_file)
+
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=200 if not full_path else 404,
+        content={
+            "service": "Meeva Unified API & Web Server",
+            "status": "online",
+            "docs": "/docs",
+            "health": "/health",
+            "frontend": "Ready. Next.js static build will be served here automatically when 'npm run build' is completed."
+        }
+    )
+

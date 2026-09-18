@@ -10,6 +10,12 @@ export type ApiShopSummary = {
   description?: string | null;
   deal_count?: number;
   is_active?: boolean;
+  upi_id?: string | null;
+  delivery_enabled?: boolean;
+  delivery_fee?: number;
+  min_order_amount?: number;
+  verification_document_url?: string | null;
+  verification_document_name?: string | null;
   location_verified?: boolean;
   approval_status?: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED" | string;
   approval_reason?: string | null;

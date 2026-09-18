@@ -47,9 +47,26 @@ def wait_for_port(port, timeout=30):
             time.sleep(0.5)
     return False
 
+def free_port(port):
+    if sys.platform == "win32":
+        try:
+            out = subprocess.getoutput(f'netstat -ano | findstr :{port}')
+            import re
+            pids = set(re.findall(r'\s+(\d+)\r?$', out, re.M))
+            my_pid = str(os.getpid())
+            for pid in pids:
+                if pid and pid != '0' and pid != my_pid:
+                    subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
+        except Exception:
+            pass
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+
+    # Clean stale ports
+    free_port(3000)
+    free_port(8000)
 
     lan_ip = get_lan_ip()
     

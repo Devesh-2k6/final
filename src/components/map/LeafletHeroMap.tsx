@@ -8,39 +8,6 @@ import { Store, Tag, ArrowRight } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { listShops, type ShopWithDescription } from "@/services/shops";
 
-const DEFAULT_SHOPS: ShopWithDescription[] = [
-  {
-    id: "shop-1",
-    name: "Green Valley Supermarket",
-    address: "123 Anna Salai, Downtown Chennai",
-    latitude: 13.0827,
-    longitude: 80.2707,
-    deal_count: 5,
-    average_rating: 4.8,
-    rating_count: 24,
-  },
-  {
-    id: "shop-2",
-    name: "Fresh Mart Express",
-    address: "456 Usman Road, T. Nagar, Chennai",
-    latitude: 13.0406,
-    longitude: 80.2443,
-    deal_count: 3,
-    average_rating: 4.6,
-    rating_count: 18,
-  },
-  {
-    id: "shop-3",
-    name: "Daily Bazaar",
-    address: "789 Nungambakkam High Road, Chennai",
-    latitude: 13.0598,
-    longitude: 80.2206,
-    deal_count: 4,
-    average_rating: 4.9,
-    rating_count: 32,
-  },
-];
-
 function createShopIcon(dealCount: number = 1) {
   return new L.DivIcon({
     className: "hero-shop-pin",
@@ -105,19 +72,18 @@ function InvalidateSizeHandler() {
 }
 
 export default function LeafletHeroMap() {
-  const [shops, setShops] = useState<ShopWithDescription[]>(DEFAULT_SHOPS);
+  const [shops, setShops] = useState<ShopWithDescription[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     listShops()
       .then((data) => {
-        if (data && data.length > 0) {
-          const active = data.filter((s) => s.deal_count && s.deal_count > 0);
-          setShops(active.length > 0 ? active : data);
+        if (Array.isArray(data)) {
+          setShops(data);
         }
       })
       .catch((err) => {
-        console.warn("Using fallback shops for HeroMap:", err);
+        console.warn("HeroMap failed to load shops:", err);
       })
       .finally(() => setLoading(false));
   }, []);

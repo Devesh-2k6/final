@@ -10,11 +10,13 @@ import { getErrorMessage } from "@/api/errors";
 import { getProducts, updateProduct, uploadImage, optimizeProductDetails, scanProductDates } from "@/services/products";
 import { getMyShop } from "@/services/shops";
 import { ApiProductCreate, ProductCategory } from "@/types/product";
+import { useToast } from "@/components/ui/Toast";
 
 const CATEGORIES: ProductCategory[] = ["BAKERY", "DAIRY", "PRODUCE", "MEAT", "PANTRY", "PREPARED_FOOD", "OTHER"];
 
 export default function EditProductClient({ id }: { id: string }) {
   const router = useRouter();
+  const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Redirect if not authenticated or not shop owner
@@ -53,7 +55,7 @@ export default function EditProductClient({ id }: { id: string }) {
   const handleScanDates = async (fileToScan?: File) => {
     const file = fileToScan || expiryImageFile;
     if (!file) {
-      alert("Please upload a new expiry date image first to scan.");
+      toast.warning("Please upload a new expiry date image first to scan.");
       return;
     }
     setIsScanning(true);
@@ -121,7 +123,7 @@ export default function EditProductClient({ id }: { id: string }) {
 
   const handleAIOptimize = async () => {
     if (!productName.trim()) {
-      alert("Please enter a product name first before optimizing.");
+      toast.warning("Please enter a product name first before optimizing.");
       return;
     }
     

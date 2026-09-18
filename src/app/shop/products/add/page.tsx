@@ -14,12 +14,6 @@ import {
   Barcode,
   Scan,
   X,
-  Mic,
-  MicOff,
-  Volume2,
-  Languages,
-  CheckCircle2,
-  Play,
   Search,
   AlertTriangle,
 } from "lucide-react";
@@ -28,14 +22,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import { getErrorMessage } from "@/api/errors";
-import { createProduct, uploadImage, optimizeProductDetails, scanProductDates, lookupBarcode, parseVoiceProductListing } from "@/services/products";
+import { createProduct, uploadImage, optimizeProductDetails, scanProductDates, lookupBarcode } from "@/services/products";
 import { getMyShop, type ShopWithDescription } from "@/services/shops";
 import type { ApiProductCreate, ProductCategory } from "@/types/product";
+import { useToast } from "@/components/ui/Toast";
 
 const CATEGORIES: ProductCategory[] = ["BAKERY", "DAIRY", "PRODUCE", "MEAT", "PANTRY", "PREPARED_FOOD", "OTHER"];
 
 export default function AddProductPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [shop, setShop] = useState<ShopWithDescription | null>(null);
 
@@ -80,108 +76,6 @@ export default function AddProductPage() {
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
 
-  // AI Multilingual Voice Assistant State
-  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [voiceLang, setVoiceLang] = useState<"ta-IN" | "hi-IN" | "en-IN" | "te-IN">("ta-IN");
-  const [voiceTranscript, setVoiceTranscript] = useState("");
-  const [isParsingVoice, setIsParsingVoice] = useState(false);
-  const [voiceSuccessMsg, setVoiceSuccessMsg] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
-
-  const startSpeechRecognition = () => {
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      alert("Browser speech recognition is not supported in this browser. You can select one of the quick test voice prompts or type the spoken sentence directly.");
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRec();
-      recognition.lang = voiceLang;
-      recognition.continuous = false;
-      recognition.interimResults = true;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setVoiceTranscript("");
-      };
-
-      recognition.onresult = (event: any) => {
-        let current = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          current += event.results[i][0].transcript;
-        }
-        setVoiceTranscript(current);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn("Speech recognition notice:", event);
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (e) {
-      console.error("Speech recognition startup error:", e);
-      setIsListening(false);
-    }
-  };
-
-  const stopSpeechRecognition = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Ignore
-      }
-      setIsListening(false);
-    }
-  };
-
-  const handleProcessVoice = async (overrideText?: string) => {
-    const textToProcess = (overrideText || voiceTranscript).trim();
-    if (!textToProcess) {
-      alert("Please speak or enter a voice transcript first.");
-      return;
-    }
-
-    setIsParsingVoice(true);
-    setError("");
-    setVoiceSuccessMsg(null);
-
-    try {
-      const res = await parseVoiceProductListing(textToProcess, voiceLang);
-      if (res.name) setProductName(res.name);
-      if (res.category) setCategory(res.category);
-      if (res.quantity) setQuantity(String(res.quantity));
-      if (res.original_price) setOriginalPrice(String(res.original_price));
-      if (res.manufacturing_date) setManufacturingDate(res.manufacturing_date);
-      if (res.expiry_date) setExpiryDate(res.expiry_date);
-      if (res.description) setDescription(res.description);
-      if (res.discount_price) {
-        setAutoDiscountMinPrice(String(res.discount_price));
-        setAutoDiscountEnabled(true);
-      }
-
-      setVoiceSuccessMsg(`✓ ${res.spoken_summary || "Parsed voice listing successfully!"}`);
-      setScanMessage(`🎙️ AI Voice Added: ${res.name} (Qty: ${res.quantity}, ₹${res.discount_price})`);
-
-      setTimeout(() => {
-        setVoiceModalOpen(false);
-        setVoiceSuccessMsg(null);
-      }, 1800);
-    } catch (err: unknown) {
-      setError("Failed to parse voice input: " + getErrorMessage(err));
-    } finally {
-      setIsParsingVoice(false);
-    }
-  };
-
   const handleLookupBarcode = async (barcodeToSearch?: string) => {
     const code = (barcodeToSearch || manualBarcode).trim();
     if (!code) {
@@ -210,7 +104,7 @@ export default function AddProductPage() {
   const handleScanDates = async (fileToScan?: File) => {
     const file = fileToScan || expiryImageFile;
     if (!file) {
-      alert("Please upload an expiry date image first.");
+      toast.warning("Please upload an expiry date image first.");
       return;
     }
     setIsScanning(true);
@@ -241,7 +135,7 @@ export default function AddProductPage() {
 
   const handleAIOptimize = async () => {
     if (!productName.trim()) {
-      alert("Please enter a product name first before optimizing.");
+      toast.warning("Please enter a product name first before optimizing.");
       return;
     }
     
@@ -471,30 +365,6 @@ export default function AddProductPage() {
             </motion.div>
           )}
 
-          {/* AI Multilingual Voice Assistant Banner */}
-          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-5 sm:p-6 text-white shadow-xl shadow-emerald-900/10 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-emerald-400/30">
-            <div className="space-y-1.5 relative z-10">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-emerald-100 font-black text-xs uppercase tracking-wider">
-                <Sparkles size={13} className="text-amber-300" /> AI Multilingual Voice Listing
-              </div>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
-                Speak to Add Deal in 1-Click
-              </h2>
-              <p className="text-xs sm:text-sm text-emerald-100 max-w-lg font-medium">
-                Speak in <span className="font-bold underline decoration-amber-300">Tamil, Hindi, Telugu, or English</span>. AI auto-fills product name, dates, category, and discounts instantly!
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setVoiceModalOpen(true)}
-              className="relative z-10 inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-2xl bg-white text-emerald-900 font-black text-sm hover:bg-emerald-50 active:scale-95 transition shadow-lg shadow-black/10 cursor-pointer self-start sm:self-center shrink-0"
-            >
-              <Mic size={18} className="text-emerald-600 animate-pulse" />
-              Start Voice Listing
-            </button>
-          </div>
-
           {/* Product Info Section */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
@@ -502,14 +372,6 @@ export default function AddProductPage() {
                 <Plus size={20} className="text-emerald-500" />
                 Product Details
               </h2>
-              <button
-                type="button"
-                onClick={() => setVoiceModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition"
-              >
-                <Mic size={13} className="text-emerald-600 dark:text-emerald-400" />
-                Voice Input
-              </button>
             </div>
 
             {/* Product Name */}
@@ -942,215 +804,7 @@ export default function AddProductPage() {
           </div>
         </form>
       </div>
-      {/* AI Multilingual Voice Assistant Modal */}
-      <AnimatePresence>
-        {voiceModalOpen && (
-          <div className="fixed inset-0 bg-black/65 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 20 }}
-              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative my-8"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                    <Mic size={22} className="animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white">
-                      AI Voice Assistant
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                      Speak in Tamil, Hindi, Telugu, or English
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    stopSpeechRecognition();
-                    setVoiceModalOpen(false);
-                  }}
-                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                >
-                  <X size={20} />
-                </button>
-              </div>
 
-              {/* Language Selection Pills */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 uppercase tracking-wider">
-                  <Languages size={13} className="text-emerald-500" /> Select Spoken Language
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { id: "ta-IN" as const, label: "தமிழ்", sub: "Tamil" },
-                    { id: "hi-IN" as const, label: "हिंदी", sub: "Hindi" },
-                    { id: "en-IN" as const, label: "English", sub: "India" },
-                    { id: "te-IN" as const, label: "తెలుగు", sub: "Telugu" },
-                  ].map((lang) => (
-                    <button
-                      key={lang.id}
-                      type="button"
-                      onClick={() => setVoiceLang(lang.id)}
-                      className={`p-2.5 rounded-2xl border text-center transition-all ${
-                        voiceLang === lang.id
-                          ? "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20 font-black"
-                          : "bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-emerald-300 font-semibold"
-                      }`}
-                    >
-                      <div className="text-xs sm:text-sm">{lang.label}</div>
-                      <div className={`text-[10px] ${voiceLang === lang.id ? "text-emerald-100" : "text-gray-400"}`}>
-                        {lang.sub}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pulsating Microphone Control */}
-              <div className="flex flex-col items-center justify-center py-4 bg-gradient-to-b from-gray-50 to-emerald-50/30 dark:from-gray-800/40 dark:to-emerald-950/20 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700/80">
-                <button
-                  type="button"
-                  onClick={isListening ? stopSpeechRecognition : startSpeechRecognition}
-                  className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl ${
-                    isListening
-                      ? "bg-red-500 text-white shadow-red-500/40 scale-105 animate-pulse"
-                      : "bg-emerald-500 text-white shadow-emerald-500/30 hover:scale-105 active:scale-95"
-                  }`}
-                >
-                  {isListening && (
-                    <span className="absolute inset-0 rounded-full bg-red-400 opacity-40 animate-ping" />
-                  )}
-                  {isListening ? <MicOff size={32} /> : <Mic size={32} />}
-                </button>
-                <div className="mt-3 text-center">
-                  <div className="text-sm font-bold text-gray-900 dark:text-white">
-                    {isListening ? "Listening... Speak now!" : "Tap microphone to speak"}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {isListening ? "Speak name, quantity, expiry time, and price" : "Or select a test prompt below"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Transcript / Edit Box */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center justify-between uppercase tracking-wider">
-                  <span>Recognized Transcript</span>
-                  {voiceTranscript && (
-                    <button
-                      type="button"
-                      onClick={() => setVoiceTranscript("")}
-                      className="text-[11px] text-gray-400 hover:text-red-500 font-semibold"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </label>
-                <textarea
-                  value={voiceTranscript}
-                  onChange={(e) => setVoiceTranscript(e.target.value)}
-                  placeholder="e.g. 5 packets Aavin milk expiring tomorrow at 5pm original price 40 discount 20..."
-                  rows={3}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none font-medium"
-                />
-              </div>
-
-              {/* Multilingual Voice Prompts */}
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  ⚡ Multilingual Voice Prompts (1-Tap):
-                </div>
-                <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-                  {[
-                    {
-                      lang: "ta-IN" as const,
-                      badge: "தமிழ்",
-                      text: "5 பாக்கெட் ஆவின் பால் நாளை மாலை 5 மணிக்கு காலாவதியாகிறது அசல் விலை 40 தள்ளுபடி 20",
-                    },
-                    {
-                      lang: "hi-IN" as const,
-                      badge: "हिंदी",
-                      text: "5 पैकेट दूध कल शाम 5 बजे एक्सपायर हो रहा है असली कीमत 40 रुपये डिस्काउंट 20",
-                    },
-                    {
-                      lang: "en-IN" as const,
-                      badge: "English",
-                      text: "5 packets of Aavin milk expiring tomorrow 5pm original price 40 discount price 20",
-                    },
-                  ].map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setVoiceLang(preset.lang);
-                        setVoiceTranscript(preset.text);
-                        handleProcessVoice(preset.text);
-                      }}
-                      className="w-full text-left p-2 rounded-xl bg-gray-50 hover:bg-emerald-50/80 dark:bg-gray-800/70 dark:hover:bg-emerald-950/30 border border-gray-200/70 dark:border-gray-700 transition flex items-center justify-between text-xs group"
-                    >
-                      <span className="truncate pr-2 text-gray-700 dark:text-gray-300 font-medium">
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 mr-1.5">[{preset.badge}]</span>
-                        {preset.text}
-                      </span>
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition">
-                        Run ➔
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Feedback Success Message */}
-              {voiceSuccessMsg && (
-                <motion.div
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl p-3 text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2"
-                >
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                  <span>{voiceSuccessMsg}</span>
-                </motion.div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    stopSpeechRecognition();
-                    setVoiceModalOpen(false);
-                  }}
-                  className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition text-xs sm:text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isParsingVoice || !voiceTranscript.trim()}
-                  onClick={() => handleProcessVoice()}
-                  className="flex-1 px-4 py-3 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 text-xs sm:text-sm"
-                >
-                  {isParsingVoice ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      AI Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      Auto-Fill Form
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Barcode Catalog Lookup Modal */}
       <AnimatePresence>

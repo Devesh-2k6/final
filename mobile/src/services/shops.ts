@@ -13,6 +13,10 @@ export type ShopUpdatePayload = {
   longitude: number;
   description?: string;
   phone_number?: string;
+  upi_id?: string | null;
+  delivery_enabled?: boolean;
+  delivery_fee?: number;
+  min_order_amount?: number;
 };
 
 export async function listShops(): Promise<ShopWithDescription[]> {

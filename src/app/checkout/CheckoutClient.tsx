@@ -6,9 +6,11 @@ import { CreditCard, Loader2, CheckCircle, ArrowLeft, Lock, ShieldCheck } from "
 import Link from "next/link";
 import { getMyReservations, checkoutReservation } from "@/services/reservations";
 import type { ApiReservation } from "@/types/product";
+import { useToast } from "@/components/ui/Toast";
 
 export default function CheckoutClient({ reservationId }: { reservationId: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [reservation, setReservation] = useState<ApiReservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -24,12 +26,33 @@ export default function CheckoutClient({ reservationId }: { reservationId: strin
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
+    if (!reservationId) { setLoading(false); return; }
     getMyReservations().then(res => {
       const found = res.find(r => r.id === reservationId);
       if (found) setReservation(found);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [reservationId]);
+
+  // Gap #11 — No reservation ID fallback
+  if (!loading && !reservationId) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-10 max-w-sm text-center shadow-xl">
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <CreditCard size={28} className="text-gray-400" />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">No Active Checkout</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">You don&apos;t have an active order to check out. Browse deals and make a reservation first.</p>
+          <div className="flex flex-col gap-2">
+            <Link href="/deals" className="w-full block bg-[#FF5B26] hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl text-center transition">Browse Deals</Link>
+            <Link href="/reservations" className="w-full block bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-300 font-bold py-3 px-6 rounded-xl text-center transition">View My Orders</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   // Card brand detection based on starting digit
   const cardBrand = useMemo(() => {
@@ -111,7 +134,7 @@ export default function CheckoutClient({ reservationId }: { reservationId: strin
       }, 2000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      alert("Payment failed: " + msg);
+      toast.error("Payment Failed", msg);
       setProcessing(false);
       setProcessingStep("");
     }

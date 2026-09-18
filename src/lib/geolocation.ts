@@ -1,6 +1,9 @@
 export interface GeolocationData {
   latitude: number;
   longitude: number;
+  city?: string;
+  region?: string;
+  country_name?: string;
 }
 
 export async function fetchIpGeolocation(): Promise<GeolocationData> {
@@ -10,7 +13,13 @@ export async function fetchIpGeolocation(): Promise<GeolocationData> {
     if (!res.ok) throw new Error(`ipapi.co responded with ${res.status}`);
     const data = await res.json();
     if (typeof data.latitude === "number" && typeof data.longitude === "number") {
-      return { latitude: data.latitude, longitude: data.longitude };
+      return { 
+        latitude: data.latitude, 
+        longitude: data.longitude,
+        city: data.city,
+        region: data.region,
+        country_name: data.country_name,
+      };
     }
     throw new Error("Invalid format from ipapi.co");
   } catch (err) {
@@ -23,7 +32,13 @@ export async function fetchIpGeolocation(): Promise<GeolocationData> {
     if (!res.ok) throw new Error(`freeipapi.com responded with ${res.status}`);
     const data = await res.json();
     if (typeof data.latitude === "number" && typeof data.longitude === "number") {
-      return { latitude: data.latitude, longitude: data.longitude };
+      return { 
+        latitude: data.latitude, 
+        longitude: data.longitude,
+        city: data.cityName || data.city,
+        region: data.regionName || data.region,
+        country_name: data.countryName,
+      };
     }
     throw new Error("Invalid format from freeipapi.com");
   } catch (err) {
@@ -40,7 +55,13 @@ export async function fetchIpGeolocation(): Promise<GeolocationData> {
       const latitude = parseFloat(latStr);
       const longitude = parseFloat(lngStr);
       if (!isNaN(latitude) && !isNaN(longitude)) {
-        return { latitude, longitude };
+        return { 
+          latitude, 
+          longitude,
+          city: data.city,
+          region: data.region,
+          country_name: data.country,
+        };
       }
     }
     throw new Error("Invalid format from ipinfo.io");

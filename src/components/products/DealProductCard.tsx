@@ -15,7 +15,8 @@ import {
   ChefHat,
   ArrowUpRight,
   ChevronDown,
-  Volume2
+  Volume2,
+  ShoppingBag
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -99,7 +100,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
   onToggleRecipeBasket,
 }: DealProductCardProps) {
   const isPlaying = playingId === id;
-  const [imgSrc, setImgSrc] = React.useState(() => getSafeImageUrl(imageUrl));
+  const [imgSrc, setImgSrc] = React.useState(() => getSafeImageUrl(imageUrl, name, category));
   const [showForecast, setShowForecast] = React.useState(false);
 
   const forecast = React.useMemo(() => {
@@ -107,8 +108,8 @@ export const DealProductCard = React.memo(function DealProductCardBase({
   }, [originalPrice, currentPrice, quantity, expiryDate]);
 
   React.useEffect(() => {
-    setImgSrc(getSafeImageUrl(imageUrl));
-  }, [imageUrl]);
+    setImgSrc(getSafeImageUrl(imageUrl, name, category));
+  }, [imageUrl, name, category]);
 
   const displayCategory = (category || "SURPLUS").toUpperCase();
 
@@ -127,11 +128,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
           fill
           sizes="(max-width: 768px) 100vw, 400px"
           className="object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={() =>
-            setImgSrc(
-              `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 24 24" fill="none" stroke="%23ff5b26" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="background-color:%23fff5f0"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 8h.01"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`
-            )
-          }
+          onError={() => setImgSrc(getSafeImageUrl(null, name, category))}
         />
 
         {/* Top-Left: Discount Badge */}
@@ -146,7 +143,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
           <button
             type="button"
             onClick={(e) => onToggleFavorite(id, isFavorite, e)}
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 dark:bg-gray-900/90 shadow-md flex items-center justify-center text-slate-400 hover:text-red-500 transition active:scale-90"
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 dark:bg-gray-900/90 shadow-md flex items-center justify-center text-slate-400 hover:text-red-500 transition active:scale-90 cursor-pointer"
             title={isFavorite ? "Remove from Favorites" : "Save Deal"}
           >
             <Heart size={18} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
@@ -166,7 +163,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
           <button
             type="button"
             onClick={(e) => onTogglePlay(id, e)}
-            className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-full bg-orange-500/90 text-white backdrop-blur-md flex items-center justify-center shadow-md active:scale-90"
+            className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-full bg-orange-500/90 text-white backdrop-blur-md flex items-center justify-center shadow-md active:scale-90 cursor-pointer"
             title="Listen to Shopkeeper Voice Note"
           >
             {isPlaying ? <Pause size={14} /> : <Volume2 size={14} />}
@@ -206,7 +203,7 @@ export const DealProductCard = React.memo(function DealProductCardBase({
           <button
             type="button"
             onClick={() => setShowForecast(!showForecast)}
-            className="text-[10px] font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-0.5"
+            className="text-[10px] font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-0.5 cursor-pointer"
           >
             <Sparkles size={10} />
             AI Insights
@@ -235,60 +232,44 @@ export const DealProductCard = React.memo(function DealProductCardBase({
         </AnimatePresence>
 
         {/* Row 4: Price & Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-gray-800 mt-1">
-          {/* Price Block */}
-          <div className="flex items-baseline gap-2">
+        <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-gray-800 mt-1">
+          {/* Price Block (Strictly No-Wrap) */}
+          <div className="flex items-baseline gap-1.5 shrink-0 whitespace-nowrap">
             <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              ₹ {currentPrice.toFixed(0)}
+              ₹{Math.round(currentPrice)}
             </span>
             {originalPrice > currentPrice && (
-              <span className="text-sm font-bold text-slate-400 line-through">
-                ₹{originalPrice.toFixed(0)}
+              <span className="text-xs font-semibold text-slate-400 line-through">
+                ₹{Math.round(originalPrice)}
               </span>
             )}
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="flex items-center gap-1.5">
-            {/* 1. Multi-Item AI Recipe Basket Toggle */}
-            {onToggleRecipeBasket && (
-              <button
-                type="button"
-                onClick={(e) => onToggleRecipeBasket(id, e)}
-                className={`h-9 px-2.5 rounded-xl flex items-center gap-1 text-[11px] font-black transition active:scale-95 cursor-pointer ${
-                  isInRecipeBasket
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 scale-105"
-                    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 hover:bg-emerald-100"
-                }`}
-                title={isInRecipeBasket ? "In AI Recipe Basket (Tap to remove)" : "Add to AI Recipe Basket to combine dishes"}
-              >
-                <ChefHat size={14} className={isInRecipeBasket ? "text-white" : "text-emerald-600"} />
-                <span>{isInRecipeBasket ? "In Basket ✓" : "+ Cook"}</span>
-              </button>
-            )}
-
-            {/* 2. Direct 1-Tap AI Recipe Generator Modal Button */}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* AI Recipe Generator Button */}
             {(onQuickRecipe || onToggleRecipeBasket) && (
               <button
                 type="button"
                 onClick={(e) => (onQuickRecipe ? onQuickRecipe(id, e) : onToggleRecipeBasket?.(id, e))}
-                className="h-9 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs flex items-center gap-1 shadow-md shadow-orange-500/20 transition active:scale-95 cursor-pointer"
+                className="h-8 px-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 border border-orange-200/80 dark:border-orange-800/60 font-bold text-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
                 title="1-Click Instant AI Recipe for this item"
               >
-                <Sparkles size={13} className="text-white" />
+                <Sparkles size={12} className="text-orange-500" />
                 <span>Recipe</span>
               </button>
             )}
 
-            {/* 3. Direct Instant Reserve Button (Orange Arrow) */}
+            {/* Direct Order / Buy Button (Swiggy / Zepto Style) */}
             {onReserve && !expiryIsExpired && quantity > 0 && (
               <button
                 type="button"
                 onClick={() => onReserve(id)}
-                className="w-9 h-9 rounded-xl bg-[#FF5B26] hover:bg-[#E54B18] text-white flex items-center justify-center shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer shrink-0"
-                title="Reserve for Instant Pickup"
+                className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition active:scale-95 cursor-pointer shrink-0"
+                title="Order for Doorstep Delivery or Store Pickup"
               >
-                <ArrowUpRight size={18} strokeWidth={2.5} />
+                <ShoppingBag size={13} />
+                <span>Order</span>
               </button>
             )}
           </div>

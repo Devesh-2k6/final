@@ -57,7 +57,7 @@ class VendorRegisterRequest(BaseModel):
     shop_name: str
     email: str
     phone_number: str
-    upi_id: str = Field(..., description="Vendor UPI ID / VPA for receiving customer payments (e.g. merchant@okhdfcbank)")
+    upi_id: Optional[str] = Field(None, description="Vendor UPI ID / VPA for receiving customer payments (e.g. merchant@okhdfcbank)")
     password: Optional[str] = None
     photo_url: str = Field(..., description="Storefront photo URL from /auth/upload")
     document_url: str = Field(..., description="Business license document URL from /auth/upload")
@@ -75,11 +75,13 @@ class VendorRegisterRequest(BaseModel):
 
     @field_validator('upi_id')
     @classmethod
-    def validate_upi(cls, v: str) -> str:
+    def validate_upi(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
         import re
-        v_clean = (v or "").strip().lower()
+        v_clean = v.strip().lower()
         if not v_clean:
-            raise ValueError("UPI ID is mandatory for vendor registration to accept payments.")
+            return None
         if not re.match(r"^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$", v_clean):
             raise ValueError("Please enter a valid UPI ID (e.g. merchant@okhdfcbank or 9876543210@paytm).")
         return v_clean

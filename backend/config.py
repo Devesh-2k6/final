@@ -29,13 +29,13 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379")
     
     # SMTP Notification & Verification Settings
-    SMTP_HOST: str = Field(default="")
+    SMTP_HOST: str = Field(default="smtp.gmail.com")
     SMTP_PORT: str = Field(default="587")
-    SMTP_USER: str = Field(default="")
-    SMTP_USERNAME: str = Field(default="")
-    SMTP_PASSWORD: str = Field(default="")
-    SMTP_SENDER: str = Field(default="")
-    SMTP_FROM: str = Field(default="")
+    SMTP_USER: str = Field(default="devpant2006@gmail.com")
+    SMTP_USERNAME: str = Field(default="devpant2006@gmail.com")
+    SMTP_PASSWORD: str = Field(default="emetdeljxehsoyau")
+    SMTP_SENDER: str = Field(default="devpant2006@gmail.com")
+    SMTP_FROM: str = Field(default="devpant2006@gmail.com")
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = Field(default=24)
     EMAIL_RESEND_COOLDOWN_SECONDS: int = Field(default=60)
 

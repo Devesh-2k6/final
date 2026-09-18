@@ -10,11 +10,41 @@ import { getMyFollowing } from "@/services/shops";
 import type { ApiFollower } from "@/types/product";
 import { motion } from "framer-motion";
 import { ImpactTracker } from "@/components/ImpactTracker";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { useToast } from "@/components/ui/Toast";
+import { apiRequest } from "@/api/client";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const [following, setFollowing] = useState<ApiFollower[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleOpenEdit = () => {
+    setEditName(user?.name || "");
+    setEditPhone(user?.phone_number || "");
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+    setSavingEdit(true);
+    try {
+      await apiRequest("/users/me", { method: "PATCH", json: { name: editName.trim(), phone_number: editPhone.trim() || undefined } });
+      await refreshUser();
+      toast.success("Profile updated!", "Your changes have been saved.");
+      setEditOpen(false);
+    } catch {
+      toast.error("Failed to update profile.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -86,6 +116,12 @@ export default function ProfilePage() {
                   <div className={`inline-flex items-center gap-1.5 mt-2 text-[10px] font-black uppercase tracking-widest ${userLevel.bg} ${userLevel.color} px-3 py-1 rounded-full border border-current/10`}>
                     Level {userLevel.level}: {userLevel.title}
                   </div>
+                  <button
+                    onClick={handleOpenEdit}
+                    className="mt-3 flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition"
+                  >
+                    ✏️ Edit Profile
+                  </button>
                 </div>
               </div>
 
@@ -202,6 +238,30 @@ export default function ProfilePage() {
           </div>
         </main>
       </div>
+      <ScrollToTop />
+
+      {/* Gap #8 — Edit Profile Modal */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl w-full max-w-sm shadow-2xl p-6">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Edit Profile</h3>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Name</label>
+                <input value={editName} onChange={e => setEditName(e.target.value)} className="mt-1 w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500" required />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Phone Number</label>
+                <input value={editPhone} onChange={e => setEditPhone(e.target.value)} type="tel" className="mt-1 w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-emerald-500" placeholder="+91 XXXXX XXXXX" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditOpen(false)} className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition">Cancel</button>
+                <button type="submit" disabled={savingEdit} className="flex-1 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm transition disabled:opacity-60">{savingEdit ? "Saving..." : "Save Changes"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </ShopperLayout>
   );
 }

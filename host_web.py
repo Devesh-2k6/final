@@ -55,7 +55,21 @@ def wait_for_port(port, timeout=30):
             time.sleep(0.5)
     return False
 
+def free_port(port):
+    if sys.platform == "win32":
+        try:
+            out = subprocess.getoutput(f'netstat -ano | findstr :{port}')
+            pids = set(re.findall(r'\s+(\d+)\r?$', out, re.M))
+            my_pid = str(os.getpid())
+            for pid in pids:
+                if pid and pid != '0' and pid != my_pid:
+                    subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True)
+        except Exception:
+            pass
+
 def main():
+    free_port(3000)
+    free_port(8000)
     lan_ip = get_lan_ip()
     
     print("=" * 70)
@@ -118,7 +132,7 @@ def main():
     # Step 4: Launch Optional Cloudflare Web Tunnel for Global Internet Access
     print("\n[4/4] Starting Cloudflare Public HTTPS Web Tunnel for Global Access...")
     tunnel_proc = subprocess.Popen(
-        ["npx", "-y", "cloudflared", "tunnel", "--url", "http://localhost:3000"],
+        ["npx", "-y", "cloudflared", "tunnel", "--url", "http://localhost:8000"],
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -139,13 +153,14 @@ def main():
     print("\n" + "=" * 70)
     print("🎉 EXPIRYGO WEB HOST IS LIVE & ACCESSIBLE!")
     print("=" * 70)
-    print(f"  🌐 Local Web URL:      http://localhost:3000")
-    print(f"  📶 Local Network/Wi-Fi: http://{lan_ip}:3000")
+    print(f"  🌐 Local Web (Dev):     http://localhost:3000")
+    print(f"  ⚡ Unified Web (Prod):   http://localhost:8000")
+    print(f"  📶 Local Network/Wi-Fi:  http://{lan_ip}:3000  (or http://{lan_ip}:8000)")
     if public_tunnel_url:
-        print(f"  🌍 Global Public URL:   {public_tunnel_url}")
-        print("     (Accessible from ANY phone, laptop, or browser worldwide)")
-    print(f"  🔌 Backend API:         http://localhost:8000")
-    print(f"  📖 API Documentation:   http://localhost:8000/docs")
+        print(f"  🌍 Global Public URL:    {public_tunnel_url}")
+        print("     (Accessible from ANY phone, laptop, or browser worldwide with zero setup)")
+    print(f"  🔌 Backend API:          http://localhost:8000")
+    print(f"  📖 API Documentation:    http://localhost:8000/docs")
     print("=" * 70)
     print("\n👑 Admin Credentials:")
     print("  Email:    devpant2006@gmail.com")

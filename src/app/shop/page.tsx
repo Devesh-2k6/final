@@ -9,7 +9,10 @@ import { getMyShop, getShopAnalytics, getMlDiagnostics } from "@/services/shops"
 import { getProductForecast, updateProduct, getProductAiInsight, getShopAiInventory } from "@/services/products";
 import type { ApiShopAiInventory } from "@/services/products";
 import type { ShopWithDescription } from "@/services/shops";
-import type { ApiAnalytics } from "@/types/product";
+import type { ApiAnalytics, ApiOrder, ApiReservation, OrderStatus } from "@/types/product";
+import { getShopOrders, updateOrderStatus } from "@/services/orders";
+import { getShopReservations } from "@/services/reservations";
+import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthenticationContext";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -119,9 +122,47 @@ export default function ShopDashboardOverview() {
   const [aiInventory, setAiInventory] = useState<ApiShopAiInventory | null>(null);
   const [loadingAiInventory, setLoadingAiInventory] = useState<boolean>(false);
 
+  const toast = useToast();
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnosticsData, setDiagnosticsData] = useState<any | null>(null);
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
+
+  // Gap #12: Live Pending Actions
+  const [pendingOrders, setPendingOrders] = useState<ApiOrder[]>([]);
+  const [pendingReservations, setPendingReservations] = useState<ApiReservation[]>([]);
+  const [updatingActionId, setUpdatingActionId] = useState<string | null>(null);
+
+  const fetchPendingActions = async () => {
+    try {
+      const [orderData, resData] = await Promise.all([
+        getShopOrders().catch(() => []),
+        getShopReservations().catch(() => []),
+      ]);
+      const actionableOrders = (orderData || []).filter(
+        (o: ApiOrder) => (["PENDING", "ACCEPTED", "OUT_FOR_DELIVERY"] as OrderStatus[]).includes(o.status)
+      );
+      const actionableRes = (resData || []).filter(
+        (r: ApiReservation) => r.status === "PENDING"
+      );
+      setPendingOrders(actionableOrders);
+      setPendingReservations(actionableRes);
+    } catch (err) {
+      console.error("Error fetching pending items", err);
+    }
+  };
+
+  const handleQuickAdvanceOrder = async (orderId: string, nextStatus: any) => {
+    setUpdatingActionId(orderId);
+    try {
+      await updateOrderStatus(orderId, nextStatus);
+      toast.success(`Order status updated to ${nextStatus}!`);
+      await fetchPendingActions();
+    } catch (err) {
+      toast.error("Failed to update order status.");
+    } finally {
+      setUpdatingActionId(null);
+    }
+  };
 
   const handleOpenDiagnostics = async () => {
     setShowDiagnostics(true);
@@ -130,7 +171,7 @@ export default function ShopDashboardOverview() {
       const data = await getMlDiagnostics();
       setDiagnosticsData(data);
     } catch {
-      alert("Failed to load model diagnostics.");
+      toast.error("Failed to load model diagnostics.");
       setShowDiagnostics(false);
     } finally {
       setLoadingDiagnostics(false);
@@ -169,6 +210,7 @@ export default function ShopDashboardOverview() {
     if (shopId) {
       getShopAnalytics().then(setAnalytics).catch(console.error);
       fetchAiInventory();
+      fetchPendingActions();
     }
   }, [shopId]);
 
@@ -244,10 +286,10 @@ export default function ShopDashboardOverview() {
       setForecast(freshForecast);
       await refetch();
       fetchAiInventory();
-      alert(`AI Suggested Price of ₹${optimalPrice} applied successfully!`);
+      toast.success(`AI Suggested Price of ₹${optimalPrice} applied successfully!`);
     } catch (err) {
       console.error(err);
-      alert("Failed to apply AI Suggested Price.");
+      toast.error("Failed to apply AI Suggested Price.");
     } finally {
       setApplyingPrice(false);
     }
@@ -507,6 +549,116 @@ export default function ShopDashboardOverview() {
 
       {activeTab === "overview" ? (
         <>
+          {/* Gap #12: Live Pending Actions & Orders Needing Attention */}
+          {(pendingOrders.length > 0 || pendingReservations.length > 0) && (
+            <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-emerald-500/10 border border-amber-500/30 shadow-lg backdrop-blur-md space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-amber-500 text-white font-black flex items-center justify-center animate-bounce">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      ⚡ Action Required: {pendingOrders.length + pendingReservations.length} Pending Item(s)
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">
+                      Orders and customer pickups requiring immediate vendor confirmation
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/shop/reservations"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition shadow-sm self-start sm:self-auto"
+                >
+                  Manage All in Orders & Pickups &rarr;
+                </Link>
+              </div>
+
+              {/* Action Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingOrders.slice(0, 3).map((order) => (
+                  <div
+                    key={order.id}
+                    className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-amber-200/60 dark:border-gray-700 shadow-sm flex flex-col justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-mono text-slate-400">#{order.id.slice(0, 8)}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[10px]">
+                          {order.status}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                        {order.customer_name || "Customer Order"}
+                      </p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-black mt-0.5">
+                        ₹{order.total_price?.toFixed(0)} • {order.quantity} item(s)
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 border-t border-gray-100 dark:border-gray-700">
+                      {order.status === "PENDING" && (
+                        <button
+                          disabled={updatingActionId === order.id}
+                          onClick={() => handleQuickAdvanceOrder(order.id, "ACCEPTED")}
+                          className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition active:scale-95 disabled:opacity-60"
+                        >
+                          {updatingActionId === order.id ? "Updating..." : "Accept Order →"}
+                        </button>
+                      )}
+                      {order.status === "ACCEPTED" && (
+                        <button
+                          disabled={updatingActionId === order.id}
+                          onClick={() => handleQuickAdvanceOrder(order.id, "OUT_FOR_DELIVERY")}
+                          className="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition active:scale-95 disabled:opacity-60"
+                        >
+                          {updatingActionId === order.id ? "Updating..." : "Dispatch Delivery →"}
+                        </button>
+                      )}
+                      {order.status === "OUT_FOR_DELIVERY" && (
+                        <Link
+                          href="/shop/reservations"
+                          className="w-full py-2 text-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition"
+                        >
+                          Verify PIN / Hand Over
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {pendingReservations.slice(0, 3).map((res) => (
+                  <div
+                    key={res.id}
+                    className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-emerald-200/60 dark:border-gray-700 shadow-sm flex flex-col justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-mono text-slate-400">Pickup Hold</span>
+                        <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-bold text-[10px]">
+                          HOLDING
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
+                        {res.product?.name || "Reserved Product"}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">
+                        Qty: {res.quantity} • ₹{(res.total_price || (res.product?.discount_price || 0) * res.quantity).toFixed(0)}
+                      </p>
+                    </div>
+
+                    <Link
+                      href="/shop/reservations"
+                      className="w-full py-2 text-center rounded-xl border border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition"
+                    >
+                      Enter Pickup Code →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             {stats.map((stat) => (
               <div

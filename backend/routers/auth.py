@@ -277,27 +277,39 @@ def customer_register(body: schemas.CustomerRegisterRequest, db: Annotated[Sessi
     
     existing = db.query(User).filter(User.email == clean_email).first()
 
-    if not existing:
+    if existing:
+        if existing.role == "VENDOR" or existing.is_shop_owner:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is already registered as a Merchant/Vendor account. You cannot create a Shopper account with the same email. Please sign in as Vendor."
+            )
+        if existing.role == "ADMIN" or clean_email == settings.ADMIN_EMAIL.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is registered as an Administrator. Please sign in as Admin."
+            )
+        if existing.email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email is already registered as a Shopper. Please sign in directly."
+            )
+        user = existing
+        user.name = clean_name
+        if getattr(body, "password", None) and body.password.strip():
+            user.hashed_password = hash_password(body.password.strip())
+        db.commit()
+    else:
         user = User(
             email=clean_email,
             hashed_password=hash_password(user_pass),
             name=clean_name,
-            role="ADMIN" if clean_email == settings.ADMIN_EMAIL.lower() else "CUSTOMER",
+            role="CUSTOMER",
             is_shop_owner=False,
             email_verified=False,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
-    else:
-        user = existing
-        user.name = clean_name
-        if user.role != "ADMIN" and clean_email != settings.ADMIN_EMAIL.lower():
-            if not user.is_shop_owner:
-                user.role = "CUSTOMER"
-        if getattr(body, "password", None) and body.password.strip():
-            user.hashed_password = hash_password(body.password.strip())
-        db.commit()
 
     res = send_otp_to_identifier(clean_email, name=clean_name)
     if not res.get("success"):
@@ -428,9 +440,33 @@ def vendor_register(
 
     existing = db.query(User).filter(User.email == clean_email).first()
 
-    # Find or create unverified vendor user
+    # Strict check: forbid registering vendor account if email is already customer or admin
     user_pass = body.password.strip() if getattr(body, "password", None) and body.password.strip() else f"otp_auth_{clean_email}"
-    if not existing:
+    if existing:
+        if (existing.role == "CUSTOMER" or not existing.is_shop_owner) and existing.role != "VENDOR":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is already registered as a Shopper/Customer account. You cannot create a Merchant account with the same email. Please sign in as Customer."
+            )
+        if existing.role == "ADMIN" and clean_email != settings.ADMIN_EMAIL.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is registered as an Administrator. Please sign in as Admin."
+            )
+        if existing.email_verified and existing.is_shop_owner:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email is already registered as a Merchant. Please sign in to your Merchant Portal."
+            )
+        user = existing
+        user.name = clean_shop_name
+        user.role = "VENDOR"
+        user.is_shop_owner = True
+        user.phone_number = clean_phone
+        if getattr(body, "password", None) and body.password.strip():
+            user.hashed_password = hash_password(body.password.strip())
+        db.commit()
+    else:
         user = User(
             email=clean_email,
             hashed_password=hash_password(user_pass),
@@ -443,16 +479,6 @@ def vendor_register(
         db.add(user)
         db.commit()
         db.refresh(user)
-    else:
-        user = existing
-        user.name = clean_shop_name
-        if user.role != "ADMIN" and clean_email != settings.ADMIN_EMAIL.lower():
-            user.role = "VENDOR"
-        user.is_shop_owner = True
-        user.phone_number = clean_phone
-        if getattr(body, "password", None) and body.password.strip():
-            user.hashed_password = hash_password(body.password.strip())
-        db.commit()
 
     # Find or create initial Shop with uploaded photo and documents
     shop_addr = getattr(body, "address", None) or "Commercial Market Location"
@@ -670,6 +696,18 @@ def verify_otp(body: schemas.VerifyOtpRequest, db: Annotated[Session, Depends(ge
                 db.commit()
                 db.refresh(shop)
     else:
+        # Strict single-role verification check
+        if body.is_shop_owner and (user.role == "CUSTOMER" and not user.is_shop_owner):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is registered as a Shopper account. You cannot sign in or verify as a Vendor with this email."
+            )
+        if not body.is_shop_owner and (user.role == "VENDOR" or user.is_shop_owner):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is registered as a Merchant/Vendor account. You cannot sign in or verify as a Shopper with this email."
+            )
+
         # Mark verified if not already
         if not user.email_verified:
             user.email_verified = True

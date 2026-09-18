@@ -1,20 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Menu, X, Leaf, LogOut, Shield, ShieldCheck } from "lucide-react";
+import { BarChart3, Menu, X, Leaf, LogOut, Shield, ShieldCheck, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthenticationContext";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, user } = useAuth();
+  const { logout, user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.replace("/auth?role=admin&tab=login");
+        return;
+      }
+      if (user.role !== "ADMIN" && !user.email?.toLowerCase().startsWith("admin")) {
+        router.replace("/deals");
+      }
+    }
+  }, [isLoading, user, router]);
 
   const handleLogout = () => {
     logout();
-    router.push("/auth");
+    router.push("/auth?role=admin&tab=login");
   };
 
   // Only link routes that actually exist.
@@ -23,6 +35,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const closeSidebar = () => setIsSidebarOpen(false);
+
+  if (isLoading || (!user && typeof window !== "undefined")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-emerald-400" size={32} />
+          <p className="text-xs font-bold text-gray-400">Verifying Administrator Privileges...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">

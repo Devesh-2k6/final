@@ -18,6 +18,7 @@ import type { ApiProduct } from "@/types/product";
 import { getSafeImageUrl } from "@/lib/images";
 import { fetchIpGeolocation } from "@/lib/geolocation";
 import { ShopperLayout } from "@/components/layout/ShopperLayout";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
 const MapComponent = dynamic(() => import("@/components/MapComponent"), {
   ssr: false,
@@ -134,9 +135,7 @@ export default function MapDiscovery() {
         listShops(),
         getProducts({ hideExpired: true }),
       ]);
-      if (shopList && shopList.length > 0) {
-        setShops(shopList);
-      }
+      setShops(shopList || []);
       setProducts(productList || []);
       setStatus("ready");
     } catch (e) {
@@ -422,13 +421,21 @@ export default function MapDiscovery() {
                         </div>
                       </div>
                       <Link
-                        href={`/deals`}
+                        href={`/deals?q=${encodeURIComponent(deal.name)}`}
                         className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition shadow-xs"
                       >
                         Reserve
                       </Link>
                     </div>
                   ))
+                )}
+                {selectedShop.deals.length > 0 && (
+                  <Link
+                    href={`/deals?q=${encodeURIComponent(selectedShop.name)}`}
+                    className="block w-full py-2 text-center text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40 rounded-xl transition border border-dashed border-orange-200 dark:border-orange-900 mt-2"
+                  >
+                    View all deals from this shop &rarr;
+                  </Link>
                 )}
               </div>
             </motion.div>
@@ -443,6 +450,7 @@ export default function MapDiscovery() {
         <span className="w-2.5 h-2.5 rounded-full bg-[#FF5B26] inline-block ml-2" />
         <span>Surplus Store</span>
       </div>
+      <ScrollToTop />
     </div>
     </ShopperLayout>
   );

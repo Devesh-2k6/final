@@ -155,6 +155,7 @@ def _serialize_product(product: Product, shop: Optional[Shop] = None) -> dict:
     return out
 
 
+@router.get("")
 @router.get("/")
 def read_products(
     db: Annotated[Session, Depends(get_db)],

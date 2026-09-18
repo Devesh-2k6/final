@@ -97,7 +97,8 @@ def run_full_e2e_tests():
             "document_url": doc_url,
             "address": "123 Anna Salai, Chennai, Tamil Nadu 600002",
             "latitude": 13.0827,
-            "longitude": 80.2707
+            "longitude": 80.2707,
+            "upi_id": "freshmart@okaxis"
         }
         v_reg = requests.post(f"{BASE_URL}/auth/vendor/register", json=vendor_payload, timeout=15)
         assert v_reg.status_code in (200, 201), f"Vendor register failed: {v_reg.text}"
@@ -171,14 +172,15 @@ def run_full_e2e_tests():
     # -------------------------------------------------------------
     print("\n[TEST 5/10] Testing Vendor Listing Surplus Deals with AI Expiry...")
     try:
+        from datetime import datetime, timedelta
         v_headers = {"Authorization": f"Bearer {vendor_token}", "Content-Type": "application/json"}
         deal_payload = {
             "name": f"Organic Greek Yogurt 500g ({timestamp})",
             "original_price": 180.0,
             "discount_price": 75.0,
             "quantity": 15,
-            "manufacturing_date": "2026-08-25T00:00:00",
-            "expiry_date": "2026-09-04T00:00:00",
+            "manufacturing_date": (datetime.now() - timedelta(days=2)).isoformat(),
+            "expiry_date": (datetime.now() + timedelta(days=5)).isoformat(),
             "category": "DAIRY",
             "front_image_url": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400",
             "description": "High-protein creamy greek yogurt nearing best-before date."
@@ -243,7 +245,7 @@ def run_full_e2e_tests():
             "name": "Pasteurized Milk 1L",
             "category": "DAIRY",
             "quantity": "1 unit",
-            "expiry_date": "2026-09-04T00:00:00"
+            "expiry_date": (datetime.now() + timedelta(days=4)).isoformat()
         }
         pantry_res = requests.post(f"{BASE_URL}/pantry/", headers=c_headers, json=pantry_payload, timeout=15)
         assert pantry_res.status_code in (200, 201), f"Pantry item add failed: {pantry_res.text}"

@@ -12,12 +12,14 @@ import { useConfetti } from "@/hooks/useConfetti";
 import { useSound } from "@/hooks/useSound";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { createReservation } from "@/services/reservations";
+import { useToast } from "@/components/ui/Toast";
 
 export default function LiveDealsSection() {
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("All");
 
+  const toast = useToast();
   const { triggerConfetti } = useConfetti();
   const { playPopSound } = useSound();
 
@@ -64,9 +66,9 @@ export default function LiveDealsSection() {
     try {
       await createReservation(id, 1);
       setProducts(prev => prev.map(p => p.id === id ? { ...p, quantity: p.quantity - 1 } : p));
-      alert("Successfully reserved!");
+      toast.success("Successfully reserved!", "Your surplus deal is held for pickup.");
     } catch (err: any) {
-      alert("Failed to reserve. Please sign in as a customer.");
+      toast.error("Failed to reserve", "Please sign in as a customer to reserve items.");
     }
   };
 

@@ -93,25 +93,37 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
             );
           })}
 
-          {/* Merchant Portal Quick Link */}
+          {/* Management Portals */}
           <div className="mt-4 pt-4 border-t border-orange-100/50 dark:border-gray-800">
             <div className="mb-2 px-3 text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest">
-              Portals
+              Merchant & Partner
             </div>
-            <Link
-              href="/shop"
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
-            >
-              <Store size={17} className="text-slate-400 dark:text-gray-500" />
-              <span>Merchant Dashboard</span>
-            </Link>
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-purple-600 hover:bg-purple-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
-            >
-              <ShieldCheck size={17} className="text-slate-400 dark:text-gray-500" />
-              <span>Admin Console</span>
-            </Link>
+            {user?.role === "VENDOR" || user?.is_shop_owner ? (
+              <Link
+                href="/shop"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
+              >
+                <Store size={17} className="text-slate-400 dark:text-gray-500" />
+                <span>Merchant Dashboard</span>
+              </Link>
+            ) : (
+              <Link
+                href="/shop/setup"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
+              >
+                <Store size={17} className="text-slate-400 dark:text-gray-500" />
+                <span>Register Store (Partner)</span>
+              </Link>
+            )}
+            {user?.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-purple-600 hover:bg-purple-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
+              >
+                <ShieldCheck size={17} className="text-slate-400 dark:text-gray-500" />
+                <span>Admin Console</span>
+              </Link>
+            )}
           </div>
         </div>
 

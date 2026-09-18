@@ -7,16 +7,22 @@ import { getMyReservations } from "@/services/reservations";
 import { getMyOrders, cancelOrder } from "@/services/orders";
 import { getSafeImageUrl } from "@/lib/images";
 import type { ApiReservation, ApiOrder } from "@/types/product";
-import { Loader2, Package, MapPin, CheckCircle, Clock, ArrowLeft, CreditCard, Star, X, Truck, ShoppingBag, XCircle } from "lucide-react";
+import { Loader2, Package, MapPin, CheckCircle, Clock, ArrowLeft, CreditCard, Star, X, Truck, ShoppingBag, XCircle, LogIn } from "lucide-react";
 import { ShopperLayout } from "@/components/layout/ShopperLayout";
 import { leaveReview } from "@/services/shops";
 import { motion, AnimatePresence } from "framer-motion";
 import { getErrorMessage } from "@/api/errors";
+import { useAuth } from "@/contexts/AuthenticationContext";
+import { useToast, ConfirmModal } from "@/components/ui/Toast";
 
 export default function MyReservations() {
+  const { user, isLoading: authLoading } = useAuth();
+  const toast = useToast();
   const [reservations, setReservations] = useState<ApiReservation[]>([]);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
 
   // Review Modal State
   const [activeShopForReview, setActiveShopForReview] = useState<string | null>(null);
@@ -44,22 +50,52 @@ export default function MyReservations() {
   };
 
   useEffect(() => {
-    loadReservations();
-  }, []);
+    if (!authLoading && user) {
+      loadReservations();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [authLoading, user]);
 
   const handleCancelOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
-    setCancellingOrderId(orderId);
+    setPendingCancelId(orderId);
+    setConfirmOpen(true);
+  };
+
+  const doCancelOrder = async () => {
+    if (!pendingCancelId) return;
+    setCancellingOrderId(pendingCancelId);
     try {
-      await cancelOrder(orderId);
-      alert("Order cancelled successfully.");
+      await cancelOrder(pendingCancelId);
+      toast.success("Order cancelled successfully.");
       await loadReservations();
     } catch (err) {
-      alert("Failed to cancel order: " + getErrorMessage(err));
+      toast.error("Failed to cancel order: " + getErrorMessage(err));
     } finally {
       setCancellingOrderId(null);
+      setPendingCancelId(null);
     }
   };
+
+  // Gap #9 — Auth guard: show login prompt
+  if (!authLoading && !user) {
+    return (
+      <ShopperLayout>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-10 max-w-sm shadow-xl">
+            <div className="w-16 h-16 bg-orange-50 dark:bg-orange-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <LogIn size={28} className="text-orange-500" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">Sign in to view orders</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Log in to see your reservations, pickups, and order history.</p>
+            <Link href="/auth?tab=login" className="w-full block bg-[#FF5B26] hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl text-center transition shadow-lg shadow-orange-500/20">
+              Sign In
+            </Link>
+          </div>
+        </div>
+      </ShopperLayout>
+    );
+  }
 
   const openReviewModal = (shopId: string, shopName: string) => {
     setActiveShopForReview(shopId);
@@ -82,7 +118,7 @@ export default function MyReservations() {
 
     try {
       await leaveReview(activeShopForReview, rating, comment.trim() || undefined);
-      alert("Thank you! Your review has been submitted successfully.");
+      toast.success("Review submitted!", "Thank you for your feedback.");
       setActiveShopForReview(null);
     } catch (err) {
       setReviewError(getErrorMessage(err));
@@ -136,6 +172,13 @@ export default function MyReservations() {
   };
 
   return (
+    <>
+      <ConfirmModal
+        open={confirmOpen}
+        options={{ title: "Cancel Order", message: "Are you sure you want to cancel this order? This action cannot be undone.", danger: true, confirmLabel: "Yes, Cancel" }}
+        onConfirm={async () => { setConfirmOpen(false); await doCancelOrder(); }}
+        onCancel={() => { setConfirmOpen(false); setPendingCancelId(null); }}
+      />
     <ShopperLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
         <header className="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 lg:px-8 pt-4 pb-3">
@@ -447,5 +490,6 @@ export default function MyReservations() {
       </AnimatePresence>
     </div>
     </ShopperLayout>
+    </>
   );
 }

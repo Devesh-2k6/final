@@ -4,7 +4,7 @@ import Constants from "expo-constants";
 
 export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
-export const CURRENT_LAN_IP = "10.244.85.184";
+export const CURRENT_LAN_IP = "192.168.1.8";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
 export const TUNNEL_API_URL = "https://good-queens-tap.loca.lt";
 
@@ -20,13 +20,33 @@ export function getDefaultApiBaseUrl(): string {
   // 1. If running in Web browser (Expo Web / React Native Web)
   if (Platform.OS === "web" && typeof window !== "undefined") {
     const hostname = window.location.hostname;
+    const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+    const port = window.location.port;
+
+    if (port === "8000") {
+      return `${protocol}//${hostname}:8000`;
+    }
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:8000";
     }
     if (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname)) {
-      return `http://${hostname}:8000`;
+      return `${protocol}//${hostname}:8000`;
     }
-    return `http://${hostname}:8000`;
+    if (
+      hostname.endsWith(".trycloudflare.com") ||
+      hostname.endsWith(".loca.lt") ||
+      hostname.endsWith(".ngrok-free.app") ||
+      hostname.endsWith(".ngrok.io") ||
+      hostname.endsWith(".vercel.app") ||
+      hostname.endsWith(".railway.app") ||
+      hostname.endsWith(".onrender.com") ||
+      port === "" ||
+      port === "80" ||
+      port === "443"
+    ) {
+      return window.location.origin;
+    }
+    return `${protocol}//${hostname}:8000`;
   }
 
   // 2. Try extracting host IP from various Expo Constants locations across SDK versions
