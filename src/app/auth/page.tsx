@@ -82,29 +82,7 @@ function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-const GOOGLE_ACCOUNTS = [
-  {
-    name: "Devesh S",
-    email: "devpant2006@gmail.com",
-    roleNote: "Platform Admin",
-    avatarBg: "bg-amber-600 text-white",
-    initial: "D",
-  },
-  {
-    name: "hariniswathi devesh",
-    email: "hariniswathidevesh111@gmail.com",
-    roleNote: "Shopper",
-    avatarBg: "bg-teal-600 text-white",
-    initial: "H",
-  },
-  {
-    name: "suresh kumar",
-    email: "sureshkumar@gmail.com",
-    roleNote: "Merchant / Vendor",
-    avatarBg: "bg-indigo-600 text-white",
-    initial: "S",
-  },
-];
+
 
 export default function AuthPage() {
   const router = useRouter();
@@ -200,12 +178,11 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Google One-Tap & 1-Click Auth States
+  // Google Authentication Modal States (Real test - no pre-filled demo accounts)
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showOneTap, setShowOneTap] = useState(true);
-  const [oneTapDismissed, setOneTapDismissed] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState("");
-  const [showCustomGoogleInput, setShowCustomGoogleInput] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleModalEmail, setGoogleModalEmail] = useState("");
+  const [googleModalName, setGoogleModalName] = useState("");
   const [googleConnectedAccount, setGoogleConnectedAccount] = useState<{ email: string; name: string } | null>(null);
 
   // Initialize official Google Identity Services (One Tap) if Client ID configured
@@ -342,7 +319,15 @@ export default function AuthPage() {
     targetName?: string,
     targetPicture?: string
   ) => {
-    const email = (targetEmail || customGoogleEmail || (googleConnectedAccount ? googleConnectedAccount.email : "devpant2006@gmail.com")).trim().toLowerCase();
+    // If no target email provided and not yet connected, open Google Sign-In prompt
+    if (!targetEmail && !googleConnectedAccount) {
+      setGoogleModalEmail("");
+      setGoogleModalName("");
+      setShowGoogleModal(true);
+      return;
+    }
+
+    const email = (targetEmail || (googleConnectedAccount ? googleConnectedAccount.email : "")).trim().toLowerCase();
     if (!email || !email.includes("@")) {
       setError("Please enter a valid Google email address.");
       return;
@@ -769,93 +754,99 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50/60 via-[#F8FAFC] to-purple-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950/40 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden transition-colors">
-      {/* Google One Tap Slide-Down Prompt (Matching emergent.sh screenshot) */}
-      {showOneTap && !oneTapDismissed && tab !== "otp" && tab !== "forgot_password" && (
-        <div className="fixed top-4 right-4 z-50 w-[340px] sm:w-[380px] bg-[#202124] text-white rounded-2xl border border-zinc-700/80 shadow-2xl p-4 transition-all duration-300 animate-in fade-in slide-in-from-top-4">
-          {/* One Tap Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-            <div className="flex items-center gap-2">
-              <GoogleIcon className="w-4 h-4 shrink-0" />
-              <span className="text-xs font-semibold text-zinc-200">
-                Sign in to ExpiryGo with google.com
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOneTapDismissed(true)}
-              className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
-              title="Close"
-            >
-              <X size={15} />
-            </button>
-          </div>
-
-          {/* Accounts List matching user's screenshot */}
-          <div className="py-2 space-y-1">
-            {GOOGLE_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => handleGoogleSignIn(acc.email, acc.name)}
-                disabled={googleLoading}
-                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-800/80 active:bg-zinc-800 transition text-left cursor-pointer group disabled:opacity-50"
-              >
-                <div className={`w-9 h-9 rounded-full ${acc.avatarBg} flex items-center justify-center font-bold text-sm shrink-0 shadow-sm`}>
-                  {acc.initial}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-zinc-100 group-hover:text-white truncate">
-                    {acc.name}
-                  </p>
-                  <p className="text-[11px] text-zinc-400 truncate">
-                    {acc.email}
-                  </p>
-                </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-200 shrink-0">
-                  {acc.roleNote}
+      {/* Real Google Sign-In Authentication Modal (No fake/demo accounts) */}
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-3xl max-w-sm w-full p-6 sm:p-7 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-gray-800">
+              <div className="flex items-center gap-2.5">
+                <GoogleIcon className="w-5 h-5" />
+                <span className="font-bold text-sm text-slate-800 dark:text-white">
+                  Sign in with Google
                 </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Use another Google account toggle */}
-          <div className="pt-2 border-t border-zinc-800/80">
-            {!showCustomGoogleInput ? (
+              </div>
               <button
                 type="button"
-                onClick={() => setShowCustomGoogleInput(true)}
-                className="text-xs font-semibold text-purple-400 hover:text-purple-300 w-full text-center py-1 transition cursor-pointer"
+                onClick={() => setShowGoogleModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg transition cursor-pointer"
+                title="Close"
               >
-                + Use another Google account
+                <X size={16} />
               </button>
-            ) : (
-              <div className="space-y-2 pt-1">
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                Use your Google Account
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-gray-400">
+                to continue to <strong className="text-purple-600">Meeva</strong>
+              </p>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const em = googleModalEmail.trim();
+                if (!em || !em.includes("@")) {
+                  setError("Please enter a valid Google email address.");
+                  return;
+                }
+                setShowGoogleModal(false);
+                handleGoogleSignIn(em, googleModalName.trim() || undefined);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1.5">
+                  Google Email Address <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="email"
-                  placeholder="Enter your @gmail.com"
-                  value={customGoogleEmail}
-                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-xl text-xs text-white placeholder-zinc-500 outline-none focus:border-purple-500"
+                  required
+                  autoFocus
+                  placeholder="yourname@gmail.com"
+                  value={googleModalEmail}
+                  onChange={(e) => setGoogleModalEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white font-medium"
                 />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleGoogleSignIn(customGoogleEmail)}
-                    disabled={!customGoogleEmail.trim() || googleLoading}
-                    className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
-                  >
-                    Continue
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomGoogleInput(false)}
-                    className="px-3 py-1.5 bg-zinc-800 text-zinc-400 rounded-xl text-xs hover:text-white transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
               </div>
-            )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1.5">
+                  Full Name <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Your Full Name"
+                  value={googleModalName}
+                  onChange={(e) => setGoogleModalName(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white font-medium"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  className="flex-1 py-3 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-2xl text-xs font-bold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!googleModalEmail.trim() || googleLoading}
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-xs font-bold transition shadow-md shadow-purple-600/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {googleLoading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <GoogleIcon className="w-4 h-4 brightness-200" />
+                  )}
+                  Continue
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
