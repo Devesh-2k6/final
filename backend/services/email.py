@@ -107,6 +107,7 @@ def send_email_notification(
 
     def _async_smtp_send():
         try:
+            import ssl
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
             message["From"] = formataddr(("Meeva", config["sender"]))
@@ -119,19 +120,19 @@ def send_email_notification(
             part2 = MIMEText(html_content, "html", "utf-8")
             message.attach(part2)
             
+            context = ssl.create_default_context()
             if config["port"] == 465:
-                with smtplib.SMTP_SSL(config["host"], config["port"], timeout=3) as server:
+                with smtplib.SMTP_SSL(config["host"], config["port"], context=context, timeout=12) as server:
                     server.login(config["user"], config["password"])
                     server.sendmail(config["sender"], to_email, message.as_string())
             else:
-                with smtplib.SMTP(config["host"], config["port"], timeout=3) as server:
-                    try:
-                        server.starttls()
-                    except Exception:
-                        pass
+                with smtplib.SMTP(config["host"], config["port"], timeout=12) as server:
+                    server.ehlo()
+                    server.starttls(context=context)
+                    server.ehlo()
                     server.login(config["user"], config["password"])
                     server.sendmail(config["sender"], to_email, message.as_string())
-            logger.info(f"[SUCCESS] Email sent to {to_email} via SMTP ({config['host']}).")
+            logger.info(f"[SUCCESS] Email '{subject}' sent to {to_email} via SMTP ({config['host']}).")
         except Exception as e:
             logger.warning(f"[WARNING] SMTP delivery to {to_email} skipped: {e}")
 
@@ -286,27 +287,135 @@ Meeva Team
 
 def send_vendor_approval_email(to_email: str, vendor_name: str, shop_name: str) -> bool:
     """Dispatches official approval notification to vendor when approved by Admin."""
+    frontend_base = (settings.FRONTEND_URL or "http://localhost:3000").rstrip("/")
+    shop_url = f"{frontend_base}/shop"
     subject = f"🎉 Your shop '{shop_name}' has been APPROVED on Meeva!"
-    display_name = vendor_name.strip() if vendor_name else "Vendor"
+    display_name = vendor_name.strip() if vendor_name else "Merchant"
     
     html_content = f"""<!DOCTYPE html>
-<html>
-<body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; color: #0f172a;">
-    <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
-        <h2 style="color: #059669; margin-top: 0;">🎉 Your Store is Approved!</h2>
-        <p>Hello <strong>{display_name}</strong>,</p>
-        <p>Great news! Your store <strong>{shop_name}</strong> has been reviewed and verified by our Admin moderation team.</p>
-        <p>You can now log in to your Vendor Dashboard, post surplus food deals, and start selling!</p>
-        <div style="text-align: center; margin: 24px 0;">
-            <a href="http://localhost:3000/shop" style="background-color: #059669; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Open Vendor Dashboard</a>
-        </div>
-        <p style="font-size: 12px; color: #64748b;">Meeva Marketplace Team</p>
-    </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Store is Approved!</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; line-height: 1.6;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 36px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; overflow: hidden; text-align: left;">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 32px 36px; text-align: center;">
+                            <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 9999px; margin-bottom: 8px;">
+                                <span style="font-size: 20px; font-weight: 900; color: #ffffff;">🌱 Meeva Marketplace</span>
+                            </div>
+                            <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 800; color: #ffffff;">🎉 Your Store is Approved!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 36px 28px 36px;">
+                            <p style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 0;">Hello {display_name},</p>
+                            <p style="font-size: 15px; color: #334155; margin: 12px 0 20px 0;">
+                                Fantastic news! Your store <strong>{shop_name}</strong> has been officially reviewed, verified, and approved by the Meeva Administrator team.
+                            </p>
+                            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 700; color: #065f46;">✅ Full Privileges Unlocked:</p>
+                                <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 13px; color: #047857;">
+                                    <li>Publish surplus food items & flash discounts</li>
+                                    <li>Appear live on customer map & hyper-local search</li>
+                                    <li>Accept customer orders, reservations & instant UPI payments</li>
+                                </ul>
+                            </div>
+                            <div style="text-align: center; margin: 32px 0;">
+                                <a href="{shop_url}" target="_blank" style="display: inline-block; background-color: #059669; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(5,150,105,0.35);">
+                                    Open Merchant Dashboard
+                                </a>
+                            </div>
+                            <p style="font-size: 13px; color: #64748b; margin: 24px 0 0 0;">
+                                Thank you for partnering with Meeva to combat food waste and provide fresh food to local communities!
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f1f5f9; padding: 18px 36px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+                            <p style="margin: 0;">&copy; Meeva Surplus Marketplace &bull; Merchant Portal</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>"""
 
-    text_fallback = f"Hello {display_name},\n\nYour shop '{shop_name}' has been APPROVED on Meeva! You can now publish surplus food deals.\n\nOpen your Vendor Dashboard: http://localhost:3000/shop\n\nMeeva Team"
+    text_fallback = f"Hello {display_name},\n\nYour shop '{shop_name}' has been APPROVED on Meeva!\n\nYou can now log in, post surplus food deals, and start selling:\n{shop_url}\n\nThank you,\nMeeva Team"
     
+    return send_email_notification(
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_fallback=text_fallback,
+    )
+
+
+def send_vendor_application_received_email(to_email: str, vendor_name: str, shop_name: str) -> bool:
+    """Dispatches application confirmation to merchant upon registration, pending admin review."""
+    frontend_base = (settings.FRONTEND_URL or "http://localhost:3000").rstrip("/")
+    status_url = f"{frontend_base}/shop"
+    subject = f"📝 Store Application Received: '{shop_name}' is Under Review"
+    display_name = vendor_name.strip() if vendor_name else "Merchant"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Store Registration Received</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; line-height: 1.6;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 36px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; overflow: hidden; text-align: left;">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 32px 36px; text-align: center;">
+                            <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 9999px; margin-bottom: 8px;">
+                                <span style="font-size: 20px; font-weight: 900; color: #ffffff;">🌱 Meeva Marketplace</span>
+                            </div>
+                            <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 800; color: #ffffff;">Store Registration Received</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 36px 28px 36px;">
+                            <p style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 0;">Hello {display_name},</p>
+                            <p style="font-size: 15px; color: #334155; margin: 12px 0 20px 0;">
+                                Thank you for registering <strong>{shop_name}</strong> on Meeva! Your storefront details, license documents, and GPS location pin have been securely received.
+                            </p>
+                            <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 700; color: #92400e;">⏳ What Happens Next?</p>
+                                <p style="margin: 6px 0 0 0; font-size: 13px; color: #78350f;">
+                                    Our platform administrator moderation team is currently reviewing your documents and commercial location verification. <strong>As soon as your shop is approved, you will receive an approval confirmation email</strong> and your store will go live!
+                                </p>
+                            </div>
+                            <div style="text-align: center; margin: 32px 0;">
+                                <a href="{status_url}" target="_blank" style="display: inline-block; background-color: #d97706; color: #ffffff; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(217,119,6,0.35);">
+                                    Check Application Status
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f1f5f9; padding: 18px 36px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+                            <p style="margin: 0;">&copy; Meeva Surplus Marketplace &bull; Merchant Portal</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+    text_fallback = f"Hello {display_name},\n\nThank you for registering '{shop_name}' on Meeva!\nYour application is under review by our moderation team. You will receive an approval notification email as soon as your store is approved.\n\nCheck status: {status_url}\n\nMeeva Team"
+
     return send_email_notification(
         to_email=to_email,
         subject=subject,
@@ -317,8 +426,10 @@ def send_vendor_approval_email(to_email: str, vendor_name: str, shop_name: str) 
 
 def send_vendor_rejection_email(to_email: str, vendor_name: str, shop_name: str, reason: str) -> bool:
     """Dispatches rejection and resubmission instructions to vendor."""
+    frontend_base = (settings.FRONTEND_URL or "http://localhost:3000").rstrip("/")
+    resubmit_url = f"{frontend_base}/shop/setup"
     subject = f"Update regarding your Meeva shop application: {shop_name}"
-    display_name = vendor_name.strip() if vendor_name else "Vendor"
+    display_name = vendor_name.strip() if vendor_name else "Merchant"
     clean_reason = reason.strip() if reason else "Documentation or location verification required."
     
     html_content = f"""<!DOCTYPE html>
@@ -334,14 +445,45 @@ def send_vendor_rejection_email(to_email: str, vendor_name: str, shop_name: str,
         </div>
         <p><strong>You may resubmit:</strong> Please log in to your account and upload corrected shop documents or photos to request a fresh review.</p>
         <div style="text-align: center; margin: 24px 0;">
-            <a href="http://localhost:3000/shop/setup" style="background-color: #dc2626; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Resubmit Application</a>
+            <a href="{resubmit_url}" style="background-color: #dc2626; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block;">Resubmit Application</a>
         </div>
         <p style="font-size: 12px; color: #64748b;">Meeva Marketplace Team</p>
     </div>
 </body>
 </html>"""
 
-    text_fallback = f"Hello {display_name},\n\nYour shop application for '{shop_name}' was not approved.\nReason: {clean_reason}\n\nYou may resubmit with corrected documents at http://localhost:3000/shop/setup\n\nMeeva Team"
+    text_fallback = f"Hello {display_name},\n\nYour shop application for '{shop_name}' was not approved.\nReason: {clean_reason}\n\nYou may resubmit with corrected documents at {resubmit_url}\n\nMeeva Team"
+
+    return send_email_notification(
+        to_email=to_email,
+        subject=subject,
+        html_content=html_content,
+        text_fallback=text_fallback,
+    )
+
+
+def send_customer_welcome_email(to_email: str, customer_name: str) -> bool:
+    """Dispatches welcome notification to newly registered shopper."""
+    frontend_base = (settings.FRONTEND_URL or "http://localhost:3000").rstrip("/")
+    deals_url = f"{frontend_base}/deals"
+    subject = "🌱 Welcome to Meeva! Start saving on surplus groceries"
+    display_name = customer_name.strip() if customer_name else "Shopper"
+
+    html_content = f"""<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 24px; color: #0f172a;">
+    <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0;">
+        <h2 style="color: #7c3aed; margin-top: 0;">Welcome to Meeva, {display_name}! 🌱</h2>
+        <p>Your account is ready! Join thousands of shoppers saving up to 70% on fresh food and surplus groceries from local stores.</p>
+        <div style="text-align: center; margin: 28px 0;">
+            <a href="{deals_url}" style="background-color: #7c3aed; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">Explore Live Surplus Deals</a>
+        </div>
+        <p style="font-size: 12px; color: #64748b;">Meeva Marketplace Team &bull; Saving food, saving money.</p>
+    </div>
+</body>
+</html>"""
+
+    text_fallback = f"Welcome to Meeva, {display_name}!\n\nExplore live surplus grocery deals now at:\n{deals_url}\n\nMeeva Team"
 
     return send_email_notification(
         to_email=to_email,

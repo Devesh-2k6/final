@@ -26,6 +26,9 @@ from services.email import (
     clear_dev_mailbox,
     test_smtp_connection,
     get_smtp_config,
+    send_vendor_approval_email,
+    send_vendor_application_received_email,
+    send_customer_welcome_email,
 )
 from services.otp import send_otp_to_identifier, verify_otp_code
 
@@ -809,12 +812,29 @@ def google_auth(body: schemas.GoogleAuthRequest, db: Annotated[Session, Depends(
             db.refresh(shop)
 
             if not is_admin:
+                threading.Thread(
+                    target=send_vendor_application_received_email,
+                    kwargs={"to_email": user.email, "vendor_name": user.name, "shop_name": shop.name},
+                    daemon=True,
+                ).start()
                 loc_thread = threading.Thread(
                     target=_run_async_location_verification,
                     args=(shop.id, shop.name, shop.address, shop.latitude, shop.longitude),
                     daemon=True,
                 )
                 loc_thread.start()
+            else:
+                threading.Thread(
+                    target=send_vendor_approval_email,
+                    kwargs={"to_email": user.email, "vendor_name": user.name, "shop_name": shop.name},
+                    daemon=True,
+                ).start()
+        elif role == "CUSTOMER":
+            threading.Thread(
+                target=send_customer_welcome_email,
+                kwargs={"to_email": user.email, "customer_name": user.name},
+                daemon=True,
+            ).start()
     else:
         user.email_verified = True
         if is_admin:
@@ -850,6 +870,12 @@ def google_auth(body: schemas.GoogleAuthRequest, db: Annotated[Session, Depends(
                 db.add(shop)
                 db.commit()
                 db.refresh(shop)
+
+                threading.Thread(
+                    target=send_vendor_application_received_email,
+                    kwargs={"to_email": user.email, "vendor_name": user.name, "shop_name": shop.name},
+                    daemon=True,
+                ).start()
 
                 loc_thread = threading.Thread(
                     target=_run_async_location_verification,

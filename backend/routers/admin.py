@@ -6,9 +6,12 @@ from sqlalchemy import func
 
 import schemas
 from auth_service import get_current_admin
+import logging
 from db.models import Shop, User, Product, ShopApprovalStatus, UserRole
 from db.session import get_db
 from services.email import send_email_notification, send_vendor_approval_email, send_vendor_rejection_email
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["Admin Moderation"])
 
@@ -156,19 +159,42 @@ def approve_shop(
     db.commit()
     db.refresh(shop)
 
+    # Resolve vendor contact reliably for notification
+    vendor_email = None
+    vendor_name = "Merchant"
+    if getattr(shop, "owner", None) and getattr(shop.owner, "email", None):
+        vendor_email = shop.owner.email
+        vendor_name = getattr(shop.owner, "name", None) or "Merchant"
+    else:
+        owner_record = db.query(User).filter(User.id == shop.owner_id).first()
+        if owner_record and owner_record.email:
+            vendor_email = owner_record.email
+            vendor_name = owner_record.name or "Merchant"
+
     # Send approval email notification to vendor in background thread
+    if vendor_email:
+        import threading
+        threading.Thread(
+            target=send_vendor_approval_email,
+            kwargs={
+                "to_email": vendor_email,
+                "vendor_name": vendor_name,
+                "shop_name": shop.name,
+            },
+            daemon=True,
+        ).start()
+        logger.info(f"[APPROVAL EMAIL DISPATCHED] Dispatched approval email to {vendor_email} for shop '{shop.name}'")
+
+    # Broadcast WebSocket notification so vendor sees real-time bell alert
     try:
-        if shop.owner and shop.owner.email:
-            import threading
-            threading.Thread(
-                target=send_vendor_approval_email,
-                kwargs={
-                    "to_email": shop.owner.email,
-                    "vendor_name": shop.owner.name,
-                    "shop_name": shop.name,
-                },
-                daemon=True,
-            ).start()
+        from websocket_manager import manager
+        manager.broadcast_sync({
+            "type": "SHOP_APPROVED",
+            "shop_id": shop.id,
+            "owner_id": shop.owner_id,
+            "shop_name": shop.name,
+            "message": f"🎉 Congratulations! Your store '{shop.name}' has been approved and is now active on Meeva!",
+        })
     except Exception:
         pass
 
@@ -270,6 +296,32 @@ def reactivate_shop(
     shop.approval_reason = None
 
     db.commit()
+    db.refresh(shop)
+
+    vendor_email = None
+    vendor_name = "Merchant"
+    if getattr(shop, "owner", None) and getattr(shop.owner, "email", None):
+        vendor_email = shop.owner.email
+        vendor_name = getattr(shop.owner, "name", None) or "Merchant"
+    else:
+        owner_record = db.query(User).filter(User.id == shop.owner_id).first()
+        if owner_record and owner_record.email:
+            vendor_email = owner_record.email
+            vendor_name = owner_record.name or "Merchant"
+
+    if vendor_email:
+        import threading
+        threading.Thread(
+            target=send_vendor_approval_email,
+            kwargs={
+                "to_email": vendor_email,
+                "vendor_name": vendor_name,
+                "shop_name": shop.name,
+            },
+            daemon=True,
+        ).start()
+
+    return _serialize_admin_shop(shop)
 @router.post("/shops/{shop_id}/reverify-location", response_model=schemas.AdminShopResponse)
 def reverify_shop_location(
     shop_id: str,
