@@ -173,6 +173,29 @@ class AuthResponse(BaseModel):
     user: dict
     dev_otp: Optional[str] = None
 
+class GoogleAuthRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+    picture: Optional[str] = None
+    role: Optional[str] = "CUSTOMER"
+    credential: Optional[str] = None
+    shop_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    upi_id: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    photo_url: Optional[str] = None
+    document_url: Optional[str] = None
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v_clean = v.strip().lower()
+        if not v_clean or "@" not in v_clean:
+            raise ValueError("Please provide a valid email.")
+        return v_clean
+
 class ResendVerificationRequest(BaseModel):
     email: str
 

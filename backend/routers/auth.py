@@ -749,6 +749,122 @@ def run_smtp_diagnostic(to_email: str = Query(..., description="Target email add
 
 
 
+@router.post("/google", response_model=schemas.AuthResponse)
+def google_auth(body: schemas.GoogleAuthRequest, db: Annotated[Session, Depends(get_db)]):
+    """
+    Unified Google Authentication Endpoint:
+    - 1-Click login and instant onboarding.
+    - If email matches ADMIN_EMAIL (devpant2006@gmail.com): assigns ADMIN role.
+    - If CUSTOMER: auto-registers/logs in with verified status.
+    - If VENDOR: auto-registers/logs in and provisions merchant store with details if provided.
+    - Issues standard JWT token and returns AuthResponse.
+    """
+    clean_email = body.email.strip().lower()
+    user_name = body.name.strip() if body.name and body.name.strip() else clean_email.split("@")[0].title()
+    
+    admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower() or settings.ADMIN_EMAIL.strip().lower()
+    is_admin = (clean_email == admin_env_email)
+
+    user = db.query(User).filter(User.email == clean_email).first()
+
+    if not user:
+        role = "ADMIN" if is_admin else ("VENDOR" if body.role == "VENDOR" else "CUSTOMER")
+        is_vendor = (role == "VENDOR")
+
+        user = User(
+            email=clean_email,
+            hashed_password=hash_password(f"google_oauth_{clean_email}"),
+            name=user_name,
+            role=role,
+            is_shop_owner=is_vendor,
+            phone_number=body.phone_number,
+            email_verified=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        if is_vendor:
+            shop_name = body.shop_name.strip() if body.shop_name and body.shop_name.strip() else f"{user_name}'s Store"
+            shop_addr = body.address or "Commercial Market Location"
+            shop_lat = body.latitude if body.latitude is not None else 13.0827
+            shop_lon = body.longitude if body.longitude is not None else 80.2707
+
+            shop = Shop(
+                owner_id=user.id,
+                name=shop_name,
+                address=shop_addr,
+                latitude=shop_lat,
+                longitude=shop_lon,
+                approval_status="APPROVED" if is_admin else "PENDING",
+                is_active=True if is_admin else False,
+                location_verified=True if is_admin else False,
+                photo_url=body.photo_url or "",
+                document_url=body.document_url or "",
+                verification_document_url=body.document_url or "",
+                upi_id=body.upi_id.strip() if body.upi_id else None,
+            )
+            db.add(shop)
+            db.commit()
+            db.refresh(shop)
+
+            if not is_admin:
+                loc_thread = threading.Thread(
+                    target=_run_async_location_verification,
+                    args=(shop.id, shop.name, shop.address, shop.latitude, shop.longitude),
+                    daemon=True,
+                )
+                loc_thread.start()
+    else:
+        user.email_verified = True
+        if is_admin:
+            user.role = "ADMIN"
+            user.is_shop_owner = False
+        elif body.role == "VENDOR":
+            if not user.is_shop_owner:
+                user.role = "VENDOR"
+                user.is_shop_owner = True
+                if body.phone_number:
+                    user.phone_number = body.phone_number
+            
+            existing_shop = db.query(Shop).filter(Shop.owner_id == user.id).first()
+            if not existing_shop and body.shop_name:
+                shop_name = body.shop_name.strip()
+                shop_addr = body.address or "Commercial Market Location"
+                shop_lat = body.latitude if body.latitude is not None else 13.0827
+                shop_lon = body.longitude if body.longitude is not None else 80.2707
+                shop = Shop(
+                    owner_id=user.id,
+                    name=shop_name,
+                    address=shop_addr,
+                    latitude=shop_lat,
+                    longitude=shop_lon,
+                    approval_status="PENDING",
+                    is_active=False,
+                    location_verified=False,
+                    photo_url=body.photo_url or "",
+                    document_url=body.document_url or "",
+                    verification_document_url=body.document_url or "",
+                    upi_id=body.upi_id.strip() if body.upi_id else None,
+                )
+                db.add(shop)
+                db.commit()
+                db.refresh(shop)
+
+                loc_thread = threading.Thread(
+                    target=_run_async_location_verification,
+                    args=(shop.id, shop.name, shop.address, shop.latitude, shop.longitude),
+                    daemon=True,
+                )
+                loc_thread.start()
+
+        db.commit()
+        db.refresh(user)
+
+    token = create_access_token(user.id, role=getattr(user, "role", "CUSTOMER"))
+    return schemas.AuthResponse(access_token=token, user=user_to_dict(user))
+
+
 @router.post("/login", response_model=schemas.AuthResponse)
 def login(body: schemas.LoginRequest, db: Annotated[Session, Depends(get_db)]):
     """

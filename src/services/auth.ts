@@ -54,10 +54,34 @@ export type VendorSignupInput = {
   longitude?: number;
 };
 
+export type GoogleAuthInput = {
+  email: string;
+  name?: string;
+  picture?: string;
+  role?: "CUSTOMER" | "VENDOR" | "ADMIN" | string;
+  credential?: string;
+  shop_name?: string;
+  phone_number?: string;
+  upi_id?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  photo_url?: string;
+  document_url?: string;
+};
+
 export type LoginInput = {
   email: string;
   password: string;
 };
+
+export async function googleAuth(data: GoogleAuthInput): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/google", {
+    method: "POST",
+    json: data,
+    skipAuth: true,
+  });
+}
 
 export async function customerSignup(data: CustomerSignupInput): Promise<SendOtpResponse> {
   return apiRequest<SendOtpResponse>("/auth/customer/register", {
