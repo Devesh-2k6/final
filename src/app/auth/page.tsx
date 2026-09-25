@@ -370,17 +370,33 @@ export default function AuthPage() {
       }
     }
 
-    // 2. Direct 1-Click Fast Path (Zero typing, Zero delay)
-    const emailToUse =
-      roleMode === "admin"
-        ? "devpant2006@gmail.com"
-        : (loginEmail.trim() || customerEmail.trim() || vendorEmail.trim() || "devpant2006@gmail.com");
-    const nameToUse =
-      roleMode === "admin"
-        ? "Devesh S"
-        : (customerName.trim() || vendorShopName.trim() || "Devesh S");
+    // 2. Check if user already typed an email into any email input
+    const typedEmail = (
+      roleMode === "customer"
+        ? (customerEmail.trim() || loginEmail.trim())
+        : roleMode === "vendor"
+        ? (vendorEmail.trim() || loginEmail.trim())
+        : loginEmail.trim()
+    );
 
-    await handleGoogleSignIn(emailToUse, nameToUse);
+    if (typedEmail && typedEmail.includes("@")) {
+      const typedName =
+        (roleMode === "customer" ? customerName.trim() : vendorShopName.trim()) ||
+        typedEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+      await handleGoogleSignIn(typedEmail, typedName);
+      return;
+    }
+
+    // 3. If Admin tab, 1-click admin login
+    if (roleMode === "admin") {
+      await handleGoogleSignIn("devpant2006@gmail.com", "Devesh S");
+      return;
+    }
+
+    // 4. For Customer / Vendor with no email entered yet, open the Google account prompt
+    setGoogleModalEmail("");
+    setGoogleModalName("");
+    setShowGoogleModal(true);
   };
 
   const handleGoogleSignIn = async (
@@ -391,15 +407,18 @@ export default function AuthPage() {
     const email = (
       targetEmail ||
       (googleConnectedAccount ? googleConnectedAccount.email : "") ||
-      "devpant2006@gmail.com"
+      (roleMode === "admin" ? "devpant2006@gmail.com" : "")
     ).trim().toLowerCase();
+
+    if (!email || !email.includes("@")) {
+      setShowGoogleModal(true);
+      return;
+    }
 
     const name =
       targetName ||
       (googleConnectedAccount?.name) ||
-      (email === "devpant2006@gmail.com"
-        ? "Devesh S"
-        : email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()));
+      email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
     // For Vendor Sign Up: if merchant details not yet filled, connect the account first with 1-click
     if (tab === "signup" && roleMode === "vendor" && !googleConnectedAccount && !vendorShopName.trim()) {
@@ -413,16 +432,12 @@ export default function AuthPage() {
     setError("");
 
     try {
+      const isPlatformAdmin = roleMode === "admin" && email === "devpant2006@gmail.com";
       const payload: GoogleAuthInput = {
         email,
         name,
         picture: targetPicture,
-        role:
-          roleMode === "admin" || email === "devpant2006@gmail.com"
-            ? "ADMIN"
-            : roleMode === "vendor"
-            ? "VENDOR"
-            : "CUSTOMER",
+        role: isPlatformAdmin ? "ADMIN" : (roleMode === "vendor" ? "VENDOR" : "CUSTOMER"),
       };
 
       if (tab === "signup" && roleMode === "vendor") {
@@ -815,7 +830,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50/60 via-[#F8FAFC] to-purple-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-purple-950/40 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden transition-colors">
-      {/* 1-Click Google Authentication Dialog (App Emergent Style) */}
+      {/* Google Authentication Dialog */}
       {showGoogleModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
@@ -823,7 +838,7 @@ export default function AuthPage() {
               <div className="flex items-center gap-2.5">
                 <GoogleIcon className="w-5 h-5" />
                 <span className="font-bold text-sm text-slate-800 dark:text-white">
-                  1-Click Google Sign In
+                  Sign in with Google
                 </span>
               </div>
               <button
@@ -837,58 +852,140 @@ export default function AuthPage() {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                Choose Google Account
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  {roleMode === "admin"
+                    ? "Admin Google Sign In"
+                    : roleMode === "vendor"
+                    ? "Merchant Google Identity"
+                    : "Shopper Google Sign In"}
+                </h3>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                  roleMode === "admin"
+                    ? "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"
+                    : roleMode === "vendor"
+                    ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+                    : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                }`}>
+                  {roleMode}
+                </span>
+              </div>
               <p className="text-xs text-slate-500 dark:text-gray-400">
-                Sign in with 1-click to continue to <strong className="text-purple-600">Meeva</strong>
+                Continue to <strong className="text-purple-600">Meeva</strong> as {roleMode}
               </p>
             </div>
 
-            {/* Direct 1-Click Instant Account Button */}
-            <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowGoogleModal(false);
-                  handleGoogleSignIn("devpant2006@gmail.com", "Devesh S");
-                }}
-                disabled={googleLoading}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-left cursor-pointer transition shadow-xs group"
-              >
-                <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                  D
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      Devesh S
-                    </p>
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-300">
-                      1-Click
-                    </span>
+            {roleMode === "admin" ? (
+              /* Admin 1-Click Shortcut */
+              <div className="space-y-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGoogleModal(false);
+                    handleGoogleSignIn("devpant2006@gmail.com", "Devesh S");
+                  }}
+                  disabled={googleLoading}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 text-left cursor-pointer transition shadow-xs group"
+                >
+                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    D
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-gray-400 truncate">
-                    devpant2006@gmail.com
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        Platform Admin
+                      </p>
+                      <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-300">
+                        1-Click
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-gray-400 truncate">
+                      devpant2006@gmail.com
+                    </p>
+                  </div>
+                  <ArrowRight size={16} className="text-purple-600 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+            ) : (
+              /* Customer & Vendor Real Google Account Prompt */
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const targetEm = googleModalEmail.trim().toLowerCase();
+                  if (!targetEm || !targetEm.includes("@")) {
+                    setError("Please enter a valid Google email address.");
+                    return;
+                  }
+                  setShowGoogleModal(false);
+                  handleGoogleSignIn(targetEm, googleModalName.trim() || undefined);
+                }}
+                className="space-y-3 pt-1"
+              >
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1">
+                    Your Google Email (@gmail.com) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    placeholder="e.g. yourname@gmail.com"
+                    value={googleModalEmail}
+                    onChange={(e) => setGoogleModalEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white font-medium"
+                  />
                 </div>
-                <ArrowRight size={16} className="text-purple-600 dark:text-purple-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1">
+                    Full Name <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Your Full Name"
+                    value={googleModalName}
+                    onChange={(e) => setGoogleModalName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-slate-900 dark:text-white font-medium"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleModal(false)}
+                    className="flex-1 py-2.5 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!googleModalEmail.trim() || googleLoading}
+                    className={`flex-1 py-2.5 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer ${
+                      roleMode === "vendor"
+                        ? "bg-orange-600 hover:bg-orange-500 shadow-orange-500/20"
+                        : "bg-purple-600 hover:bg-purple-500 shadow-purple-600/20"
+                    }`}
+                  >
+                    {googleLoading ? <Loader2 size={14} className="animate-spin" /> : <GoogleIcon className="w-3.5 h-3.5 brightness-200" />}
+                    <span>{roleMode === "vendor" ? "Verify Merchant" : "Continue"}</span>
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Collapsible Google Cloud Client ID for Native Emergent Popup */}
             <div className="pt-2 border-t border-slate-100 dark:border-gray-800">
               <button
                 type="button"
                 onClick={() => setShowClientIdConfig(!showClientIdConfig)}
-                className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline w-full text-center py-1 transition cursor-pointer flex items-center justify-center gap-1.5"
+                className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline w-full text-center py-0.5 transition cursor-pointer flex items-center justify-center gap-1"
               >
-                <span>⚙️ {showClientIdConfig ? "Hide Google Client ID Setup" : "Connect Google Client ID (Native Popup)"}</span>
+                <span>⚙️ {showClientIdConfig ? "Hide Client ID Setup" : "Connect Google Client ID (Native Popup)"}</span>
               </button>
 
               {showClientIdConfig && (
-                <div className="space-y-3 pt-2">
-                  <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-relaxed">
+                <div className="space-y-2 pt-2">
+                  <p className="text-[10px] text-slate-500 dark:text-gray-400 leading-relaxed">
                     Paste your Google Cloud OAuth Client ID below to trigger Google's native popup across all browsers (same as App Emergent):
                   </p>
                   <input
@@ -901,10 +998,10 @@ export default function AuthPage() {
                         localStorage.setItem("EXPIRYGO_GOOGLE_CLIENT_ID", e.target.value.trim());
                       }
                     }}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-purple-500 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-1.5 bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 rounded-xl text-xs outline-none focus:border-purple-500 text-slate-900 dark:text-white"
                   />
                   <div className="flex justify-between items-center text-[10px] text-slate-400">
-                    <span>Stored locally in browser</span>
+                    <span>Saved in browser</span>
                     <a
                       href="https://console.cloud.google.com/apis/credentials"
                       target="_blank"

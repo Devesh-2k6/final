@@ -766,7 +766,7 @@ def google_auth(body: schemas.GoogleAuthRequest, db: Annotated[Session, Depends(
     user_name = body.name.strip() if body.name and body.name.strip() else clean_email.split("@")[0].title()
     
     admin_env_email = os.getenv("ADMIN_EMAIL", "").strip().lower() or settings.ADMIN_EMAIL.strip().lower()
-    is_admin = (clean_email == admin_env_email)
+    is_admin = (clean_email == admin_env_email and body.role == "ADMIN")
 
     user = db.query(User).filter(User.email == clean_email).first()
 
