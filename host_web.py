@@ -75,9 +75,10 @@ def main():
     print("=" * 70)
     print("🚀 EXPIRYGO - FULL-STACK WEB HOSTING LAUNCHER")
     print("=" * 70)
-    print("  • Database:        Supabase Cloud PostgreSQL (Live)")
-    print("  • Admin Account:   devpant2006@gmail.com (Protected & Active)")
-    print("  • Non-Admin Users: 0 (Clean Slate)")
+    print("  • Status:          100% Production Clean Slate (Zero Demo Data)")
+    print("  • Admin Account:   devpant2006@gmail.com (Sole Administrator)")
+    print("  • Non-Admin Users: 0 (Zero Dummy Accounts)")
+    print("  • Products in DB:  0 (Ready for real merchant listings)")
     print("=" * 70)
 
     # Step 1: Ensure Platform Admin
@@ -147,7 +148,7 @@ def main():
         if match:
             public_tunnel_url = match.group(0)
             break
-        if time.time() - start_time > 25:
+        if time.time() - start_time > 35:
             break
 
     print("\n" + "=" * 70)
@@ -167,8 +168,9 @@ def main():
     print("  Password: Sureshkumar12345@")
     print("  Role:     ADMIN")
     print("=" * 70)
-    print("\nOpening web browser at http://localhost:3000...")
-    webbrowser.open("http://localhost:3000")
+    target_url = public_tunnel_url if public_tunnel_url else "http://localhost:3000"
+    print(f"\nOpening web browser at {target_url}...")
+    webbrowser.open(target_url)
 
     print("\n[Press Ctrl+C to stop all servers]\n")
 

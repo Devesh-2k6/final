@@ -16,17 +16,38 @@ def health_check():
 @router.get("/network")
 def get_network_info():
     import socket
+    import os
+    import re
     lan_ip = "127.0.0.1"
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         detected = s.getsockname()[0]
         s.close()
-        if detected and not detected.startswith("127."):
+        if detected and not detected.startswith("127.") and not detected.startswith("169.254."):
             lan_ip = detected
     except Exception:
+        pass
+
+    if lan_ip == "127.0.0.1" and os.name == "nt":
         try:
-            lan_ip = socket.gethostbyname(socket.gethostname())
+            import subprocess
+            out = subprocess.getoutput("ipconfig")
+            sections = re.split(r"\n(?=[A-Za-z])", out)
+            for sec in sections:
+                if "Default Gateway" in sec and not re.search(r"Default Gateway[.\s]+:\s*$", sec, re.M):
+                    m = re.search(r"IPv4 Address[.\s]+:\s*([0-9.]+)", sec)
+                    if m and not m.group(1).startswith("127.") and not m.group(1).startswith("169.254."):
+                        lan_ip = m.group(1)
+                        break
+        except Exception:
+            pass
+
+    if lan_ip == "127.0.0.1":
+        try:
+            detected = socket.gethostbyname(socket.gethostname())
+            if detected and not detected.startswith("127."):
+                lan_ip = detected
         except Exception:
             pass
 

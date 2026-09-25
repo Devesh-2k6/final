@@ -123,8 +123,17 @@ def run_deep_analysis():
         ("Unified Static Admin (/admin -> admin.html)", "http://localhost:8000/admin"),
         ("Unified Static Pantry (/pantry -> pantry.html)", "http://localhost:8000/pantry"),
         ("Unified Static Map (/map -> map.html)", "http://localhost:8000/map"),
-        ("Unified Webpack Runtime Chunk", "http://localhost:8000/_next/static/chunks/webpack-3a5117685be625fb.js"),
     ]
+    # Auto-detect current webpack runtime chunk
+    chunks_dir = os.path.join(os.path.dirname(__file__), "out", "_next", "static", "chunks")
+    webpack_chunk = "webpack-561e2b5d13c74787.js"
+    if os.path.exists(chunks_dir):
+        for f in os.listdir(chunks_dir):
+            if f.startswith("webpack-") and f.endswith(".js"):
+                webpack_chunk = f
+                break
+    unified_routes.append(("Unified Webpack Runtime Chunk", f"http://localhost:8000/_next/static/chunks/{webpack_chunk}"))
+
     for name, url in unified_routes:
         res = test_endpoint(url, timeout=10)
         record("Unified Production Web (8000)", name, res)
@@ -158,7 +167,8 @@ def run_deep_analysis():
     try:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
-        proc = subprocess.run([sys.executable, "-m", "pytest", "backend/tests", "-q"], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=r"c:\Users\DEVESH\Downloads\expirygo", env=env)
+        backend_dir = os.path.join(os.path.dirname(__file__), "backend")
+        proc = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=backend_dir, env=env)
         if proc.returncode == 0:
             print("[PASS] Pytest Suite (Auth, Shops, Products, Orders)   -> 59/59 Passed (100%)")
             results["passed"] += 1

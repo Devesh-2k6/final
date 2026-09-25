@@ -25,7 +25,7 @@ import { createProduct } from "@/services/products";
 
 export default function MobileHubPage() {
   const [activeTab, setActiveTab] = useState<"expogo" | "apk" | "sync">("expogo");
-  const [hostIp, setHostIp] = useState<string>("192.168.1.4");
+  const [hostIp, setHostIp] = useState<string>("127.0.0.1");
   const [expoPort, setExpoPort] = useState<string>("8081");
   const [copied, setCopied] = useState<string | null>(null);
   const [connectionMode, setConnectionMode] = useState<"lan" | "tunnel" | "custom">("lan");

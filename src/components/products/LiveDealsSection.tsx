@@ -131,16 +131,16 @@ export default function LiveDealsSection() {
           <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
             🛒
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2">Clean Slate Active — Zero Test Deals</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-2">Live Neighborhood Radar Active</h3>
           <p className="text-slate-600 font-medium text-sm mb-6 max-w-md mx-auto">
-            All past test products were purged! Log in as an approved merchant or Platform Admin to upload fresh real-world products.
+            No active surplus clearance deals posted in this immediate window right now. Stores upload fresh surplus markdowns throughout the day.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/shop/setup" className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs sm:text-sm transition shadow-sm">
-              🏪 Add Shop & First Product
+              🏪 Register Store / Sell Surplus
             </Link>
             <Link href="/map" className="px-5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 rounded-xl font-bold text-xs sm:text-sm transition border border-purple-200">
-              Explore Live Radar Map
+              🗺️ Explore Live Store Map
             </Link>
           </div>
         </div>

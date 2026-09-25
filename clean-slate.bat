@@ -5,8 +5,8 @@ echo ============================================================
 echo.
 echo Wiping all demo products and preparing clean real-world environment...
 cd backend
-python clean_slate.py
+python setup_production_admin.py
 cd ..
 echo.
-echo Database is clean with 0 products. Ready for real uploads!
+echo Database is clean with 0 demo products and 0 demo accounts. Ready for production!
 pause

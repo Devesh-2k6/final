@@ -64,6 +64,18 @@ def ensure_demo_accounts() -> None:
     ensure_admin_account()
 
 
+def ensure_ecosystem_ready() -> None:
+    """Ensures platform Admin account is ready with zero demo data."""
+    ensure_admin_account()
+    init_db()
+    db = SessionLocal()
+    try:
+        active_shops = db.query(Shop).filter(Shop.is_active == True, Shop.approval_status == "APPROVED").count()
+        print(f"[OK] Ecosystem ready (Active approved stores: {active_shops}).")
+    finally:
+        db.close()
+
+
 def seed_database():
     init_db()
     db = SessionLocal()
@@ -95,6 +107,7 @@ def seed_database():
                 "address": "123 Anna Salai, Downtown Chennai",
                 "latitude": 13.0827,
                 "longitude": 80.2707,
+                "upi_id": "greenvalley@okaxis",
             },
             {
                 "name": "Fresh Mart Express",
@@ -104,6 +117,7 @@ def seed_database():
                 "address": "456 Usman Road, T. Nagar, Chennai",
                 "latitude": 13.0406,
                 "longitude": 80.2443,
+                "upi_id": "freshmart@okicici",
             },
             {
                 "name": "Daily Bazaar",
@@ -113,6 +127,7 @@ def seed_database():
                 "address": "789 Nungambakkam High Road, Chennai",
                 "latitude": 13.0598,
                 "longitude": 80.2206,
+                "upi_id": "dailybazaar@okhdfcbank",
             },
         ]
         
@@ -148,6 +163,10 @@ def seed_database():
                 approval_status="APPROVED",
                 approved_at=datetime.utcnow(),
                 approved_by="admin@test.com",
+                delivery_enabled=True,
+                upi_id=shop_info.get("upi_id"),
+                delivery_fee=25.0,
+                min_order_amount=50.0,
             )
             db.add(shop)
             db.flush()
@@ -340,6 +359,9 @@ def seed_database():
         db.add(admin_user)
         db.commit()
         print(f"  [OK] Admin created (login: admin@test.com / password123)")
+        
+        # Ensure Master Platform Admin
+        ensure_admin_account()
         
         print("\n" + "="*60)
         print("SUCCESS: SAMPLE DATA SEEDED SUCCESSFULLY!")

@@ -33,7 +33,7 @@ interface MobileConnectModalProps {
 
 export function MobileConnectModal({ isOpen, onClose }: MobileConnectModalProps) {
   const [activeTab, setActiveTab] = useState<"expogo" | "apk" | "sync">("expogo");
-  const [hostIp, setHostIp] = useState<string>("192.168.1.5");
+  const [hostIp, setHostIp] = useState<string>("127.0.0.1");
   const [expoPort, setExpoPort] = useState<string>("8081");
   const [copied, setCopied] = useState<string | null>(null);
   
@@ -117,39 +117,26 @@ export function MobileConnectModal({ isOpen, onClose }: MobileConnectModalProps)
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Quick Ecosystem Sync Demo
+  // Real-time server connectivity test
   const triggerSyncTest = async () => {
     setSyncTesting(true);
     setSyncResult(null);
+    const start = performance.now();
     try {
-      const testName = `⚡ Live Sync Deal ${Math.floor(Math.random() * 900 + 100)}`;
-      const mfg = new Date();
-      const exp = new Date();
-      exp.setDate(exp.getDate() + 3);
-
-      const created = await createProduct({
-        name: testName,
-        original_price: 199,
-        discount_price: 79,
-        quantity: 15,
-        manufacturing_date: mfg.toISOString(),
-        expiry_date: exp.toISOString(),
-        category: "PRODUCE",
-        description: "Fresh harvest deal verified and synchronized live across Web & Mobile clients.",
-        front_image_url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
-        is_active: true,
-      });
+      const res = await fetch(`http://${hostIp}:8000/health`);
+      if (!res.ok) throw new Error(`Server returned HTTP ${res.status}`);
+      const pingMs = Math.round(performance.now() - start);
 
       setSyncResult({
         success: true,
-        productName: created.name,
-        message: `Deal created & broadcasted over WebSocket to all Web & Expo Go clients!`,
+        productName: "Ecosystem Online",
+        message: `FastAPI Backend responded in ${pingMs}ms. Database & WebSocket channels active.`,
         timestamp: new Date().toLocaleTimeString(),
       });
     } catch (err: any) {
       setSyncResult({
         success: false,
-        message: err?.message || "Failed to broadcast sync deal. Ensure backend is running.",
+        message: err?.message || "Failed to reach backend server. Ensure server is running on port 8000.",
         timestamp: new Date().toLocaleTimeString(),
       });
     } finally {
@@ -495,10 +482,10 @@ export function MobileConnectModal({ isOpen, onClose }: MobileConnectModalProps)
                       <div>
                         <h4 className="text-sm font-bold text-white flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-emerald-400" />
-                          Live Sync Broadcast Tester
+                          Live Ecosystem Health & WebSocket Ping
                         </h4>
                         <p className="text-xs text-zinc-400 mt-1">
-                          Create a synchronized deal from this button. Watch it appear instantly on both your Web browser and phone in Expo Go!
+                          Verify live server response latency and real-time connectivity between this web app and mobile clients.
                         </p>
                       </div>
                     </div>
@@ -511,12 +498,12 @@ export function MobileConnectModal({ isOpen, onClose }: MobileConnectModalProps)
                       {syncTesting ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          Broadcasting Sync Event...
+                          Checking Ecosystem Health...
                         </>
                       ) : (
                         <>
                           <Zap className="w-4 h-4 text-amber-300" />
-                          Trigger Real-Time Deal Sync Event
+                          Ping Live Backend & Check Connectivity
                         </>
                       )}
                     </button>

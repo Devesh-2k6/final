@@ -970,7 +970,7 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                     <View style={styles.inputBox}>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="e.g. Green Valley Supermarket"
+                        placeholder="Enter your store / business name"
                         placeholderTextColor={Colors.textMuted}
                         value={vendorShopName}
                         onChangeText={setVendorShopName}
@@ -999,7 +999,7 @@ export const LoginScreen: React.FC<AuthScreenProps> = ({ navigation, route }) =>
                     <View style={styles.inputBox}>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="+91 9876543210"
+                        placeholder="10-digit mobile number"
                         placeholderTextColor={Colors.textMuted}
                         value={vendorPhone}
                         onChangeText={setVendorPhone}

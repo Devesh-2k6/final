@@ -5,16 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ShoppingCart, TrendingDown } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
-const MOCK_MESSAGES = [
-  "New rescue! 🥛 Fresh Milk saved at 60% off in Anna Nagar.",
-  "Hot Deal: 🥐 Croissants just dropped to ₹25 nearby!",
-  "Community Impact: 🌳 12.4kg of CO2 prevented in the last hour.",
-  "Limited Stock: 🍎 Only 2 baskets of Organic Apples left!",
+const PLATFORM_STATUS_MESSAGES = [
+  "Live surplus radar active — real-time listings from local verified stores.",
+  "Rescue fresh groceries before expiry at steep discounts.",
+  "Support local merchants and prevent food waste in your community.",
+  "Real-time notifications enabled for nearby markdown drops.",
 ];
 
 export function LiveDealTicker() {
   const { lastDeal } = useWebSocket();
-  const [message, setMessage] = useState(MOCK_MESSAGES[0]);
+  const [message, setMessage] = useState(PLATFORM_STATUS_MESSAGES[0]);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -25,9 +25,9 @@ export function LiveDealTicker() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % MOCK_MESSAGES.length);
+      setIndex((prev) => (prev + 1) % PLATFORM_STATUS_MESSAGES.length);
       if (!lastDeal) {
-        setMessage(MOCK_MESSAGES[(index + 1) % MOCK_MESSAGES.length]);
+        setMessage(PLATFORM_STATUS_MESSAGES[(index + 1) % PLATFORM_STATUS_MESSAGES.length]);
       }
     }, 5000);
     return () => clearInterval(interval);

@@ -16,12 +16,14 @@ if "%LAN_IP%"=="" (
 echo [Detected Active Network IP]: %LAN_IP%
 echo.
 
-:: 2. Ensure Port 8081 is clean
-python -c "import subprocess, re; out = subprocess.getoutput('netstat -ano | findstr :8081'); pids = set(re.findall(r'\s+(\d+)\r?$', out, re.M)); [subprocess.run(['taskkill', '/F', '/PID', pid], capture_output=True) for pid in pids if pid != '0']" 2>nul
+:: 2. Ensure Ports 8000, 3000, and 8081 are clean
+echo [Cleaning Ports 8000, 3000, 8081]...
+python clean_ports.py
+echo.
 
 :: 3. Ensure Database & Admin Account Ready
 echo [1/4] Ensuring Database and Administrator Account...
-python -c "import sys; sys.path.insert(0, 'backend'); from seed_data import ensure_admin_account; ensure_admin_account()"
+python -c "import sys; sys.path.insert(0, 'backend'); from seed_data import ensure_ecosystem_ready; ensure_ecosystem_ready()"
 echo.
 
 :: 4. Start Backend API

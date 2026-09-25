@@ -115,10 +115,17 @@ def test_web_to_app_sync():
     order_id = order_data["id"]
     print(f"\n✓ Step 8: Customer Placed Home Delivery Order via Mobile App -> Order ID #{order_id}")
 
-    # 9. Merchant on Web Transitions Order Lifecycle: ACCEPTED -> OUT_FOR_DELIVERY -> DELIVERED
+    # 9. Real-World Delivery Order Lifecycle:
+    # 9a. Customer reports UPI payment
+    client.post(f"/orders/{order_id}/report-payment", json={"upi_transaction_id": "UPI9876543210"}, headers=cust_headers)
+    # 9b. Merchant confirms receipt of funds
+    client.post(f"/orders/{order_id}/verify-payment", json={"confirmed": True}, headers=merchant_headers)
+    # 9c. Merchant accepts order & dispatches for delivery
     client.patch(f"/orders/{order_id}/status", json={"status": "ACCEPTED"}, headers=merchant_headers)
-    client.put(f"/orders/{order_id}/status", json={"status": "OUT_FOR_DELIVERY"}, headers=merchant_headers)
-    final_order_res = client.put(f"/orders/{order_id}/status", json={"status": "DELIVERED"}, headers=merchant_headers)
+    client.patch(f"/orders/{order_id}/status", json={"status": "OUT_FOR_DELIVERY"}, headers=merchant_headers)
+    # 9d. Customer provides 4-digit PIN at doorstep; Merchant verifies PIN to complete delivery
+    delivery_pin = order_data["delivery_pin"]
+    final_order_res = client.post(f"/orders/{order_id}/verify-delivery-pin", json={"pin": delivery_pin}, headers=merchant_headers)
     assert final_order_res.status_code == 200
     print(f"✓ Step 9: Web Merchant fulfilled order lifecycle -> Status: {final_order_res.json()['status']}")
 

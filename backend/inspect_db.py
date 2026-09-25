@@ -12,17 +12,20 @@ def inspect():
         print("Engine URL:", engine.url.render_as_string(hide_password=True))
         
         # Check dialect and server version
-        res = db.execute(text("SELECT version();")).scalar()
-        print("Postgres Version:", res)
-        
-        # Check current database size
-        size_res = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()));")).scalar()
-        print("Database Size:", size_res)
-        
-        # Check connection count
-        conn_res = db.execute(text("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database();")).scalar()
-        max_conn = db.execute(text("SHOW max_connections;")).scalar()
-        print(f"Active Connections: {conn_res} / Max Configured: {max_conn}")
+        if "sqlite" in engine.url.drivername:
+            res = db.execute(text("SELECT sqlite_version();")).scalar()
+            print("SQLite Version:", res)
+        else:
+            try:
+                res = db.execute(text("SELECT version();")).scalar()
+                print("Postgres Version:", res)
+                size_res = db.execute(text("SELECT pg_size_pretty(pg_database_size(current_database()));")).scalar()
+                print("Database Size:", size_res)
+                conn_res = db.execute(text("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database();")).scalar()
+                max_conn = db.execute(text("SHOW max_connections;")).scalar()
+                print(f"Active Connections: {conn_res} / Max Configured: {max_conn}")
+            except Exception as e:
+                print(f"DB Metrics Note: {e}")
 
         print("\n=== USERS IN DATABASE ===")
         users = db.query(User).order_by(User.created_at).all()

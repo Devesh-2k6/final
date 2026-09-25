@@ -50,38 +50,7 @@ const QUICK_CITIES = [
   { name: "Kochi", lat: 9.9312, lng: 76.2673 },
 ];
 
-const DEFAULT_SHOPS: ShopWithDescription[] = [
-  {
-    id: "shop-1",
-    name: "Green Valley Supermarket",
-    address: "123 Anna Salai, Downtown Chennai",
-    latitude: 13.0827,
-    longitude: 80.2707,
-    deal_count: 5,
-    average_rating: 4.8,
-    rating_count: 24,
-  },
-  {
-    id: "shop-2",
-    name: "Fresh Mart Express",
-    address: "456 Usman Road, T. Nagar, Chennai",
-    latitude: 13.0406,
-    longitude: 80.2443,
-    deal_count: 3,
-    average_rating: 4.6,
-    rating_count: 18,
-  },
-  {
-    id: "shop-3",
-    name: "Daily Bazaar",
-    address: "789 Nungambakkam High Road, Chennai",
-    latitude: 13.0598,
-    longitude: 80.2206,
-    deal_count: 4,
-    average_rating: 4.9,
-    rating_count: 32,
-  },
-];
+
 
 function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; // km
@@ -98,7 +67,7 @@ function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
 }
 
 export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
-  const [shops, setShops] = useState<ShopWithDescription[]>(DEFAULT_SHOPS);
+  const [shops, setShops] = useState<ShopWithDescription[]>([]);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
@@ -149,9 +118,11 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
         listShops().catch(() => []),
         getProducts({ hideExpired: true }).catch(() => []),
       ]);
+      setShops(shopList || []);
       if (shopList && shopList.length > 0) {
-        setShops(shopList);
         setSelectedShop(shopList[0]);
+      } else {
+        setSelectedShop(null);
       }
       setProducts(productList || []);
     } catch (err) {
@@ -234,10 +205,10 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
 
   // Generate interactive Leaflet Real Map HTML with pins, satellite option, and live route polyline
   const generateMapHtml = () => {
-    const activeShops = radiusFilteredShops.length > 0 ? radiusFilteredShops : DEFAULT_SHOPS;
+    const activeShops = radiusFilteredShops;
 
     const shopsJson = JSON.stringify(
-      activeShops.map((s) => ({
+      activeShops.map((s: ShopWithDescription) => ({
         id: s.id,
         name: s.name,
         address: s.address,
@@ -247,7 +218,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({ navigation }) => {
       }))
     );
 
-    const activeTarget = selectedShop || (activeShops[0] as any);
+    const activeTarget = selectedShop || (activeShops.length > 0 ? activeShops[0] : null);
     const activeShopJson = activeTarget
       ? JSON.stringify({
           id: activeTarget.id,

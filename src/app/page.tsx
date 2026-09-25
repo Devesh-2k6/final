@@ -59,6 +59,34 @@ export default function Home() {
   const { playPopSound } = useSound();
   const toast = useToast();
 
+  // Dynamic Real-World Platform Impact State
+  const [platformImpact, setPlatformImpact] = useState<{
+    total_co2_kg: number;
+    total_items_rescued: number;
+    total_money_saved_inr: number;
+    active_shops: number;
+  }>({
+    total_co2_kg: 0,
+    total_items_rescued: 0,
+    total_money_saved_inr: 0,
+    active_shops: 0,
+  });
+
+  useEffect(() => {
+    apiRequest<any>("/health/platform-impact", { skipAuth: true })
+      .then((res) => {
+        if (res && res.status === "ok") {
+          setPlatformImpact({
+            total_co2_kg: Number(res.total_co2_kg) || 0,
+            total_items_rescued: Number(res.total_items_rescued) || 0,
+            total_money_saved_inr: Number(res.total_money_saved_inr) || 0,
+            active_shops: Number(res.active_shops) || 0,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Gap #22: Search Autocomplete Suggestions
   const [suggestions, setSuggestions] = useState<ApiProduct[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -234,13 +262,13 @@ export default function Home() {
           {/* Left Column: Mission, Headlines, Location Selector & Search */}
           <div className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left">
             
-            {/* Live City Badge */}
+            {/* Live Platform Badge */}
             <div className="inline-flex items-center gap-2.5 bg-purple-50 border border-purple-200/90 text-purple-800 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold mb-6 backdrop-blur-md shadow-xs">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-600"></span>
               </span>
-              <span>Live in Chennai & 12+ Metro Cities • 240+ Verified Stores</span>
+              <span>Real-Time Local Surplus Food & Grocery Rescue Engine</span>
             </div>
 
             {/* Main Headline */}
@@ -384,23 +412,23 @@ export default function Home() {
               </MagneticButton>
             </div>
 
-            {/* Real Impact Proof Strip */}
+            {/* Real Platform Guarantees Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-purple-100 w-full">
               <div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900">⭐ 4.9 / 5</div>
-                <div className="text-xs font-bold text-slate-500">2,400+ reviews</div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900">Up to 70%</div>
+                <div className="text-xs font-bold text-slate-500">Daily dynamic discounts</div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-black text-purple-700">240+ Stores</div>
-                <div className="text-xs font-bold text-slate-500">Verified local shops</div>
+                <div className="text-xl sm:text-2xl font-black text-purple-700">100% Direct</div>
+                <div className="text-xs font-bold text-slate-500">Local shop pickup</div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-black text-indigo-700">15.5 Tons</div>
-                <div className="text-xs font-bold text-slate-500">CO₂ emissions saved</div>
+                <div className="text-xl sm:text-2xl font-black text-indigo-700">Zero Fees</div>
+                <div className="text-xs font-bold text-slate-500">Instant merchant UPI</div>
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-black text-violet-700">Zero Fees</div>
-                <div className="text-xs font-bold text-slate-500">Instant UPI & pickup</div>
+                <div className="text-xl sm:text-2xl font-black text-violet-700">Verified</div>
+                <div className="text-xs font-bold text-slate-500">FSSAI & GPS certified</div>
               </div>
             </div>
 
@@ -429,22 +457,25 @@ export default function Home() {
               {/* Embedded Interactive Map Canvas */}
               <HeroMap />
 
-              {/* Floating Bottom Quick Deal Preview Card */}
+              {/* Floating Bottom Live Radar Status Indicator */}
               <div className="absolute bottom-4 inset-x-4 z-20 pointer-events-none">
                 <div className="bg-white/95 backdrop-blur-xl p-3.5 rounded-2xl border border-purple-100 shadow-xl flex items-center justify-between gap-3 pointer-events-auto">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-xl shrink-0">
-                      🥐
+                    <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shrink-0">
+                      <Compass size={22} className="animate-spin" style={{ animationDuration: "12s" }} />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-slate-900 leading-tight">Fresh Sourdough Bread (2 left)</p>
-                      <p className="text-[11px] font-semibold text-purple-700 mt-0.5">Green Valley Supermarket • 2.4 km</p>
+                      <p className="text-xs font-black text-slate-900 leading-tight">Live Store Radar Active</p>
+                      <p className="text-[11px] font-semibold text-purple-700 mt-0.5">Real-time GPS surplus tracking enabled</p>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-xs font-black text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
-                      70% OFF
-                    </span>
+                    <Link
+                      href="/map"
+                      className="text-xs font-black text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg border border-purple-200 transition inline-block"
+                    >
+                      Explore Map
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -542,44 +573,46 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
           <div className="max-w-3xl mb-12 relative z-10">
-            <span className="text-xs sm:text-sm font-black text-purple-400 tracking-widest uppercase mb-2 block">
-              Sustainability & Carbon Impact
-            </span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold mb-3 border border-purple-400/20">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Real-Time Verified Database Metrics
+            </div>
             <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
               Real Impact. Measurable Waste Reduction.
             </h2>
             <p className="text-purple-200/80 text-base sm:text-lg font-medium">
-              Every item you rescue prevents methane emissions from organic landfill decomposition while saving you hard-earned money.
+              Every item rescued prevents greenhouse methane emissions from landfill decomposition while saving consumers hard-earned money.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
             <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
               <div className="text-4xl sm:text-5xl font-black text-purple-300 mb-2 flex items-baseline">
-                <AnimatedCounter value={6.2} decimals={1} />
-                <span className="text-xl ml-1">tons</span>
+                <AnimatedCounter value={platformImpact.total_items_rescued} />
+                <span className="text-xl ml-2 font-bold text-purple-200">items</span>
               </div>
-              <p className="text-sm font-bold text-purple-100">Surplus groceries rescued this month</p>
+              <p className="text-sm font-bold text-purple-100">Surplus groceries rescued</p>
             </div>
 
             <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
               <div className="text-4xl sm:text-5xl font-black text-indigo-300 mb-2 flex items-baseline">
-                <AnimatedCounter value={15.5} decimals={1} />
-                <span className="text-xl ml-1">tons</span>
+                <AnimatedCounter value={platformImpact.total_co2_kg} decimals={platformImpact.total_co2_kg > 0 ? 1 : 0} />
+                <span className="text-xl ml-2 font-bold text-indigo-200">kg</span>
               </div>
-              <p className="text-sm font-bold text-purple-100">CO₂ greenhouse emissions saved</p>
+              <p className="text-sm font-bold text-purple-100">CO₂ emissions prevented</p>
             </div>
 
             <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
               <div className="text-4xl sm:text-5xl font-black text-pink-300 mb-2 flex items-baseline">
-                <AnimatedCounter value={18} prefix="₹" suffix="L+" />
+                <AnimatedCounter value={platformImpact.total_money_saved_inr} prefix="₹" />
               </div>
-              <p className="text-sm font-bold text-purple-100">Saved by smart shoppers in Chennai</p>
+              <p className="text-sm font-bold text-purple-100">Saved by smart shoppers</p>
             </div>
 
             <div className="bg-white/10 border border-white/15 rounded-2xl p-6 backdrop-blur-md">
               <div className="text-4xl sm:text-5xl font-black text-violet-300 mb-2 flex items-baseline">
-                <AnimatedCounter value={240} suffix="+" />
+                <AnimatedCounter value={platformImpact.active_shops} />
+                <span className="text-xl ml-2 font-bold text-violet-200">stores</span>
               </div>
               <p className="text-sm font-bold text-purple-100">Registered local supermarkets & bakeries</p>
             </div>

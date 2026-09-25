@@ -28,48 +28,7 @@ import { useToast } from "@/components/ui/Toast";
 
 const UPI_REGEX = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
 
-const SAMPLE_FOOD_SHOPS = [
-  {
-    label: "🛒 Spencer Plaza Supermarket (Chennai)",
-    name: "Spencer Plaza Store",
-    type: "supermarket",
-    address: "Anna Salai, Thousand Lights, Chennai, Tamil Nadu, 600002, India",
-    lat: 13.06158,
-    lon: 80.26094,
-    upi_id: "spencer.plaza@okhdfcbank",
-    description: "Supermarket offering fresh bakery goods, dairy, vegetables, and beverages.",
-  },
-  {
-    label: "🍰 Devi Sweets & Bakery (Delhi)",
-    name: "Devi Sweets & Bakery",
-    type: "bakery",
-    address: "Connaught Place, New Delhi, Delhi, 110001, India",
-    lat: 28.6304,
-    lon: 77.2177,
-    upi_id: "devisweets@paytm",
-    description: "Fresh daily artisan bread, bakery items, pastries, and sweets.",
-  },
-  {
-    label: "🥗 Green Valley Organics (Bengaluru)",
-    name: "Green Valley Supermarket",
-    type: "grocery",
-    address: "MG Road, Bengaluru, Karnataka, 560001, India",
-    lat: 12.9716,
-    lon: 77.5946,
-    upi_id: "greenvalley@icici",
-    description: "Organic groceries, farm milk, fresh fruits, and daily essentials.",
-  },
-  {
-    label: "☕ Nilgiris Bakery & Dairy (Chennai)",
-    name: "Nilgiris Fresh Mart",
-    type: "grocery",
-    address: "T. Nagar, Chennai, Tamil Nadu, 600017, India",
-    lat: 13.0418,
-    lon: 80.2341,
-    upi_id: "nilgiris@oksbi",
-    description: "Dairy, fresh cakes, cookies, juices, and packaged groceries.",
-  },
-];
+
 
 export default function ShopSetupPage() {
   const router = useRouter();
@@ -163,22 +122,7 @@ export default function ShopSetupPage() {
     []
   );
 
-  const handleApplyPreset = (preset: (typeof SAMPLE_FOOD_SHOPS)[0]) => {
-    setShopName(preset.name);
-    setShopType(preset.type);
-    setAddress(preset.address);
-    setDescription(preset.description);
-    setLatitude(preset.lat);
-    setLongitude(preset.lon);
-    if (preset.upi_id) {
-      setUpiId(preset.upi_id);
-      setUpiError(null);
-    }
 
-    if (isEmailVerified) {
-      runLocationVerification(preset.name, preset.address, preset.lat, preset.lon);
-    }
-  };
 
   const handleLocationPicked = (loc: { lat: number; lng: number; address?: string }) => {
     setLatitude(loc.lat);
@@ -331,28 +275,6 @@ export default function ShopSetupPage() {
           animate="animate"
           className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 sm:p-10"
         >
-          {/* Quick Presets */}
-          <div className="mb-8 p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40">
-            <div className="flex items-center gap-2 text-xs font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-2">
-              <Sparkles size={14} /> Popular Verified Business Locations (1-Click Fill)
-            </div>
-            <p className="text-xs text-slate-600 dark:text-gray-400 mb-3 font-medium">
-              Click any verified food landmark below to auto-fill details and GPS pin:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SAMPLE_FOOD_SHOPS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleApplyPreset(preset)}
-                  className="bg-white dark:bg-gray-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 text-xs font-bold py-1.5 px-3 rounded-xl transition shadow-sm cursor-pointer"
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Step 1: Basic Info */}
             <div className="space-y-5">
@@ -369,7 +291,7 @@ export default function ShopSetupPage() {
                   type="text"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
-                  placeholder="e.g. Spencer Plaza Supermarket / Devi Sweets"
+                  placeholder="Enter your store / business name"
                   className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm"
                   required
                 />

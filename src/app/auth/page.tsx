@@ -1063,7 +1063,7 @@ export default function AuthPage() {
                     value={vendorShopName}
                     onChange={(e) => setVendorShopName(e.target.value)}
                     className="w-full rounded-2xl border border-orange-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-orange-500 text-sm font-medium"
-                    placeholder="e.g. Green Valley Supermarket"
+                    placeholder="Enter your store / business name"
                   />
                 </div>
                 <div>
@@ -1093,7 +1093,7 @@ export default function AuthPage() {
                     value={vendorPhone}
                     onChange={(e) => setVendorPhone(e.target.value)}
                     className="w-full rounded-2xl border border-orange-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-orange-500 text-sm font-medium"
-                    placeholder="+91 9876543210"
+                    placeholder="10-digit mobile number"
                   />
                 </div>
                 <div>
@@ -1110,7 +1110,7 @@ export default function AuthPage() {
                     value={vendorUpiId}
                     onChange={(e) => setVendorUpiId(e.target.value)}
                     className="w-full rounded-2xl border border-orange-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950 text-slate-900 dark:text-white px-4 py-3 outline-none focus:border-orange-500 text-sm font-medium"
-                    placeholder="e.g. merchant@okhdfcbank or 9876543210@paytm"
+                    placeholder="e.g. yourbusiness@upi"
                   />
                 </div>
 

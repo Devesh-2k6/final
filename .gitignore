@@ -9,6 +9,9 @@ mobile/node_modules/
 .next/
 out/
 .expo/
+__pycache__/
+*.pyc
+*.tsbuildinfo
 backend/venv/
 backend/__pycache__/
 backend/*.pyc

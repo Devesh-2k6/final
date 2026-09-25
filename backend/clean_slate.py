@@ -159,4 +159,5 @@ def clear_all_demo_data():
         db.close()
 
 if __name__ == "__main__":
-    clear_all_demo_data()
+    from setup_production_admin import setup_production_admin
+    setup_production_admin()
