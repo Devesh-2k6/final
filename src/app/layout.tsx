@@ -36,6 +36,8 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#7C3AED" />
+        {/* Google Identity Services for 1-Click Google Sign In (Same as App Emergent) */}
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className={`${inter.className} min-h-screen bg-[#FAFAFE] text-slate-900 selection:bg-purple-500/25 overflow-x-hidden relative`} suppressHydrationWarning>
         <HydrationZapper />
