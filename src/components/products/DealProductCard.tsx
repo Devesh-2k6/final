@@ -16,7 +16,9 @@ import {
   ArrowUpRight,
   ChevronDown,
   Volume2,
-  ShoppingBag
+  ShoppingBag,
+  Store,
+  ShieldCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -118,10 +120,10 @@ export const DealProductCard = React.memo(function DealProductCardBase({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-white dark:bg-gray-900 rounded-[2rem] border border-slate-200/80 dark:border-gray-800 p-3.5 shadow-sm hover:shadow-md transition-all duration-300 relative flex flex-col gap-3 group"
+      className="bg-white dark:bg-[#0F141F] rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-3 shadow-xs hover:shadow-xl hover:shadow-black/5 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 relative flex flex-col gap-3 group"
     >
       {/* ── Top Hero Image Container ── */}
-      <div className="relative w-full aspect-[16/10] rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-gray-800">
+      <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800/80">
         <Image
           src={imgSrc}
           alt={name}
@@ -132,9 +134,9 @@ export const DealProductCard = React.memo(function DealProductCardBase({
         />
 
         {/* Top-Left: Discount Badge */}
-        <div className="absolute top-3 left-3 z-10">
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-[#FF5B26] text-white shadow-md shadow-orange-500/30 tracking-tight">
-            🔥 {discountPercent}% OFF
+        <div className="absolute top-2.5 left-2.5 z-10">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black bg-zinc-950/80 backdrop-blur-md text-emerald-400 border border-emerald-500/30 tracking-tight">
+            {discountPercent}% OFF
           </span>
         </div>
 
@@ -143,17 +145,17 @@ export const DealProductCard = React.memo(function DealProductCardBase({
           <button
             type="button"
             onClick={(e) => onToggleFavorite(id, isFavorite, e)}
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 dark:bg-gray-900/90 shadow-md flex items-center justify-center text-slate-400 hover:text-red-500 transition active:scale-90 cursor-pointer"
+            className="absolute top-2.5 right-2.5 z-10 w-8 h-8 rounded-lg bg-zinc-950/60 hover:bg-zinc-950/80 backdrop-blur-md border border-white/10 flex items-center justify-center text-zinc-300 hover:text-rose-500 transition cursor-pointer"
             title={isFavorite ? "Remove from Favorites" : "Save Deal"}
           >
-            <Heart size={18} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
+            <Heart size={15} className={isFavorite ? "fill-rose-500 text-rose-500" : ""} />
           </button>
         )}
 
         {/* Bottom-Left: Time Remaining Pill */}
-        <div className="absolute bottom-3 left-3 z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-slate-950/75 text-white backdrop-blur-md border border-white/10 shadow-sm">
-            <Clock size={12} className="text-orange-400" />
+        <div className="absolute bottom-2.5 left-2.5 z-10">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-950/80 text-zinc-200 backdrop-blur-md border border-white/10 shadow-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span>{expiryCountdown}</span>
           </div>
         </div>
@@ -163,50 +165,51 @@ export const DealProductCard = React.memo(function DealProductCardBase({
           <button
             type="button"
             onClick={(e) => onTogglePlay(id, e)}
-            className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-full bg-orange-500/90 text-white backdrop-blur-md flex items-center justify-center shadow-md active:scale-90 cursor-pointer"
+            className="absolute bottom-2.5 right-2.5 z-10 w-7 h-7 rounded-lg bg-zinc-950/80 text-white backdrop-blur-md border border-white/10 flex items-center justify-center cursor-pointer"
             title="Listen to Shopkeeper Voice Note"
           >
-            {isPlaying ? <Pause size={14} /> : <Volume2 size={14} />}
+            {isPlaying ? <Pause size={12} /> : <Volume2 size={12} />}
           </button>
         )}
       </div>
 
       {/* ── Content & Details ── */}
-      <div className="px-1 flex flex-col gap-2">
-        {/* Row 1: Category Tag (Orange) + Shop Name */}
-        <div className="flex items-center justify-between text-xs font-bold">
-          <span className="text-[#FF5B26] uppercase tracking-wider font-black text-[11px]">
+      <div className="px-1 flex flex-col gap-1.5">
+        {/* Row 1: Category Tag + Shop Name */}
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-zinc-400 uppercase tracking-widest font-black text-[9px]">
             {displayCategory}
           </span>
-          <div className="flex items-center gap-1 text-slate-400 dark:text-gray-400 text-xs font-semibold truncate max-w-[55%]">
-            <span>🏪</span>
+          <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400 font-medium truncate max-w-[60%]">
+            <Store size={12} className="text-zinc-400 shrink-0" />
             <span className="truncate">{shopSubtitle}</span>
+            <ShieldCheck size={11} className="text-emerald-500 shrink-0" />
             {distance !== null && (
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-1">
-                &bull; {distance.toFixed(1)}km
+              <span className="text-[10px] text-zinc-400 font-semibold ml-0.5">
+                • {distance.toFixed(1)}km
               </span>
             )}
           </div>
         </div>
 
         {/* Row 2: Product Title */}
-        <h3 className="font-black text-slate-900 dark:text-white text-base leading-snug line-clamp-1">
+        <h3 className="font-bold text-zinc-900 dark:text-white text-sm leading-snug line-clamp-1 capitalize">
           {name}
         </h3>
 
         {/* Row 3: Stock Quantity & AI Insights toggle */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-          <span className="flex items-center gap-1">
-            <span className={`w-2 h-2 rounded-full ${quantity <= 3 ? "bg-red-500 animate-pulse" : "bg-emerald-500"}`} />
-            {quantity} left in stock
+        <div className="flex items-center justify-between text-[11px] text-zinc-400 font-medium">
+          <span className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${quantity <= 3 ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+            {quantity} units left
           </span>
           <button
             type="button"
             onClick={() => setShowForecast(!showForecast)}
-            className="text-[10px] font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+            className="text-[10px] font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-white flex items-center gap-0.5 cursor-pointer"
           >
-            <Sparkles size={10} />
-            AI Insights
+            <Sparkles size={10} className="text-emerald-500" />
+            AI Forecast
             <ChevronDown size={10} className={`transition-transform duration-200 ${showForecast ? "rotate-180" : ""}`} />
           </button>
         </div>
@@ -218,28 +221,28 @@ export const DealProductCard = React.memo(function DealProductCardBase({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-800/40 rounded-2xl p-3 text-xs space-y-2 mt-1"
+              className="overflow-hidden bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-2.5 text-xs space-y-1.5 mt-1"
             >
-              <div className="flex justify-between items-center text-[10px] font-black text-orange-800 dark:text-orange-300">
-                <span>RESCUE PROBABILITY: {forecast.rescueProbability}%</span>
+              <div className="flex justify-between items-center text-[10px] font-bold text-zinc-700 dark:text-zinc-300">
+                <span>RESCUE CHANCE: {forecast.rescueProbability}%</span>
                 <span>EST. SELLOUT: ~{forecast.selloutHours}h</span>
               </div>
-              <p className="text-[10px] text-slate-600 dark:text-gray-300 leading-tight">
-                Floor: ₹{forecast.optimalPrice} &bull; Save ₹{(originalPrice - currentPrice).toFixed(0)} before expiry!
+              <p className="text-[10px] text-zinc-500 leading-tight">
+                Floor: ₹{forecast.optimalPrice} • Save ₹{(originalPrice - currentPrice).toFixed(0)} before expiry!
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Row 4: Price & Actions */}
-        <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-gray-800 mt-1">
-          {/* Price Block (Strictly No-Wrap) */}
+        <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800/80 mt-1">
+          {/* Price Block */}
           <div className="flex items-baseline gap-1.5 shrink-0 whitespace-nowrap">
-            <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+            <span className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
               ₹{Math.round(currentPrice)}
             </span>
             {originalPrice > currentPrice && (
-              <span className="text-xs font-semibold text-slate-400 line-through">
+              <span className="text-xs font-medium text-zinc-400 line-through">
                 ₹{Math.round(originalPrice)}
               </span>
             )}
@@ -252,24 +255,24 @@ export const DealProductCard = React.memo(function DealProductCardBase({
               <button
                 type="button"
                 onClick={(e) => (onQuickRecipe ? onQuickRecipe(id, e) : onToggleRecipeBasket?.(id, e))}
-                className="h-8 px-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 border border-orange-200/80 dark:border-orange-800/60 font-bold text-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                title="1-Click Instant AI Recipe for this item"
+                className="h-8 px-2.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
+                title="AI Recipe for this item"
               >
-                <Sparkles size={12} className="text-orange-500" />
-                <span>Recipe</span>
+                <Sparkles size={11} className="text-emerald-500" />
+                <span className="text-[11px]">Recipe</span>
               </button>
             )}
 
-            {/* Direct Order / Buy Button (Swiggy / Zepto Style) */}
+            {/* Direct Order Button */}
             {onReserve && !expiryIsExpired && quantity > 0 && (
               <button
                 type="button"
                 onClick={() => onReserve(id)}
-                className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition active:scale-95 cursor-pointer shrink-0"
-                title="Order for Doorstep Delivery or Store Pickup"
+                className="h-8 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shrink-0 shadow-xs"
+                title="Claim Deal"
               >
-                <ShoppingBag size={13} />
-                <span>Order</span>
+                <ShoppingBag size={12} />
+                <span>Claim</span>
               </button>
             )}
           </div>

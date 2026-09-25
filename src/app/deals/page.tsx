@@ -41,6 +41,18 @@ import {
   Home,
   Lock,
   Smartphone,
+  Layers,
+  Apple,
+  Milk,
+  Wheat,
+  Beef,
+  Utensils,
+  Croissant,
+  Bookmark,
+  Store,
+  ArrowRight,
+  ArrowUpRight,
+  Flame,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -358,8 +370,9 @@ export default function CustomerDealsPage() {
     if (found) {
       setSelectedProductForOrder(found);
       setOrderQuantity(1);
-      // Default to Delivery if shop supports delivery, else fallback to Pickup
-      setOrderType(found.shop?.delivery_enabled !== false ? "DELIVERY" : "PICKUP");
+      // Default to Delivery only if shop supports delivery AND has a valid UPI ID configured
+      const canDeliver = Boolean(found.shop?.delivery_enabled && found.shop?.upi_id?.trim());
+      setOrderType(canDeliver ? "DELIVERY" : "PICKUP");
       setModalStep("details");
       setDeliveryName(user.name || "");
       setDeliveryPhone(user.phone_number || "");
@@ -622,129 +635,140 @@ export default function CustomerDealsPage() {
 
   return (
     <ShopperLayout>
-      <div className="min-h-screen bg-gradient-to-b from-[#FFF5F0] via-[#F8F9FA] to-[#F1F5F9] dark:from-gray-950 dark:to-gray-900 pb-24 transition-colors">
+      <div className="min-h-screen bg-[#FAFAFC] dark:bg-[#0B0F17] pb-24 transition-colors">
         {/* ── Header ─────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-b border-orange-100/60 dark:border-gray-800 px-4 lg:px-8 pt-3 pb-2.5 shadow-sm">
-          <div className="w-full max-w-2xl lg:max-w-7xl mx-auto">
-          {/* Top row: QR icon + ExpiryGo branding + Shopper role + notifications */}
-          <div className="flex items-center justify-between mb-3">
-            <Link
-              href="/reservations"
-              className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-slate-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-gray-700 transition border border-slate-200/60 dark:border-gray-700 shadow-sm"
-              title="QR Pickup Code"
-            >
-              <QrCode size={20} />
-            </Link>
-
-            <div className="text-center">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tight flex items-center justify-center gap-1">
-                <span>🌱 Mee<span className="text-[#FF5B26]">va</span></span>
-              </h1>
-              <p className="text-[11px] font-semibold text-slate-400 dark:text-gray-400 leading-none mt-1">
-                Rescue surplus quality food
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/profile"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50/80 dark:bg-orange-950/40 border border-orange-200/80 dark:border-orange-800/40 rounded-xl text-[11px] font-black text-orange-700 dark:text-orange-300 shadow-sm"
-              >
-                <ShoppingBag size={13} className="text-[#FF5B26]" />
-                Shopper
-              </Link>
-
-              <Link
-                href="/notifications"
-                className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-gray-800 flex items-center justify-center text-slate-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-gray-700 transition relative border border-slate-200/60 dark:border-gray-700 shadow-sm"
-              >
-                <Bell size={18} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#FF5B26] rounded-full ring-2 ring-white dark:ring-gray-900" />
-              </Link>
-            </div>
-          </div>
-
-          {/* Search bar + Recipe Generator Button Row */}
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1 bg-slate-100/90 dark:bg-gray-800/90 rounded-2xl border border-slate-200/80 dark:border-gray-700/80 flex items-center px-3.5 py-2.5 shadow-inner">
-              <Search size={18} className="text-slate-400 mr-2.5 flex-shrink-0" />
-              <input
-                id="deals-search"
-                type="search"
-                placeholder="Search surplus food, groceries, shops..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-transparent text-sm text-slate-800 dark:text-white placeholder:text-slate-400 outline-none font-semibold"
-              />
-              {/* Filter Button inside Search Bar */}
+        <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#0F141F]/80 backdrop-blur-xl border-b border-zinc-200/70 dark:border-zinc-800/80 px-4 lg:px-8 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+          <div className="w-full max-w-2xl lg:max-w-7xl mx-auto space-y-3">
+            {/* Top Row: Location Selector & Quick Action Pills */}
+            <div className="flex items-center justify-between gap-3">
+              {/* Left: Location Selector Pill */}
               <button
                 type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className={`p-1.5 rounded-xl transition ml-1.5 flex-shrink-0 cursor-pointer ${
-                  showFilters || isDeepSearchActive
-                    ? "bg-orange-500 text-white shadow-sm"
-                    : "text-slate-400 hover:text-orange-500 hover:bg-slate-200/60 dark:hover:bg-gray-700"
-                }`}
-                title="Deep Search & Distance Filters"
+                onClick={handleUseLocation}
+                disabled={isLocating}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition border border-zinc-200/60 dark:border-zinc-700/60 cursor-pointer"
               >
-                <SlidersHorizontal size={17} />
+                <MapPin size={13} className="text-emerald-500 shrink-0" />
+                <span className="truncate max-w-[130px] sm:max-w-xs font-bold text-zinc-900 dark:text-white">
+                  {locationCity || (lat && lng ? "Live GPS Location" : "Chennai, Anna Nagar")}
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <ChevronDown size={12} className="text-zinc-400 shrink-0" />
               </button>
-              <Link href="/map" className="text-slate-400 hover:text-orange-500 transition ml-1.5 flex-shrink-0" title="Map View">
-                <MapPin size={18} />
+
+              {/* Right: Quick Actions */}
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/reservations"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition border border-zinc-200/60 dark:border-zinc-700/60"
+                  title="Counter QR Pickup Pass"
+                >
+                  <QrCode size={13} className="text-zinc-500" />
+                  <span className="hidden sm:inline">Pickups</span>
+                </Link>
+
+                <Link
+                  href="/notifications"
+                  className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 transition relative border border-zinc-200/60 dark:border-zinc-700/60"
+                  title="Notifications"
+                >
+                  <Bell size={14} />
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-900" />
+                </Link>
+
+                {user && (
+                  <Link
+                    href="/profile"
+                    className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center font-bold text-xs"
+                    title={user.name || "Profile"}
+                  >
+                    {user.name ? user.name[0].toUpperCase() : "U"}
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Search Bar + Filters + AI Recipe Studio */}
+            <div className="flex items-center gap-2.5">
+              <div className="relative flex-1 bg-zinc-50 dark:bg-zinc-900/90 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center px-3.5 py-2.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10 transition shadow-2xs">
+                <Search size={15} className="text-zinc-400 mr-2.5 shrink-0" />
+                <input
+                  id="deals-search"
+                  type="search"
+                  placeholder="Search surplus food, groceries, nearby bakeries, shops..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-transparent text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none font-medium"
+                />
+                
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      showFilters || isDeepSearchActive
+                        ? "bg-emerald-600 text-white shadow-2xs"
+                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800"
+                    }`}
+                    title="Filters & Budget"
+                  >
+                    <SlidersHorizontal size={13} />
+                    <span className="hidden md:inline text-[11px]">Filters</span>
+                    {isDeepSearchActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />}
+                  </button>
+
+                  <Link
+                    href="/map"
+                    className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800 rounded-lg transition"
+                    title="Map View"
+                  >
+                    <MapPin size={15} />
+                  </Link>
+                </div>
+              </div>
+
+              {/* AI Recipe Assistant Pill */}
+              <Link
+                href="/pantry"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-2xs shrink-0 transition"
+                title="AI Recipe Studio"
+              >
+                <Sparkles size={13} className="text-emerald-400 dark:text-emerald-600" />
+                <span>Recipe Studio</span>
               </Link>
             </div>
 
-            {/* AI Recipe Generator Button */}
-            <Link
-              href="/pantry"
-              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#FF5B26] hover:bg-[#E54B18] text-white flex items-center justify-center shadow-lg shadow-orange-500/25 flex-shrink-0 transition active:scale-95 cursor-pointer"
-              title="AI Recipe Generator"
-            >
-              <ChefHat size={22} />
-            </Link>
-          </div>
-
-          {/* Circular Category Pills Bar */}
-          <div className="flex items-center justify-start md:justify-center gap-3.5 sm:gap-6 mt-4 px-1 overflow-x-auto pb-2 scrollbar-hide">
-            {[
-              { id: "All", label: "All Deals", emoji: "🔥" },
-              { id: "AI Recommended ✨", label: "AI Picks", emoji: "✨" },
-              { id: "BAKERY", label: "Bakery", emoji: "🥐" },
-              { id: "DAIRY", label: "Dairy", emoji: "🥛" },
-              { id: "PRODUCE", label: "Produce", emoji: "🥗" },
-              { id: "MEAT", label: "Meat & Eggs", emoji: "🥩" },
-              { id: "PANTRY", label: "Pantry", emoji: "🌾" },
-              { id: "PREPARED_FOOD", label: "Ready Food", emoji: "🍱" },
-              { id: "Saved ❤️", label: "Saved", emoji: "❤️" },
-            ].map((cat) => {
-              const active = activeFilter === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveFilter(cat.id)}
-                  className="flex flex-col items-center gap-1.5 cursor-pointer group flex-shrink-0 min-w-[58px]"
-                >
-                  <div
-                    className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-2xl transition-all duration-200 border ${
+            {/* Segmented Category Filter Chips */}
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-hide pt-1">
+              {[
+                { id: "All", label: "All Deals", icon: Layers, color: "text-emerald-500" },
+                { id: "AI Recommended ✨", label: "AI Picks", icon: Sparkles, color: "text-purple-500" },
+                { id: "BAKERY", label: "Bakery", icon: Croissant, color: "text-amber-500" },
+                { id: "DAIRY", label: "Dairy", icon: Milk, color: "text-blue-500" },
+                { id: "PRODUCE", label: "Produce", icon: Apple, color: "text-emerald-500" },
+                { id: "MEAT", label: "Meat & Poultry", icon: Beef, color: "text-rose-500" },
+                { id: "PANTRY", label: "Pantry Staples", icon: Wheat, color: "text-amber-600" },
+                { id: "PREPARED_FOOD", label: "Ready Food", icon: Utensils, color: "text-orange-500" },
+                { id: "Saved ❤️", label: "Saved", icon: Bookmark, color: "text-rose-500" },
+              ].map((cat) => {
+                const active = activeFilter === cat.id;
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveFilter(cat.id)}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 ${
                       active
-                        ? "bg-orange-50 dark:bg-orange-950/60 border-[#FF5B26] shadow-md shadow-orange-500/20 scale-105"
-                        : "bg-white dark:bg-gray-800 border-slate-200/80 dark:border-gray-700 shadow-sm group-hover:bg-slate-50 group-hover:border-orange-200"
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-2xs"
+                        : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
                     }`}
                   >
-                    {cat.emoji}
-                  </div>
-                  <span
-                    className={`text-[11px] font-black tracking-tight whitespace-nowrap ${
-                      active
-                        ? "text-[#FF5B26]"
-                        : "text-slate-600 dark:text-gray-400 group-hover:text-slate-900 dark:group-hover:text-white"
-                    }`}
-                  >
-                    {cat.label}
-                  </span>
-                </button>
-              );
-            })}
+                    <Icon size={13} className={active ? "text-emerald-400 dark:text-emerald-600" : cat.color} />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           
           {/* Advanced Collapsible Filter Drawer */}
@@ -920,7 +944,6 @@ export default function CustomerDealsPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
       </header>
 
       {/* ── Map quick-access banner ─────────────────────────────────── */}
@@ -1037,36 +1060,70 @@ export default function CustomerDealsPage() {
       <main className="p-4 lg:p-8 w-full max-w-2xl lg:max-w-7xl mx-auto space-y-6">
         {/* Dynamic Featured Surplus Hero Card (Only displayed when real deals exist) */}
         {displayProducts.length > 0 && (
-          <div className="relative rounded-[2rem] overflow-hidden bg-slate-900 text-white shadow-xl shadow-slate-900/15 p-5 flex flex-col justify-end min-h-[170px]">
-            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&auto=format&fit=crop&q=80')] bg-cover bg-center opacity-60 mix-blend-luminosity" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-900/40 z-10" />
-            <div className="absolute top-4 left-4 z-20">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#FF5B26] text-white shadow-md shadow-orange-500/30">
-                🔥 FEATURED SURPLUS RESCUE
-              </span>
-            </div>
+          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-zinc-950 via-slate-900 to-emerald-950/80 text-white shadow-xl shadow-zinc-950/10 p-6 sm:p-7 border border-zinc-800/80">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.15),transparent_50%)] pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Featured Surplus Rescue
+                </div>
+                
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight capitalize">
+                  {displayProducts[0].name}
+                </h2>
+                
+                <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-normal">
+                  Rescuing from <span className="font-semibold text-white">{displayProducts[0].shop?.name || "Verified Store"}</span>. Save up to {Math.max(5, Math.min(95, Math.round((1 - (displayProducts[0].current_price || displayProducts[0].discount_price) / (displayProducts[0].original_price || 1)) * 100)))}% off retail pricing before clearance expiry.
+                </p>
 
-            <div className="relative z-20 mt-10">
-              <h2 className="text-lg font-black text-white tracking-tight leading-tight">
-                {displayProducts[0].name}
-              </h2>
-              <p className="text-xs text-slate-300 font-semibold mt-1">
-                Save up to {Math.max(5, Math.min(95, Math.round((1 - (displayProducts[0].current_price || displayProducts[0].discount_price) / (displayProducts[0].original_price || 1)) * 100)))}% &bull; {displayProducts[0].shop?.name || "Verified Store"}
-              </p>
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleReserve(displayProducts[0].id)}
+                    className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-500/20 cursor-pointer"
+                  >
+                    <span>Claim Surplus Deal</span>
+                    <ArrowRight size={14} />
+                  </button>
+
+                  <span className="text-xs text-zinc-400 font-medium">
+                    {displayProducts[0].quantity} units remaining
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Hero Thumbnail */}
+              <div className="relative w-full md:w-56 h-36 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shrink-0">
+                <img
+                  src={displayProducts[0].front_image_url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400"}
+                  alt={displayProducts[0].name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-zinc-950/80 backdrop-blur-md text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+                  Save {Math.max(5, Math.min(95, Math.round((1 - (displayProducts[0].current_price || displayProducts[0].discount_price) / (displayProducts[0].original_price || 1)) * 100)))}%
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Popular Surplus Deals Section Title */}
         <div className="flex items-center justify-between pt-2">
-          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-            Popular Surplus Deals
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">
+              Curated Surplus Deals
+            </h3>
+            <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+              Near You
+            </span>
+          </div>
           <button
             onClick={() => setActiveFilter("All")}
-            className="text-xs font-bold text-[#FF5B26] hover:underline"
+            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
           >
-            See All
+            View All ({displayProducts.length})
           </button>
         </div>
         {/* AI Recipe Ingredient Matcher Card */}
@@ -1421,32 +1478,40 @@ export default function CustomerDealsPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {/* Option 1: Doorstep Delivery */}
-                    <button
-                      type="button"
-                      onClick={() => setOrderType("DELIVERY")}
-                      className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between relative cursor-pointer ${
-                        orderType === "DELIVERY"
-                          ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm"
-                          : "bg-white dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 hover:border-emerald-300 opacity-75 hover:opacity-100"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${orderType === "DELIVERY" ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}`}>
-                          <Truck size={15} />
-                        </div>
-                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${orderType === "DELIVERY" ? "bg-emerald-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}`}>
-                          30–45 Mins
-                        </span>
-                      </div>
-                      <div>
-                        <div className="text-xs font-black text-gray-900 dark:text-white">
-                          Doorstep Delivery
-                        </div>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                          Delivery fee: ₹{selectedProductForOrder.shop?.delivery_fee ?? 35}
-                        </div>
-                      </div>
-                    </button>
+                    {(() => {
+                      const canDeliver = Boolean(selectedProductForOrder.shop?.delivery_enabled && selectedProductForOrder.shop?.upi_id?.trim());
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => canDeliver && setOrderType("DELIVERY")}
+                          disabled={!canDeliver}
+                          className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between relative ${
+                            !canDeliver
+                              ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800"
+                              : orderType === "DELIVERY"
+                              ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm cursor-pointer"
+                              : "bg-white dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 hover:border-emerald-300 opacity-75 hover:opacity-100 cursor-pointer"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${!canDeliver ? "bg-gray-200 dark:bg-gray-700 text-gray-400" : orderType === "DELIVERY" ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}`}>
+                              <Truck size={15} />
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${!canDeliver ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : orderType === "DELIVERY" ? "bg-emerald-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-500"}`}>
+                              {!canDeliver ? "Pickup Only" : "30–45 Mins"}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="text-xs font-black text-gray-900 dark:text-white">
+                              Doorstep Delivery
+                            </div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                              {!canDeliver ? "UPI not configured by store" : `Delivery fee: ₹${selectedProductForOrder.shop?.delivery_fee ?? 35}`}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })()}
 
                     {/* Option 2: Store Pickup */}
                     <button

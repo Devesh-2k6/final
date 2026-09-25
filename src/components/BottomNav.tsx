@@ -37,7 +37,7 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-6 inset-x-0 z-50 px-4 pointer-events-none flex justify-center lg:hidden">
-      <nav className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-orange-100/80 dark:border-gray-800 rounded-full p-2 shadow-[0_15px_35px_rgba(255,91,38,0.08)] dark:shadow-[0_20px_40px_rgba(0,0,0,0.7)] pointer-events-auto flex items-center gap-1.5 max-w-lg w-full justify-between">
+      <nav className="bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl border border-zinc-200/80 dark:border-zinc-800 rounded-full p-1.5 shadow-xl shadow-black/10 pointer-events-auto flex items-center gap-1 max-w-md w-full justify-between">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           const showBadge = href === "/notifications" && unread > 0;
@@ -45,16 +45,16 @@ export function BottomNav() {
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-1 py-2 px-3.5 sm:px-5 rounded-full transition-all duration-300 ${
+              className={`flex flex-col items-center gap-1 py-1.5 px-3.5 sm:px-4 rounded-full transition-all duration-200 ${
                 active
-                  ? "text-[#FF5B26] bg-[#FFF0EB] dark:bg-orange-950/60 border border-orange-200/60 dark:border-orange-500/20 shadow-md shadow-orange-500/10 scale-105"
-                  : "text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white border border-transparent hover:bg-slate-100/50 dark:hover:bg-gray-800/50"
+                  ? "text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700 font-semibold"
+                  : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-transparent font-medium"
               }`}
             >
               <div className="relative">
                 <Icon
-                  size={19}
-                  className={`transition-transform duration-300 ${active ? "scale-110" : ""}`}
+                  size={17}
+                  className={`transition-transform duration-200 ${active ? "text-emerald-500 dark:text-emerald-400 scale-105" : ""}`}
                 />
                 {showBadge && (
                   <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center px-0.5">

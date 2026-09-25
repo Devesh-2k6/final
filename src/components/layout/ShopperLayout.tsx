@@ -47,25 +47,30 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
   const initial = user?.name ? user.name[0].toUpperCase() : "?";
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] dark:bg-gray-950 text-slate-800 dark:text-gray-100 flex">
+    <div className="min-h-screen bg-[#FAFAFC] dark:bg-[#0B0F17] text-zinc-900 dark:text-zinc-100 flex">
       {/* ── Desktop Sidebar (≥1024px) ── */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-gray-900 border-r border-orange-100/70 dark:border-gray-800 flex-shrink-0 sticky top-0 h-screen z-40">
+      <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-[#0F141F] border-r border-zinc-200/70 dark:border-zinc-800/80 flex-shrink-0 sticky top-0 h-screen z-40">
         {/* Logo Branding */}
-        <div className="h-16 flex items-center px-6 border-b border-orange-100/50 dark:border-gray-800">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="bg-[#FF5B26] p-1.5 rounded-xl text-white shadow-md shadow-orange-500/20">
-              <Leaf size={20} className="fill-current" />
+        <div className="h-16 flex items-center px-6 border-b border-zinc-200/70 dark:border-zinc-800/80">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+              <Leaf size={16} className="fill-white" />
             </div>
-            <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-              Mee<span className="text-[#FF5B26]">va</span>
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">
+                Meeva
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/40 px-1.5 py-0.5 rounded-md">
+                Food
+              </span>
+            </div>
           </Link>
         </div>
 
         {/* Navigation Menu */}
-        <div className="p-4 flex-1 flex flex-col gap-1.5 overflow-y-auto">
-          <div className="mb-2 px-3 text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest">
-            Shopper Menu
+        <div className="p-3.5 flex-1 flex flex-col gap-1 overflow-y-auto">
+          <div className="mb-2 px-3 pt-2 text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+            Menu
           </div>
           {navigation.map((item) => {
             const isActive = pathname === item.href;
@@ -74,18 +79,18 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-sm transition-all border ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all ${
                   isActive
-                    ? "bg-[#FFF0EB] dark:bg-orange-950/60 text-[#FF5B26] border-orange-200/80 dark:border-orange-500/30 shadow-xs"
-                    : "text-slate-600 dark:text-gray-300 hover:text-[#FF5B26] dark:hover:text-[#FF5B26] border-transparent hover:bg-orange-50/50 dark:hover:bg-gray-800/60"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
                 }`}
               >
                 <Icon
-                  size={19}
+                  size={17}
                   className={
                     isActive
-                      ? "text-[#FF5B26]"
-                      : "text-slate-400 dark:text-gray-400"
+                      ? "text-emerald-400 dark:text-emerald-600"
+                      : "text-zinc-400 dark:text-zinc-500"
                   }
                 />
                 <span>{item.name}</span>
@@ -94,33 +99,33 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
           })}
 
           {/* Management Portals */}
-          <div className="mt-4 pt-4 border-t border-orange-100/50 dark:border-gray-800">
-            <div className="mb-2 px-3 text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest">
-              Merchant & Partner
+          <div className="mt-4 pt-4 border-t border-zinc-200/70 dark:border-zinc-800/80">
+            <div className="mb-2 px-3 text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+              Partners & Admin
             </div>
             {user?.role === "VENDOR" || user?.is_shop_owner ? (
               <Link
                 href="/shop"
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 transition-all"
               >
-                <Store size={17} className="text-slate-400 dark:text-gray-500" />
+                <Store size={16} className="text-zinc-400" />
                 <span>Merchant Dashboard</span>
               </Link>
             ) : (
               <Link
                 href="/shop/setup"
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 transition-all"
               >
-                <Store size={17} className="text-slate-400 dark:text-gray-500" />
+                <Store size={16} className="text-zinc-400" />
                 <span>Register Store (Partner)</span>
               </Link>
             )}
             {user?.role === "ADMIN" && (
               <Link
                 href="/admin"
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl font-bold text-xs text-slate-500 dark:text-gray-400 hover:text-purple-600 hover:bg-purple-50/50 dark:hover:bg-gray-800/60 transition-all border border-transparent"
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-zinc-600 dark:text-zinc-400 hover:text-purple-600 hover:bg-purple-50/60 dark:hover:bg-purple-950/30 transition-all"
               >
-                <ShieldCheck size={17} className="text-slate-400 dark:text-gray-500" />
+                <ShieldCheck size={16} className="text-zinc-400" />
                 <span>Admin Console</span>
               </Link>
             )}
@@ -128,18 +133,18 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
         </div>
 
         {/* Sidebar Footer: User Card & Logout/Login */}
-        <div className="p-4 border-t border-orange-100/50 dark:border-gray-800 bg-white/50 dark:bg-gray-950/40 space-y-3">
+        <div className="p-3.5 border-t border-zinc-200/70 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40 space-y-2.5">
           {isAuthenticated && user ? (
             <>
-              <div className="flex items-center gap-3 px-1">
-                <div className="w-10 h-10 rounded-2xl bg-[#FF5B26]/10 text-[#FF5B26] border border-[#FF5B26]/20 flex items-center justify-center font-black text-sm flex-shrink-0">
+              <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800/80">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0 border border-emerald-500/20">
                   {initial}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  <p className="text-xs font-semibold text-zinc-900 dark:text-white truncate">
                     {displayName}
                   </p>
-                  <p className="text-[10px] text-slate-400 dark:text-gray-400 truncate">
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
                     {displayEmail}
                   </p>
                 </div>
@@ -147,16 +152,16 @@ export function ShopperLayout({ children }: ShopperLayoutProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-xs font-bold transition shadow-2xs cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-500 hover:text-red-600 dark:hover:text-red-400 text-xs font-semibold transition cursor-pointer"
               >
-                <LogOut size={14} />
+                <LogOut size={13} />
                 Sign Out
               </button>
             </>
           ) : (
             <Link
               href="/auth?tab=login"
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#FF5B26] hover:bg-[#E54B18] text-white text-xs font-bold transition shadow-md shadow-orange-500/20"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold transition shadow-sm"
             >
               <LogIn size={14} />
               Sign In / Register
