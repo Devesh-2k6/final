@@ -267,6 +267,44 @@ export default function AddProductPage() {
   const [expiryDate, setExpiryDate] = useState("");
   const [category, setCategory] = useState<ProductCategory>("OTHER");
   const [description, setDescription] = useState("");
+
+  // Live Auto-Sync: Listen for Expo Go Scanner events & URL query params
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const qBarcode = urlParams.get("barcode");
+    const qName = urlParams.get("name");
+    const qCategory = urlParams.get("category");
+    const qPrice = urlParams.get("price");
+    const qDesc = urlParams.get("description");
+
+    if (qName) setProductName(qName);
+    if (qCategory) setCategory(qCategory as ProductCategory);
+    if (qPrice) setOriginalPrice(qPrice);
+    if (qDesc) setDescription(qDesc);
+    if (qBarcode) {
+      setManualBarcode(qBarcode);
+      setScanMessage(`Scanned Barcode: ${qBarcode} connected from Expo Go.`);
+      toast.success("Phone Scanner Connected", `Loaded details for "${qName || qBarcode}"`);
+    }
+
+    const onScannerEvent = (e: any) => {
+      const scan = e.detail;
+      if (!scan) return;
+      if (scan.name) setProductName(scan.name);
+      if (scan.category) setCategory(scan.category as ProductCategory);
+      if (scan.suggested_price) setOriginalPrice(String(scan.suggested_price));
+      if (scan.description) setDescription(scan.description);
+      if (scan.barcode) {
+        setManualBarcode(scan.barcode);
+        setScanMessage(`Live Expo Go Scan Received: ${scan.barcode}`);
+        toast.success("Expo Go Scan Auto-filled!", `Loaded "${scan.name || scan.barcode}" directly from phone camera!`);
+      }
+    };
+
+    window.addEventListener("EXPIRYGO_SCANNER_EVENT", onScannerEvent);
+    return () => window.removeEventListener("EXPIRYGO_SCANNER_EVENT", onScannerEvent);
+  }, [toast]);
   
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [expiryImage, setExpiryImage] = useState<string | null>(null);

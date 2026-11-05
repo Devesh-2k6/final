@@ -165,8 +165,10 @@ export async function lookupBarcode(barcode: string): Promise<{
   brand: string | null;
   category: ProductCategory | null;
   description: string | null;
+  suggested_price?: number | null;
+  image_url?: string | null;
 }> {
-  return apiRequest<any>(`/products/barcode/${barcode}`);
+  return apiRequest<any>(`/products/barcode/${barcode}`, { skipAuth: true });
 }
 
 export type DeepSearchParams = {
@@ -239,4 +241,49 @@ export async function generateRecipe(
     } catch {}
   }
   return findWorldEasiestRecipe(products);
+}
+
+export async function broadcastScannerResult(data: {
+  barcode: string;
+  name?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  description?: string | null;
+  suggested_price?: number | null;
+  image_url?: string | null;
+  is_pickup_verification?: boolean;
+  pickup_status?: string;
+}): Promise<void> {
+  try {
+    await apiRequest("/api/scanner", {
+      method: "POST",
+      json: {
+        ...data,
+        source: "expo_go",
+      },
+      skipAuth: true,
+    });
+  } catch (err) {
+    console.log("Scanner relay notice:", err);
+  }
+}
+
+export async function verifyPickupPass(code: string): Promise<{
+  success: boolean;
+  message: string;
+  type?: string;
+  item?: any;
+}> {
+  try {
+    return await apiRequest<any>("/api/scanner/verify-pickup", {
+      method: "POST",
+      json: { code },
+      skipAuth: true,
+    });
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err.message || "Failed to verify pickup pass.",
+    };
+  }
 }

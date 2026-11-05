@@ -71,6 +71,7 @@ export interface StoreData {
   reservations?: any[];
   orders?: any[];
   pantry?: any[];
+  scanner_events?: any[];
 }
 
 const BLOB_STORE_FILENAME = "expirygo_db_v1.json";
@@ -122,6 +123,9 @@ function ensureBaseline(store: StoreData): void {
   if (!Array.isArray(store.pantry)) {
     store.pantry = [];
   }
+  if (!Array.isArray(store.scanner_events)) {
+    store.scanner_events = [];
+  }
 }
 
 function loadLocalStore(): StoreData {
@@ -138,6 +142,7 @@ function loadLocalStore(): StoreData {
           reservations: Array.isArray(parsed.reservations) ? parsed.reservations : [],
           orders: Array.isArray(parsed.orders) ? parsed.orders : [],
           pantry: Array.isArray(parsed.pantry) ? parsed.pantry : [],
+          scanner_events: Array.isArray(parsed.scanner_events) ? parsed.scanner_events : [],
         };
         ensureBaseline(store);
         return store;
@@ -682,4 +687,125 @@ export async function sendSmtpOtp(email: string, code: string, name?: string): P
     console.error(`[SMTP ERROR] Could not deliver to ${email}:`, err.message);
     throw new Error(`Failed to deliver OTP email via SMTP: ${err.message}`);
   }
+}
+
+
+export async function getScannerEventsAsync(since: number = 0): Promise<any[]> {
+  await ensureStoreLoaded();
+  const events = globalStore.scanner_events || [];
+  return events.filter((e) => e.timestamp > since);
+}
+
+export async function addScannerEventAsync(event: any): Promise<any> {
+  await ensureStoreLoaded();
+  if (!globalStore.scanner_events) globalStore.scanner_events = [];
+  // Deduplicate recent same barcode if within 3 seconds
+  const cutoff = Date.now() - 3000;
+  const isDuplicate = globalStore.scanner_events.some(
+    (e) => (e.barcode === event.barcode || e.code === event.code) && e.timestamp > cutoff
+  );
+  if (!isDuplicate) {
+    globalStore.scanner_events.unshift(event);
+    if (globalStore.scanner_events.length > 30) {
+      globalStore.scanner_events = globalStore.scanner_events.slice(0, 30);
+    }
+    await saveStoreAsync(globalStore);
+  }
+  return event;
+}
+
+export async function clearScannerEventsAsync(): Promise<void> {
+  await ensureStoreLoaded();
+  globalStore.scanner_events = [];
+  await saveStoreAsync(globalStore);
+}
+
+export async function verifyPickupCodeAsync(code: string): Promise<{
+  success: boolean;
+  type?: "reservation" | "order";
+  item?: any;
+  message: string;
+}> {
+  await ensureStoreLoaded();
+  const clean = code.replace(/^EXPIRYGO:/i, "").trim().toUpperCase();
+  if (!clean) return { success: false, message: "Pickup code is empty." };
+
+  // 1. Check Reservations
+  if (Array.isArray(globalStore.reservations)) {
+    const resIdx = globalStore.reservations.findIndex(
+      (r) => (r.pickup_code && r.pickup_code.toUpperCase() === clean) || r.id === clean
+    );
+    if (resIdx !== -1) {
+      const reservation = globalStore.reservations[resIdx];
+      const updated = {
+        ...reservation,
+        status: "COMPLETED",
+        completed_at: new Date().toISOString(),
+      };
+      globalStore.reservations[resIdx] = updated;
+      await saveStoreAsync(globalStore);
+
+      // Broadcast pickup verified event to scanner stream
+      await addScannerEventAsync({
+        id: "pickup_" + Date.now(),
+        barcode: clean,
+        code: clean,
+        name: "✅ Pickup Verified: " + (reservation.product?.name || "Item Handed Over"),
+        category: reservation.product?.category || "OTHER",
+        source: "expo_go_pickup_verifier",
+        timestamp: Date.now(),
+        is_pickup_verification: true,
+        pickup_status: "COMPLETED",
+      });
+
+      return {
+        success: true,
+        type: "reservation",
+        item: updated,
+        message: "Customer pickup code " + clean + " verified successfully! Food handed over.",
+      };
+    }
+  }
+
+  // 2. Check Orders
+  if (Array.isArray(globalStore.orders)) {
+    const ordIdx = globalStore.orders.findIndex(
+      (o) => (o.delivery_pin && o.delivery_pin.toUpperCase() === clean) ||
+             (o.pickup_code && o.pickup_code.toUpperCase() === clean) ||
+             o.id === clean
+    );
+    if (ordIdx !== -1) {
+      const order = globalStore.orders[ordIdx];
+      const updated = {
+        ...order,
+        status: "COMPLETED",
+        completed_at: new Date().toISOString(),
+      };
+      globalStore.orders[ordIdx] = updated;
+      await saveStoreAsync(globalStore);
+
+      await addScannerEventAsync({
+        id: "order_" + Date.now(),
+        barcode: clean,
+        code: clean,
+        name: "✅ Order Verified: #" + order.id.slice(0, 8),
+        source: "expo_go_order_verifier",
+        timestamp: Date.now(),
+        is_pickup_verification: true,
+        pickup_status: "COMPLETED",
+      });
+
+      return {
+        success: true,
+        type: "order",
+        item: updated,
+        message: "Order pickup code " + clean + " verified successfully! Order completed.",
+      };
+    }
+  }
+
+  return {
+    success: false,
+    message: "Pickup code \"" + clean + "\" was not found among active orders.",
+  };
 }

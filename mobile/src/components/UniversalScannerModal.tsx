@@ -38,7 +38,7 @@ import {
   Package,
 } from "lucide-react-native";
 import { Colors, Radius, Spacing, Typography, Shadows } from "../theme";
-import { scanProductDatesNative, lookupBarcode } from "../services/products";
+import { scanProductDatesNative, lookupBarcode, broadcastScannerResult, verifyPickupPass } from "../services/products";
 import { addPantryItem } from "../services/pantry";
 import type { ProductCategory } from "../types";
 
@@ -89,6 +89,8 @@ export interface ScannedBarcodeResult {
   description?: string | null;
   suggested_price?: number | null;
   image_url?: string | null;
+  is_pickup_verification?: boolean;
+  pickup_status?: string;
 }
 
 export interface ScannedOcrResult {
@@ -133,6 +135,7 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
   const [scannedBarcode, setScannedBarcode] = useState<ScannedBarcodeResult | null>(null);
   const [scannedOcr, setScannedOcr] = useState<ScannedOcrResult | null>(null);
   const [scannedQrCode, setScannedQrCode] = useState<string | null>(null);
+  const [pickupVerifyResult, setPickupVerifyResult] = useState<{ success: boolean; message: string; item?: any } | null>(null);
 
   // Manual input modal
   const [manualInputModalVisible, setManualInputModalVisible] = useState(false);
@@ -241,6 +244,8 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
       }
 
       setScannedBarcode(lookupResult);
+      // Broadcast live to Web companion app via unified API
+      void broadcastScannerResult(lookupResult);
       if (onBarcodeDetected) {
         onBarcodeDetected(lookupResult);
       }
@@ -486,6 +491,28 @@ export const UniversalScannerModal: React.FC<UniversalScannerModalProps> = ({
             </TouchableOpacity>
           </ScrollView>
         </View>
+
+        {/* Quick Instant Test Barcodes for Expo Go */}
+        {!scannedBarcode && !scannedOcr && !scannedQrCode && (
+          <View style={styles.quickTestBar}>
+            <Text style={styles.quickTestLabel}>Tap to Test Barcode:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickTestScroll}>
+              {EXPO_GO_TEST_SAMPLES.map((sample) => (
+                <TouchableOpacity
+                  key={sample.code}
+                  style={styles.quickSampleChip}
+                  onPress={() => handleBarcodeScanned({ data: sample.code, type: "ean13" } as any)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.quickSampleTitle}>
+                    {sample.category === "DAIRY" ? "🥛" : "🍞"} {sample.brand}
+                  </Text>
+                  <Text style={styles.quickSampleCode}>({sample.code.slice(-4)})</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Viewfinder or Permission Required View */}
         {!permission?.granted ? (
@@ -888,6 +915,48 @@ const styles = StyleSheet.create({
   modeTabActiveDemo: {
     backgroundColor: "rgba(245, 158, 11, 0.25)",
     borderColor: Colors.amberBright,
+  },
+  quickTestBar: {
+    backgroundColor: "rgba(15, 23, 42, 0.95)",
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.08)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  quickTestLabel: {
+    color: "#94A3B8",
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  quickTestScroll: {
+    gap: 6,
+    alignItems: "center",
+  },
+  quickSampleChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(124, 58, 237, 0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(124, 58, 237, 0.5)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+  },
+  quickSampleTitle: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  quickSampleCode: {
+    color: "#C4B5FD",
+    fontSize: 10,
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   modeTabText: {
     fontSize: 12,

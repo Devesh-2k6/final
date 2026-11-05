@@ -7,6 +7,7 @@ import { getMyReservations } from "@/services/reservations";
 import { getMyOrders, cancelOrder } from "@/services/orders";
 import { getSafeImageUrl } from "@/lib/images";
 import type { ApiReservation, ApiOrder } from "@/types/product";
+import { QRCodeSVG } from "qrcode.react";
 import { Loader2, Package, MapPin, CheckCircle, Clock, ArrowLeft, CreditCard, Star, X, Truck, ShoppingBag, XCircle, LogIn } from "lucide-react";
 import { ShopperLayout } from "@/components/layout/ShopperLayout";
 import { leaveReview } from "@/services/shops";

@@ -41,23 +41,8 @@ export function getPublicApiBaseUrl(): string {
       }
     }
 
-    // 3. On Vercel deployments, use same-origin relative endpoints
-    if (hostname.endsWith(".vercel.app") || hostname === "expirygo.vercel.app") {
-      return "";
-    }
-
-    // 3. Localhost development
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://localhost:8000";
-    }
-
-    // 4. Local LAN IP
-    if (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(hostname)) {
-      const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-      return `${protocol}//${hostname}:8000`;
-    }
-
-    // 5. Public domains / reverse proxies: use relative same origin
+    // 3. Unified Next.js API routes (Serverless + Local):
+    // Same-origin relative endpoints ensure 100% sync across localhost, LAN, and live Vercel deployments.
     return "";
   }
 

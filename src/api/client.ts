@@ -14,7 +14,11 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const { json: jsonBody, body: explicitBody, headers: initHeaders, skipAuth, ...rest } = options;
 
   const base = getPublicApiBaseUrl();
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  let normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  // Strip trailing slashes to prevent Vercel 308 Permanent Redirects on POST/PUT
+  if (normalizedPath.length > 1 && normalizedPath.endsWith("/")) {
+    normalizedPath = normalizedPath.replace(/\/+$/, "");
+  }
   const url = base ? `${base}${normalizedPath}` : normalizedPath;
 
   const headers = new Headers(initHeaders);

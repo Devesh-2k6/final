@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Flame, Compass, ShoppingBag, User, Sparkles, Bell } from "lucide-react";
+import { Flame, Compass, ShoppingBag, User, Sparkles, Bell, QrCode } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthenticationContext";
@@ -31,9 +31,9 @@ export function BottomNav() {
   const NAV_ITEMS = [
     { href: "/deals", label: "Deals", icon: Flame },
     { href: "/map", label: "Explore", icon: Compass },
+    { href: "/scanner", label: "Scanner", icon: QrCode },
     { href: "/pantry", label: "Fridge", icon: Sparkles },
-    { href: "/reservations", label: "Cart / Pickups", icon: ShoppingBag },
-    { href: "/profile", label: "Profile", icon: User },
+    { href: "/reservations", label: "Pickups", icon: ShoppingBag },
   ];
 
   return (

@@ -46,7 +46,7 @@ export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
           onMessageRef.current({ type: "heartbeat_sync" });
         } catch {}
       }
-    }, 10000);
+    }, 3500);
 
     const connect = () => {
       if (isUnmounted) return;

@@ -689,6 +689,14 @@ export default function CustomerDealsPage() {
               {/* Right: Quick Actions */}
               <div className="flex items-center gap-2">
                 <Link
+                  href="/scanner"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-bold transition border border-purple-200/80 dark:border-purple-800/60 shadow-xs"
+                  title="Expo Go Scanner and Live Sync Hub"
+                >
+                  <Smartphone size={13} className="text-purple-600 dark:text-purple-400 animate-pulse" />
+                  <span className="hidden sm:inline">Expo Scanner</span>
+                </Link>
+                <Link
                   href="/reservations"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition border border-zinc-200/60 dark:border-zinc-700/60"
                   title="Counter QR Pickup Pass"

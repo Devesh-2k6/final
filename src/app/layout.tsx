@@ -12,6 +12,7 @@ import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { MobileAppFloatingButton } from "@/components/ui/MobileAppFloatingButton";
 import { ToastProvider } from "@/components/ui/Toast";
 import { RouteProgressBar } from "@/components/ui/RouteProgressBar";
+import { CompanionScannerListener } from "@/components/CompanionScannerListener";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
@@ -51,6 +52,7 @@ export default function RootLayout({
               <EmailVerificationBanner />
               {children}
               <LiveDealToast />
+              <CompanionScannerListener />
               <MobileAppFloatingButton />
             </AuthenticationProvider>
           </LanguageProvider>

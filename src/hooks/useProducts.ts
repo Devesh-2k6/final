@@ -39,7 +39,7 @@ export function useProducts(options?: {
   };
 
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, {
-    refreshInterval: options?.refreshInterval ?? 30000,
+    refreshInterval: options?.refreshInterval ?? 3500,
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
   });
