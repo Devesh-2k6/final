@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExpiryGo Expo Go QR Scanner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+  <div class="bg-slate-850 border border-purple-500/30 rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl backdrop-blur-xl">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+      <div class="flex items-center gap-3 text-left">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-700 text-white flex items-center justify-center font-black text-2xl shadow-lg shadow-purple-600/30">
+          🌱
+        </div>
+        <div>
+          <h2 class="text-white font-black text-lg">ExpiryGo Mobile App</h2>
+          <p class="text-purple-400 text-xs font-bold">Expo Go Live Metro</p>
+        </div>
+      </div>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Active
+      </span>
+    </div>
+
+    <div class="flex flex-col items-center justify-center p-6 bg-white rounded-3xl shadow-2xl">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAGkCAYAAAB+TFE1AAAAAklEQVR4AewaftIAAAmTSURBVO3BwZEdOXAFwMeKMQBH+AD/TYEPOMIDig5wFdESm/U5mfnj5y8BgL+sAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAa+8heMuUI/9+y8bcyVJ+7ZeWrMlSfu2fkkY648cc/O28ZcoZ97dt5UAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA185cPcs8PvjbnySe7ZeWLMlafu2fkUY67w3+7Z4ffGXPkUFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAa+8k2MufJJ7tn5FGOuvO2ene/gnp2nxlzh98Zc+ST37PzrKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBrwD/pHt24JNUAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGvgK/EX37Dwx5spT9+y8bcyVJ+7ZeWrMlSfu2YG/oQIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANBABQAa+Mo3cc8O/Yy58sQ9O9/BmCv8Gffs0EsFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACgga98mDFX+Hfcs/PEmCtP3bPzxJgrT92z88SYK0/ds/PEmCtP3bPztjFX+DdUAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQANf+Qvu2YFPc8/OU2OuPHHPzlNjrjxxz87b7tmBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAM/fv6Sl4258tQ9O0+MucJ/u2fnOxhz5Yl7dt425srb7tl525gr/Ld7dv51FQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANDAj5+/5IOMufId3LMDn2bMlSfu2XnbmCtvu2fnqTFXnrhn51NUAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGvjKXzDmytvu2fkkY658int2nhpz5Yl7dp4ac+WJe3Y+yZgrT9yz89Q9O0+MucKfMebKU/fsvKkCAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGvjx85d8kDFX3nbPDr835spT9+y8bcyVt92z88SYK0/ds/PEmCv8GffsvG3Mlafu2XlTBQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEfP38J/2nMlbfds/PEmCtP3bPzxJgrT92zQy9jrjx1z87bxlx54p6dp8Zceds9O/+6CgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGjgK3/BmCtP3bPzHYy58sQ9O0+NufIpxlx56p6dJ8Zc+ST37LxtzBV+756dp8ZceeKenU9RAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaOAr/DH37LxtzJWn7tl5YsyVp8ZceeKenbfds/PUmCtvG3PliXt23jbmylP37Dwx5sp3MObKU/fsvKkCAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGvjKNzHmylP37Dwx5spT9+w8cc/OU2OuPHHPzlNjrnyKMVfeds/OJxlz5W1jrjxxz85TY648MeYKv1cBgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBo4Cv8r8ZceeKenafGXHnbPTv8GffsPDHmylP37Dwx5sp3MObKU/fsvG3MlX9dBQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADTw4+cvgf+DMVc+yT07/N6YK0/ds/Mpxlx56p6dJ8ZceeqenX9dBQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIGv/AVjrtDPPTtP3LPzScZceds9O28bc+VTjLny1D0738GYK2+7Z+dNFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANDAVz7MPTv83pgrbxtz5W337Lztnp23jbny1D07T4y58rZ7dvgz7tn5FBUAaKACAA1UAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGvvJNjLnySe7Z+Q7u2XlizJXv4J6dTzLmyncw5srb7tl5YsyVp+7ZeVMFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANPAV+Gbu2XlizJVPcs/Od3DPDv+GCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQANfgb9ozJUn7tl52z07T4258inu2eHPGHPlqXt2/nUVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABioA0MBXvol7dvgz7tl525grT92z88SYK2+7Z+epMVeeuGfnqTFXnrhn521jrjx1zw7//yoA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANfOXDjLlCL2OuvO2enU9yz84TY648dc/OE2OuPHXPzqe4Z+eTjLnyr6sAQAMVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABn78/CUA8JdVAKCBCgA0UAGABioA0EAFABqoAEADFQBooAIADVQAoIEKADRQAYAGKgDQQAUAGqgAQAMVAGigAgANVACggQoANFABgAYqANBABQAaqABAAxUAaKACAA1UAKCBCgA0UAGABv4HZ2qLa/5K6mQAAAAASUVORK5CYII=" alt="ExpiryGo QR Code" class="w-64 h-64 object-contain" />
+    </div>
+
+    <div class="space-y-2">
+      <p class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Direct Expo Go Connection URL</p>
+      <p class="text-purple-300 font-mono text-sm font-black bg-slate-950 border border-purple-500/30 px-3 py-2.5 rounded-xl text-center select-all break-all">
+        exp://192.168.1.7:8081
+      </p>
+    </div>
+
+    <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-left space-y-2 text-xs text-slate-300">
+      <p class="font-bold text-white flex items-center gap-1.5">
+        📱 Scan Instructions:
+      </p>
+      <ol class="space-y-1 list-decimal list-inside font-medium leading-relaxed text-slate-400">
+        <li>Connect phone to the same Wi-Fi network (<strong class="text-white">192.168.1.x</strong>).</li>
+        <li>Open the <strong class="text-white">Expo Go</strong> app on your Android or iPhone.</li>
+        <li>Tap <strong class="text-white">Scan QR code</strong> and aim at this screen.</li>
+        <li><em>(Or tap &quot;Enter URL manually&quot; and enter <code class="text-purple-300">exp://192.168.1.7:8081</code>)</em></li>
+      </ol>
+    </div>
+
+    <div class="text-xs text-slate-400 flex items-center justify-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <span>Live Sync with <a href="https://expirygo.vercel.app" target="_blank" class="text-purple-400 font-bold underline">expirygo.vercel.app</a></span>
+    </div>
+  </div>
+</body>
+</html>

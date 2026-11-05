@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const API_OVERRIDE_KEY = "EXPIRYGO_MOBILE_API_OVERRIDE";
 
 export const LIVE_PRODUCTION_URL = "https://expirygo.vercel.app";
-export const CURRENT_LAN_IP = "10.88.239.184";
+export const CURRENT_LAN_IP = "192.168.1.7";
 export const LAN_API_URL = `http://${CURRENT_LAN_IP}:8000`;
 export const TUNNEL_API_URL = "https://expirygo.vercel.app";
 

@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { BarChart3, Package, ShieldCheck, Settings } from "lucide-react-native";
+import { BarChart3, Package, ShieldCheck, Settings, QrCode } from "lucide-react-native";
 import { Colors, Radius, Shadows } from "../theme";
 
 import { ShopDashboardScreen } from "../screens/shop/ShopDashboardScreen";

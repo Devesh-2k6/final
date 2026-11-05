@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Flame, Compass, ShoppingBag, User, Sparkles, Layers } from "lucide-react-native";
+import { Flame, Compass, ShoppingBag, User, Sparkles, Layers, QrCode } from "lucide-react-native";
 import { Colors, Radius, Shadows } from "../theme";
 
 import { DealsFeedScreen } from "../screens/customer/DealsFeedScreen";
